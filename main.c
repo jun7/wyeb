@@ -2648,7 +2648,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 	gtk_widget_show_all(win->winw);
 	gdk_flush();
-	gtk_window_present(win->win);
 
 	//delayed init
 	if (!accelg) makemenu(NULL);
@@ -2801,32 +2800,12 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 	gtk_widget_grab_focus(win->kitw);
 
-	if (back && LASTWIN)
-	{
-//		LASTWIN->backwinnum++;
-//		gint gy;
-//		gdk_window_get_geometry(
-//				gtk_widget_get_window(LASTWIN->winw), NULL, &gy, NULL, NULL);
-//		gint x, y;
-//		gtk_window_get_position(LASTWIN->win, &x, &y);
-//		gtk_window_move(win->win,
-//				MAX(0, x + gy * 2 * LASTWIN->backwinnum), MAX(0, y - gy * 1.4));
-
-		gtk_window_set_accept_focus(win->win, false);
-		gtk_widget_show_all(win->winw);
-
-		gtk_window_present(LASTWIN->win);
-		//gtk_window_present(relwin->win);
-		//gdk_window_lower(gtk_widget_get_window(win->winw));
-
-		g_timeout_add(200, (GSourceFunc)accept_focus, win->win);
-	}
-	else
-		gtk_widget_show_all(win->winw);
-
+	gtk_widget_show_all(win->winw);
 	gtk_widget_hide(win->entw);
 	gtk_widget_hide(win->progw);
 
+	gtk_window_present(
+			back && LASTWIN ? LASTWIN->win : win->win);
 
 	win->pageid = g_strdup_printf("%lu", webkit_web_view_get_page_id(win->kit));
 	g_ptr_array_insert(wins, 0, win);
