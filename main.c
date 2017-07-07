@@ -2648,6 +2648,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 	gtk_widget_show_all(win->winw);
 	gdk_flush();
+	gtk_window_present(win->win);
 
 	//delayed init
 	if (!accelg) makemenu(NULL);
