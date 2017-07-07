@@ -33,7 +33,7 @@ build() {
 package() {
 	cd "$srcdir/wyeb"
 	install -Dm755 wyeb   "$pkgdir/usr/bin/wyeb"
-	install -Dm755 ext.so   "$pkgdir/usr/share/wyeb/ext.so"
+	install -Dm755 ext.so   "$pkgdir/usr/share/wyebrowser/ext.so"
 	install -Dm644 wyeb.png   "$pkgdir/usr/share/pixmaps/wyeb.png"
 	install -Dm644 wyeb.desktop "$pkgdir/usr/share/applications/wyeb.desktop"
 }
