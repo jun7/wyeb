@@ -173,6 +173,7 @@ Conf dconf[] = {
 
 	{"main"    , "winwidth"     , "1000"},
 	{"main"    , "winheight"    , "1000"},
+	{"main"    , "zoom"         , "1.000"},
 
 	{"main"    , "dlwinlower"   , "true"},
 	{"main"    , "dlwinclosemsec","1000"},
@@ -204,6 +205,8 @@ static bool confbool(gchar *key)
 { return g_key_file_get_boolean(conf, "main", key, NULL); }
 static gint confint(gchar *key)
 { return g_key_file_get_integer(conf, "main", key, NULL); }
+static gdouble confdouble(gchar *key)
+{ return g_key_file_get_double(conf, "main", key, NULL); }
 static gchar *confcstr(gchar *key)
 {//return is static string
 	static gchar *str = NULL;
@@ -2725,6 +2728,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
 	webkit_web_view_set_settings(win->kit, win->set);
+	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 
 	GObject *o = win->kito;
 	SIGW(o, "destroy"             , destroycb , win);
