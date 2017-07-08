@@ -1271,9 +1271,14 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	preparemd();
 	if (uri)
 	{
-		gchar *str = g_strdup_printf(getset(win, "linkformat"), title ?: uri, uri);
+		gchar *escttl = title ? g_markup_escape_text(title, -1) : NULL;
+		gchar *str = g_strdup_printf(getset(win, "linkformat"),
+				escttl ?: uri, uri);
+
 		append(mdpath, str);
+
 		g_free(str);
+		g_free(escttl);
 	}
 	else
 		append(mdpath, NULL);
