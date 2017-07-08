@@ -2556,6 +2556,12 @@ static void actioncb(GtkAction *action, AItem *ai)
 	g_strfreev(envp);
 	g_free(dir);
 }
+static guint menuhash = 0;
+static void addhash(gchar *str)
+{
+	while (*str++)
+		menuhash = menuhash * 33 + *str;
+}
 static GSList *dirmenu(
 		WebKitContextMenu *menu,
 		gchar *dir,
@@ -2611,6 +2617,7 @@ static GSList *dirmenu(
 		} else {
 			ai->action = gtk_action_new(name, name, NULL, NULL);
 			ai->path = path;
+			addhash(path);
 			SIG(ai->action, "activate", actioncb, ai);
 
 			gtk_action_set_accel_group(ai->action, accelg);
@@ -2694,7 +2701,7 @@ void makemenu(WebKitContextMenu *menu)
 	if (g_file_test(accelp, G_FILE_TEST_EXISTS))
 		gtk_accel_map_load(accelp);
 
-	if (!actions)
+	if (actions)
 		g_slist_free_full(actions, clearai);
 
 	WebKitContextMenuItem *sep = NULL;
@@ -2702,13 +2709,19 @@ void makemenu(WebKitContextMenu *menu)
 		webkit_context_menu_append(menu,
 			sep = webkit_context_menu_item_new_separator());
 
+	guint lasthash = menuhash;
+	menuhash = 5381;
+
 	actions = dirmenu(menu, dir, "<window>");
 
 	if (menu && !actions)
 		webkit_context_menu_remove(menu, sep);
 
-	gtk_accel_map_save(accelp);
-	getctime(accelp, &accelt);
+	if (lasthash != menuhash)
+	{
+		gtk_accel_map_save(accelp);
+		getctime(accelp, &accelt);
+	}
 
 	g_free(dir);
 }
