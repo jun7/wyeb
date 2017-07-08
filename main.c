@@ -2014,6 +2014,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 				g_free(line);
 			}
 			g_io_channel_close(io);
+			g_free(path);
 		}
 
 		if (num)
