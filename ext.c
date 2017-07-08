@@ -422,6 +422,7 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 				if (!isinput(te)) continue;
 
 				webkit_dom_element_focus(te);
+				g_object_unref(win);
 				return NULL;
 			}
 
@@ -461,6 +462,7 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 		g_object_unref(cl);
 	}
 
+	g_object_unref(win);
 	return elms;
 }
 
@@ -648,7 +650,6 @@ static void pageon(Page *page)
 //may be heavy
 //	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
 //			"DOMSubtreeModified", G_CALLBACK(hintcb), false, page);
-
 }
 
 
@@ -660,11 +661,29 @@ static void focus(Page *page)
 	WebKitDOMDOMSelection *selection =
 		webkit_dom_dom_window_get_selection(win);
 
-	WebKitDOMNode *an =
-		webkit_dom_dom_selection_get_anchor_node(selection);
+	WebKitDOMNode *an = NULL;
+
+	an = webkit_dom_dom_selection_get_anchor_node(selection);
+	an = an ?: webkit_dom_dom_selection_get_focus_node(selection);
+	an = an ?: webkit_dom_dom_selection_get_base_node(selection);
+	an = an ?: webkit_dom_dom_selection_get_extent_node(selection);
 
 	if (an)
-		webkit_dom_element_focus(webkit_dom_node_get_parent_element(an));
+		do {
+			WebKitDOMElement *elm = webkit_dom_node_get_parent_element(an);
+			gchar *tag = webkit_dom_element_get_tag_name(elm);
+
+			bool brk;
+			if (brk = isin(clicktags , tag))
+				webkit_dom_element_focus(elm);
+			g_free(tag);
+
+			if (brk)
+				break;
+		} while (an = webkit_dom_node_get_parent_node(an));
+
+	g_object_unref(selection);
+	g_object_unref(win);
 }
 
 static void blur(Page *page)
@@ -679,6 +698,9 @@ static void blur(Page *page)
 	WebKitDOMDOMSelection *selection =
 		webkit_dom_dom_window_get_selection(win);
 	webkit_dom_dom_selection_empty(selection);
+
+	g_object_unref(selection);
+	g_object_unref(win);
 }
 
 void ipccb(const gchar *line)
