@@ -189,8 +189,8 @@ Conf dconf[] = {
 	{DSET      , "search"           , "https://www.google.com/search?q=%s"},
 	{DSET      , "usercss"          , "user.css"},
 	{DSET      , "loadsightedimages", "false"},
-	{DSET      , "mdlbtnlinkaction"  , "openback"},
-	{DSET      , "ignorenewwin"     , "true"},
+	{DSET      , "mdlbtnlinkaction" , "openback"},
+	{DSET      , "newwinhandle"     , "normal"},
 	{DSET      , "linkformat"       , "[%.40s](%s)"},
 
 	//changes
@@ -685,6 +685,9 @@ static void getdconf(GKeyFile *kf, bool isnew)
 	if (!isnew) return;
 
 	//sample and comment
+	g_key_file_set_comment(conf, "main", "newwinhandle",
+			"newwinhandle=notnew | ignore | back | normal" , NULL);
+
 	g_key_file_set_comment(conf, "main", "keybindswaps",
 			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"
 			, NULL);
@@ -2239,9 +2242,18 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 }
 static GtkWidget *createcb(Win *win)
 {
-	if (strcmp(getset(win, "ignorenewwin"), "true") == 0)
+	gchar *handle = getset(win, "newwinhandle");
+	Win *new = NULL;
+
+	if      (strcmp(handle, "notnew") == 0)
 		return win->kitw;
-	Win *new = newwin(NULL, win, win, false);
+	else if (strcmp(handle, "ignore") == 0)
+		return NULL;
+	else if (strcmp(handle, "back") == 0)
+		new = newwin(NULL, win, win, true);
+	else
+		new = newwin(NULL, win, win, false);
+
 	return new->kitw;
 }
 static GtkWidget *closecb(Win *win)
