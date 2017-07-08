@@ -1948,40 +1948,18 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 		data = g_strdup(
 			"<meta charset=utf8>\n"
 			"<style>\n"
-			"p {margin: 1em 1em}\n"
+			"th {\n"
+			"font-weight: normal; font-family: monospace; vertical-align: top;\n"
+			"padding-right: .4em;\n"
+			"}\n"
 			"a {font-size: 100%; color:black; text-decoration: none;}\n"
-			"span {font-size: 70%; padding-left:2em; text-decoration: underline;}\n"
+			"span {\n"
+			"font-size: 79%;\n"
+			"color: #46a;\n"
+			"}\n"
 			"</style>\n"
-			"\n"
+			"<table>\n"
 			);
-
-//			"<p>Back List<p>\n\n"
-//		WebKitBackForwardList *list =
-//			webkit_web_view_get_back_forward_list(kit);
-//
-//		GList *bl = webkit_back_forward_list_get_back_list(list);
-//
-//		if (bl)
-//			for (GList *n = bl; n; n = n->next)
-//			{
-//				gchar *tmp = g_strdup_printf(
-//					"<p>%s<br><a href=\"%s\">%s</a><p>\n",
-//					webkit_back_forward_list_item_get_title(n->data) ?: "-",
-//					webkit_back_forward_list_item_get_uri  (n->data),
-//					webkit_back_forward_list_item_get_uri  (n->data));
-//
-//				last = data;
-//				data = g_strconcat(data, tmp, NULL);
-//				g_free(last);
-//				g_free(tmp);
-//			}
-//		else
-//		{
-//			last = data;
-//			data = g_strconcat(data, "<b>-- first page --</b>", NULL);
-//			g_free(last);
-//		}
-//		g_list_free(bl);
 
 		//log
 		history(NULL);
@@ -2016,11 +1994,13 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
 					== G_IO_STATUS_NORMAL)
 			{
-				gchar **stra = g_strsplit(line, " ", 2);
-				gchar *escpd = g_markup_escape_text(stra[1] ?: stra[0], -1);
+				gchar **stra = g_strsplit(line, " ", 3);
+				gchar *escpd = g_markup_escape_text(stra[2] ?: stra[1], -1);
 
 				hist = g_slist_prepend(hist, g_strdup_printf(
-							"<p><a href=%s>%s<br><span>%s</span></a></p>\n", stra[0], escpd, stra[0]));
+							"<tr><th>%.11s</th>"
+							"<td><a href=%s>%s<br><span>%s</span></a>\n",
+							stra[0], stra[1], escpd, stra[1]));
 				num++;
 
 				g_free(escpd);
@@ -2051,6 +2031,35 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			data = g_strconcat(data, "<p>No Data</p>", NULL);
 			g_free(last);
 		}
+
+//			"<p>Back List<p>\n\n"
+//		WebKitBackForwardList *list =
+//			webkit_web_view_get_back_forward_list(kit);
+//
+//		GList *bl = webkit_back_forward_list_get_back_list(list);
+//
+//		if (bl)
+//			for (GList *n = bl; n; n = n->next)
+//			{
+//				gchar *tmp = g_strdup_printf(
+//					"<p>%s<br><a href=\"%s\">%s</a><p>\n",
+//					webkit_back_forward_list_item_get_title(n->data) ?: "-",
+//					webkit_back_forward_list_item_get_uri  (n->data),
+//					webkit_back_forward_list_item_get_uri  (n->data));
+//
+//				last = data;
+//				data = g_strconcat(data, tmp, NULL);
+//				g_free(last);
+//				g_free(tmp);
+//			}
+//		else
+//		{
+//			last = data;
+//			data = g_strconcat(data, "<b>-- first page --</b>", NULL);
+//			g_free(last);
+//		}
+//		g_list_free(bl);
+
 	}
 	if (g_str_has_prefix(path, "help")) {
 		data = g_strdup_printf(
@@ -2443,9 +2452,16 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
 
+
 		if (!g_str_has_prefix(URI(win), APP":"))
-			g_idle_add((GSourceFunc)history, g_strdup_printf("%s %s",
-						URI(win), webkit_web_view_get_title(win->kit) ?: ""));
+		{
+			gchar tstr[99];
+			time_t t = time(NULL);
+
+			strftime(tstr, sizeof(tstr), "%T/%d/%b/%y", localtime(&t));
+			g_idle_add((GSourceFunc)history, g_strdup_printf("%s %s %s",
+						tstr, URI(win), webkit_web_view_get_title(win->kit) ?: ""));
+		}
 		break;
 	}
 }
