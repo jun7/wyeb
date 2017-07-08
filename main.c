@@ -319,7 +319,7 @@ static void alert(gchar *msg)
 
 static void append(gchar *path, const gchar *str)
 {
-	FILE *f = fopen(path, "a");
+	FILE *f = fopen(path, "a+");
 	if (!f)
 	{
 		alert(g_strdup_printf("fopen %s failed", path));
@@ -329,6 +329,19 @@ static void append(gchar *path, const gchar *str)
 		fputs(str, f);
 	fputs("\n", f);
 	fclose(f);
+}
+static void history(gchar *str)
+{
+#define MAXLOG 333
+	static gint lognum = 0;
+	static const gchar *files[2][2] = {{"a1", "a2"}, {"b1", "b2"}};
+
+	if (!lognum)
+	{}
+	lognum++;
+
+
+	g_free(str);
 }
 
 static bool clearmsgcb(Win *win)
@@ -2226,7 +2239,7 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 }
 static GtkWidget *createcb(Win *win)
 {
-	if (getset(win, "ignorenewwin"))
+	if (strcmp(getset(win, "ignorenewwin"), "true") == 0)
 		return win->kitw;
 	Win *new = newwin(NULL, win, win, false);
 	return new->kitw;
