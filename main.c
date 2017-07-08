@@ -188,7 +188,7 @@ Conf dconf[] = {
 
 	{DSET      , "search"           , "https://www.google.com/search?q=%s"},
 	{DSET      , "usercss"          , "user.css"},
-	{DSET      , "loadsightedimages", "false"},
+//	{DSET      , "loadsightedimages", "false"},
 	{DSET      , "mdlbtnlinkaction" , "openback"},
 	{DSET      , "newwinhandle"     , "normal"},
 	{DSET      , "linkformat"       , "[%.40s](%s)"},
@@ -319,7 +319,7 @@ static void alert(gchar *msg)
 
 static void append(gchar *path, const gchar *str)
 {
-	FILE *f = fopen(path, "a+");
+	FILE *f = fopen(path, "a");
 	if (!f)
 	{
 		alert(g_strdup_printf("fopen %s failed", path));
@@ -330,18 +330,62 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
-static void history(gchar *str)
+static gchar *logs[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
+static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
+static gchar *logdir = NULL;
+
+static bool history(gchar *str)
 {
-#define MAXLOG 333
-	static gint lognum = 0;
-	static const gchar *files[2][2] = {{"a1", "a2"}, {"b1", "b2"}};
+#define MAXSIZE 33333
+	static gchar *current = NULL;
+	static gint currenti = -1;
+	static gint logsize = 0;
 
-	if (!lognum)
-	{}
-	lognum++;
+	if (!logdir)
+	{
+		logdir = g_build_filename(
+			g_get_user_cache_dir(), fullname, "history", NULL);
+		_mkdirif(logdir, false);
 
+		for (gchar **file = logs; *file; file++)
+		{
+			currenti++;
+			g_free(current);
+			current = g_build_filename(logdir, *file, NULL);
+
+			if (!g_file_test(current, G_FILE_TEST_EXISTS))
+				break;
+
+			struct stat info;
+			stat(current, &info);
+			logsize = info.st_size;
+			if (logsize < MAXSIZE)
+				break;
+		}
+	}
+
+	if (!str) return false;
+	append(current, str);
+
+	logsize += strlen(str) + 1;
+
+	if (logsize > MAXSIZE)
+	{
+		currenti++;
+		if (currenti >= logfnum)
+			currenti = 0;
+
+		g_free(current);
+		current = g_build_filename(logdir, logs[currenti], NULL);
+		
+		FILE *f = fopen(current, "w");
+		fclose(f);
+
+		logsize = 0;
+	}
 
 	g_free(str);
+	return false;
 }
 
 static bool clearmsgcb(Win *win)
@@ -1133,9 +1177,11 @@ static void openeditor(Win *win, bool shift)
 			path = mdpath;
 			editor = confcstr("mdeditor");
 		}
-	} else if (g_str_has_prefix(uri, APP":"))
+	} else if (!shift && g_str_has_prefix(uri, APP":"))
+	{
 		showmsg(win, g_strdup("No config"));
-	else {
+		return;
+	} else {
 		path = confpath;
 		if (!shift)
 		{
@@ -1881,37 +1927,107 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 		g_free(cmd);
 	}
 	if (g_str_has_prefix(path, "history")) {
+		gchar *last;
+
 		data = g_strdup(
-			"<p>Back List<p>\n\n"
+			"<meta charset=utf8>\n"
+			"<style>\n"
+			"p {margin: 1em 1em}\n"
+			"a {font-size: 100%; color:black; text-decoration: none;}\n"
+			"span {font-size: 70%; padding-left:2em; text-decoration: underline;}\n"
+			"</style>\n"
+			"\n"
 			);
-		WebKitBackForwardList *list =
-			webkit_web_view_get_back_forward_list(kit);
 
-		GList *bl = webkit_back_forward_list_get_back_list(list);
+//			"<p>Back List<p>\n\n"
+//		WebKitBackForwardList *list =
+//			webkit_web_view_get_back_forward_list(kit);
+//
+//		GList *bl = webkit_back_forward_list_get_back_list(list);
+//
+//		if (bl)
+//			for (GList *n = bl; n; n = n->next)
+//			{
+//				gchar *tmp = g_strdup_printf(
+//					"<p>%s<br><a href=\"%s\">%s</a><p>\n",
+//					webkit_back_forward_list_item_get_title(n->data) ?: "-",
+//					webkit_back_forward_list_item_get_uri  (n->data),
+//					webkit_back_forward_list_item_get_uri  (n->data));
+//
+//				last = data;
+//				data = g_strconcat(data, tmp, NULL);
+//				g_free(last);
+//				g_free(tmp);
+//			}
+//		else
+//		{
+//			last = data;
+//			data = g_strconcat(data, "<b>-- first page --</b>", NULL);
+//			g_free(last);
+//		}
+//		g_list_free(bl);
 
-		if (bl)
-			for (GList *n = bl; n; n = n->next)
-			{
-				gchar *tmp = g_strdup_printf(
-					"<p>%s<br><a href=\"%s\">%s</a><p>\n",
-					webkit_back_forward_list_item_get_title(n->data) ?: "-",
-					webkit_back_forward_list_item_get_uri  (n->data),
-					webkit_back_forward_list_item_get_uri  (n->data));
-
-				gchar *last = data;
-				data = g_strconcat(data, tmp, NULL);
-				g_free(last);
-				g_free(tmp);
-
-			}
-		else
+		//log
+		history(NULL);
+		GSList *hist = NULL;
+		gint start = 0;
+		gint num = 0;
+		__time_t mtime = 0;
+		for (int j = 2; j > 0; j--) for (int i = 0; i < logfnum ;i++)
 		{
-			gchar *last = data;
-			data = g_strconcat(data, "<b>-- first page --<b>", NULL);
-			g_free(last);
+			gchar *path = g_build_filename(logdir, logs[i], NULL);
+			bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
+
+			if (!start) {
+				if (exists)
+				{
+					struct stat info;
+					stat(path, &info);
+					if (mtime > info.st_mtime)
+						start++;
+					mtime = info.st_mtime;
+				} else {
+					start++;
+					continue;
+				}
+			} else start++;
+
+			if (start > logfnum) break;
+			if (!exists) continue;
+
+			GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
+			gchar *line;
+			while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
+					== G_IO_STATUS_NORMAL)
+			{
+				gchar **stra = g_strsplit(line, " ", 2);
+				gchar *escpd = g_markup_escape_text(stra[1] ?: stra[0], -1);
+
+				hist = g_slist_prepend(hist, g_strdup_printf(
+							"<p><a href=%s>%s<br><span>%s</span></a></p>\n", stra[0], escpd, stra[0]));
+				num++;
+
+				g_free(escpd);
+				g_strfreev(stra);
+				g_free(line);
+			}
+			g_io_channel_close(io);
 		}
 
-		g_list_free(bl);
+		gchar *sv[num + 1];
+		sv[num] = NULL;
+		int i = 0;
+		for (GSList *next = hist; next; next = next->next)
+			sv[i++] = next->data;
+
+		gchar *allhist = g_strjoinv("", sv);
+
+		g_slist_free_full(hist, g_free);
+
+		last = data;
+		data = g_strconcat(data, allhist, NULL);
+		g_free(last);
+		g_free(allhist);
 	}
 	if (g_str_has_prefix(path, "help")) {
 		data = g_strdup_printf(
@@ -2303,6 +2419,10 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
+
+		if (!g_str_has_prefix(URI(win), APP":"))
+			g_idle_add((GSourceFunc)history, g_strdup_printf("%s %s",
+						URI(win), webkit_web_view_get_title(win->kit) ?: ""));
 		break;
 	}
 }

@@ -62,14 +62,25 @@ typedef enum {
 	Cfree   = 'f',
 } Coms;
 
-static void mkdirif(gchar *path)
+static void _mkdirif(gchar *path, bool isfile)
 {
-	gchar *dir = g_path_get_dirname(path);
+	gchar *dir;
+	if (isfile)
+		dir = g_path_get_dirname(path);
+	else
+		dir = path;
+
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 		g_mkdir_with_parents(dir, 0700);
 
 	g_assert(g_file_test(dir, G_FILE_TEST_IS_DIR));
-	g_free(dir);
+
+	if (isfile)
+		g_free(dir);
+}
+static void mkdirif(gchar *path)
+{
+	_mkdirif(path, true);
 }
 
 //ipc
