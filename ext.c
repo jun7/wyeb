@@ -673,13 +673,14 @@ static void focus(Page *page)
 			WebKitDOMElement *elm = webkit_dom_node_get_parent_element(an);
 			gchar *tag = webkit_dom_element_get_tag_name(elm);
 
-			bool brk;
-			if (brk = isin(clicktags , tag))
+			if (isin(clicktags , tag))
+			{
 				webkit_dom_element_focus(elm);
+				g_free(tag);
+				break;
+			}
 			g_free(tag);
 
-			if (brk)
-				break;
 		} while (an = webkit_dom_node_get_parent_node(an));
 
 	g_object_unref(selection);
