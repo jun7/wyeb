@@ -330,7 +330,7 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
-static gchar *logs[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
+static gchar *logs[] = {"h1", "h2", "h3", "h4", NULL};
 static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
 static gchar *logdir = NULL;
 
@@ -2618,6 +2618,7 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "0addMenu"         , "mimeopen -n %s");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmarklinkor \"\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
+		addscript(dir, "0history"         , APP" \"$SUFFIX\" showhistory \"\"");
 		addscript(dir, "0main"            , APP" \"$SUFFIX\" open "APP":main");
 		addscript(dir, "3---"             , "");
 		addscript(dir, "3openClipboard"   , APP" \"$SUFFIX\" open \"$CLIPBOARD\"");
