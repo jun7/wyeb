@@ -150,6 +150,10 @@ static __time_t  accelt = 0;
 static GSList   *csslist = NULL;
 static GSList   *csstimes = NULL;
 
+static gchar *logs[] = {"h1", "h2", "h3", "h4", NULL};
+static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
+static gchar *logdir = NULL;
+
 static GtkAccelGroup *accelg = NULL;
 
 //static bool ephemeral = false;
@@ -330,10 +334,6 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
-static gchar *logs[] = {"h1", "h2", "h3", "h4", NULL};
-static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
-static gchar *logdir = NULL;
-
 static bool history(gchar *str)
 {
 #define MAXSIZE 33333
@@ -341,10 +341,12 @@ static bool history(gchar *str)
 	static gint currenti = -1;
 	static gint logsize = 0;
 
-	if (!logdir)
+	if (!logdir ||
+			!g_file_test(logdir, G_FILE_TEST_EXISTS))
 	{
-		logdir = g_build_filename(
-			g_get_user_cache_dir(), fullname, "history", NULL);
+		if (!logdir)
+			logdir = g_build_filename(
+				g_get_user_cache_dir(), fullname, "history", NULL);
 		_mkdirif(logdir, false);
 
 		for (gchar **file = logs; *file; file++)
@@ -386,6 +388,18 @@ static bool history(gchar *str)
 
 	g_free(str);
 	return false;
+}
+static void removehistory()
+{
+	history(NULL);
+	for (gchar **file = logs; *file; file++)
+	{
+		gchar *tmp = g_build_filename(logdir, *file, NULL);
+		remove(tmp);
+		g_free(tmp);
+	}
+	g_free(logdir);
+	logdir = NULL;
 }
 
 static bool clearmsgcb(Win *win)
@@ -1545,6 +1559,8 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			webkit_website_data_manager_clear(mgr,
 				WEBKIT_WEBSITE_DATA_ALL, 0, NULL, NULL, NULL);
 
+			removehistory();
+
 			showmsg(win, g_strdup(action));
 	)
 	Z("edit"        , openeditor(win, false))
@@ -1988,12 +2004,12 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 					mtime = info.st_mtime;
 				} else {
 					start++;
-					continue;
 				}
 			} else start++;
 
-			if (start > logfnum) break;
+			if (!start) continue;
 			if (!exists) continue;
+			if (start > logfnum) break;
 
 			GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
 			gchar *line;
@@ -2014,20 +2030,27 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			g_io_channel_close(io);
 		}
 
-		gchar *sv[num + 1];
-		sv[num] = NULL;
-		int i = 0;
-		for (GSList *next = hist; next; next = next->next)
-			sv[i++] = next->data;
+		if (num)
+		{
+			gchar *sv[num + 1];
+			sv[num] = NULL;
+			int i = 0;
+			for (GSList *next = hist; next; next = next->next)
+				sv[i++] = next->data;
 
-		gchar *allhist = g_strjoinv("", sv);
+			gchar *allhist = g_strjoinv("", sv);
 
-		g_slist_free_full(hist, g_free);
+			g_slist_free_full(hist, g_free);
 
-		last = data;
-		data = g_strconcat(data, allhist, NULL);
-		g_free(last);
-		g_free(allhist);
+			last = data;
+			data = g_strconcat(data, allhist, NULL);
+			g_free(last);
+			g_free(allhist);
+		} else {
+			last = data;
+			data = g_strconcat(data, "<p>No Data</p>", NULL);
+			g_free(last);
+		}
 	}
 	if (g_str_has_prefix(path, "help")) {
 		data = g_strdup_printf(
