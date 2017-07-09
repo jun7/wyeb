@@ -1962,7 +1962,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"a {font-size: 100%; color:black; text-decoration: none;}\n"
 			"span {\n"
 			" font-size: 79%;\n"
-			" color: #46a;\n"
+			" color: #44a;\n"
 			"}\n"
 			"</style>\n"
 			"<table>\n"
