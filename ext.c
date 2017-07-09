@@ -476,9 +476,8 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 
 	Elm rect = winrect(doc);
-	GSList *elms = _makelist(doc, type, tnum, NULL, &rect);
-
 	//D(rect %d %d %d %d, rect.y, rect.x, rect.h, rect.w)
+	GSList *elms = _makelist(doc, type, tnum, NULL, &rect);
 
 	WebKitDOMHTMLCollection *cl =
 		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
