@@ -26,13 +26,13 @@ static gchar *fullname = "";
 
 
 typedef struct {
-	WebKitWebPage     *kit;
-	gchar             *id;
-	GSList            *appended;
-	WebKitDOMNode     *apnode;
-	gchar             *apkeys;
-	gchar              lasttype;
-	gchar             *lasthintkeys;
+	WebKitWebPage      *kit;
+	gchar              *id;
+	GSList             *appended;
+	WebKitDOMNode      *apnode;
+	gchar              *apkeys;
+	gchar               lasttype;
+	gchar              *lasthintkeys;
 	WebKitDOMDOMWindow *emitter;
 } Page;
 
@@ -52,10 +52,10 @@ static void freepage(Page *page)
 
 typedef struct {
 	WebKitDOMElement *elm;
-	glong top;
-	glong left;
-	glong height;
-	glong width;
+	glong y;
+	glong x;
+	glong h;
+	glong w;
 	glong zi;
 } Elm;
 
@@ -152,19 +152,19 @@ static Elm getrect(WebKitDOMElement *te)
 //		left = rect->left();
 //		bottom = rect->bottom();
 //		right = rect->right();
-//		width = rect->width();
-//		height = rect->height();
+//		width = rect->w();
+//		height = rect->h();
 
-	elm.height = webkit_dom_element_get_offset_height(te);
-	elm.width  = webkit_dom_element_get_offset_width(te);
+	elm.h = webkit_dom_element_get_offset_height(te);
+	elm.w  = webkit_dom_element_get_offset_width(te);
 
 	for (WebKitDOMElement *le = te; le;
 			le = webkit_dom_element_get_offset_parent(le))
 	{
-		elm.top +=
+		elm.y +=
 			webkit_dom_element_get_offset_top(le) -
 			webkit_dom_element_get_scroll_top(le);
-		elm.left +=
+		elm.x +=
 			webkit_dom_element_get_offset_left(le) -
 			webkit_dom_element_get_scroll_left(le);
 	}
@@ -196,7 +196,7 @@ static WebKitDOMElement *makehintelm(
 		"text-align: center;"
 		;
 	gchar *stylestr = g_strdup_printf(
-			retstyle, elm->top, elm->left, elm->height, elm->width);
+			retstyle, elm->y, elm->x, elm->h, elm->w);
 
 	WebKitDOMCSSStyleDeclaration *styledec = webkit_dom_element_get_style(ret);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
@@ -255,9 +255,9 @@ static WebKitDOMElement *makehintelm(
 	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
 
 	if (isin(uritags, tag) && !isin(linktags, tag))
-		stylestr = g_strdup_printf(hintstyle, "", elm->height * 3 / 7, "px");
+		stylestr = g_strdup_printf(hintstyle, "", elm->h * 3 / 7, "px");
 	else
-		stylestr = g_strdup_printf(hintstyle, "-.", elm->top > 6 ? 6 : elm->top, "em");
+		stylestr = g_strdup_printf(hintstyle, "-.", elm->y > 6 ? 6 : elm->y, "em");
 	g_free(tag);
 
 	styledec = webkit_dom_element_get_style(hint);
@@ -325,24 +325,10 @@ static void rmhint(Page *page)
 }
 
 
-
-
-static GSList *makelist(Page *page, gchar type, gint *tnum)
+static GSList *_makelist(WebKitDOMDocument *doc,
+		gchar type, gint *tnum, GSList *elms, Elm *prect)
 {
-	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
-
-	page->apnode = (WebKitDOMNode *)webkit_dom_document_get_document_element(doc);
-
-//	D(outer %d, webkit_dom_dom_window_get_outer_height(win));
-//	D(otop %d, webkit_dom_dom_window_get_page_y_offset(win));
-	glong winheight = webkit_dom_dom_window_get_inner_height(win);
-	glong winwidth  = webkit_dom_dom_window_get_inner_width(win);
-
-	glong wintop    = webkit_dom_dom_window_get_scroll_y(win);
-	glong winleft   = webkit_dom_dom_window_get_scroll_x(win);
-
-	GSList *elms = NULL;
 
 	const gchar **taglist = clicktags;
 	if (type == Clink) taglist = linktags;
@@ -385,8 +371,8 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 			//no size no operation //not works, see google's page nav
 			//if (height == 0 || width == 0) continue;
 
-			glong bottom = rect.top  + rect.height;
-			glong right  = rect.left + rect.width;
+			glong bottom = rect.y + rect.h;
+			glong right  = rect.x + rect.w;
 
 			if (styleis(dec, "display", "inline"))
 			{
@@ -398,8 +384,8 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 					if (!styleis(decp, "display", "inline"))
 					{
 						Elm rectp = getrect(le);
-						glong nr = MIN(right, rectp.left + rectp.width);
-						rect.width += nr - right;
+						glong nr = MIN(right, rectp.x + rectp.w);
+						rect.w += nr - right;
 						right = nr;
 						break;
 					}
@@ -408,10 +394,10 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 			}
 
 			if (
-				(rect.top  <= 0         && bottom <= 0        ) ||
-				(rect.top  >= winheight && bottom >= winheight) ||
-				(rect.left <= 0         && right  <= 0        ) ||
-				(rect.left >= winwidth  && right  >= winwidth )
+				(rect.y <= 0         && bottom <= 0       ) ||
+				(rect.y >= prect->h  && bottom >= prect->h) ||
+				(rect.x <= 0         && right  <= 0       ) ||
+				(rect.x >= prect->w  && right  >= prect->w)
 				)
 			{
 				g_object_unref(dec);
@@ -432,10 +418,10 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 				return NULL;
 			}
 
-			rect.top += wintop;
-			rect.left += winleft;
+			rect.y += prect->y;
+			rect.x += prect->x;
 
-			(*tnum)++;
+			++*tnum;
 			Elm *elm = g_new(Elm, 1);
 			*elm = rect;
 			elm->elm = te;
@@ -471,12 +457,58 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 	g_object_unref(win);
 	return elms;
 }
+static Elm winrect(WebKitDOMDocument *doc)
+{
+	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+	Elm rect = {0};
+//	D(outer %d, webkit_dom_dom_window_get_outer_height(win));
+	rect.h = webkit_dom_dom_window_get_inner_height(win);
+	rect.w = webkit_dom_dom_window_get_inner_width(win);
+//	D(otop %d, webkit_dom_dom_window_get_page_y_offset(win));
+	rect.y = webkit_dom_dom_window_get_scroll_y(win);
+	rect.x = webkit_dom_dom_window_get_scroll_x(win);
+
+	g_object_unref(win);
+	return rect;
+}
+static GSList *makelist(Page *page, gchar type, gint *tnum)
+{
+	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
+
+	Elm rect = winrect(doc);
+	GSList *elms = _makelist(doc, type, tnum, NULL, &rect);
+
+D(rect %d %d %d %d, rect.y, rect.x, rect.h, rect.w)
+
+	WebKitDOMHTMLCollection *cl =
+		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
+
+	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl) ; j++)
+	{
+		void *tn = webkit_dom_html_collection_item(cl, j);
+		WebKitDOMHTMLIFrameElement *tfe = tn;
+		WebKitDOMElement *te = tn;
+
+		WebKitDOMDocument *fdoc =
+			webkit_dom_html_iframe_element_get_content_document(tfe);
+
+		Elm erect = getrect(te);
+		Elm frect = winrect(fdoc);
+		frect.y += erect.y + rect.y;
+		frect.x += erect.x + rect.x;
+
+		elms = _makelist(fdoc, type, tnum, elms, &frect);
+	}
+
+	g_object_unref(cl);
+
+	return elms;
+}
 
 
 static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 {
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-
 	page->lasttype = type;
 
 	g_free(page->lasthintkeys);
@@ -491,6 +523,7 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 	gint tnum = 0;
 	GSList *elms = makelist(page, type, &tnum);
 
+	page->apnode = (WebKitDOMNode *)webkit_dom_document_get_document_element(doc);
 	gint keylen = strlen(hintkeys);
 	gint iplen = ipkeys ? strlen(ipkeys) : 0;
 	gint digit = getdigit(keylen, tnum);
