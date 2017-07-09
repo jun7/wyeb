@@ -180,7 +180,7 @@ Conf dconf[] = {
 	{"main"    , "zoom"         , "1.000"},
 
 	{"main"    , "dlwinlower"   , "true"},
-	{"main"    , "dlwinclosemsec","1000"},
+	{"main"    , "dlwinclosemsec","3000"},
 	{"main"    , "msgmsec"      , "400"},
 
 	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
@@ -1791,7 +1791,7 @@ static void dldatacb(DLWin *win)
 	gtk_progress_bar_set_fraction(win->prog, p);
 
 	gchar *title = g_strdup_printf(
-			"DL: %d%%: %s ", (int)(p * 100), win->dispname);
+			"DL: %.2f%%: %s ", (p * 100), win->dispname);
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
