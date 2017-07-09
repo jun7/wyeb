@@ -243,7 +243,7 @@ static gchar *mainmdstr =
 "\n"
 "If **e**,**E**,**c** don't work, open 'main.conf' in\n"
 "config directory/'"APPNAME"' and edit '"MIMEOPEN"' values.\n"
-"If you haven't any gui editor, set they like 'xterm -e nano %s'.\n"
+"If you haven't any gui editor or filer, set they like 'xterm -e nano %s'.\n"
 "\n"
 "For other keys, see [help](wyeb:help) assigned '**:**'.\n"
 "Since this application is inspired from dwb and luakit,\n"
@@ -743,33 +743,34 @@ static void getdconf(GKeyFile *kf, bool isnew)
 	if (!isnew) return;
 
 	//sample and comment
-	g_key_file_set_comment(conf, "main", "newwinhandle",
-			"newwinhandle=notnew | ignore | back | normal" , NULL);
-
 	g_key_file_set_comment(conf, "main", "keybindswaps",
 			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"
 			, NULL);
 
+	g_key_file_set_comment(conf, "set;", NULL, "Default of 'set's.", NULL);
+
+	g_key_file_set_comment(conf, "set;", "newwinhandle",
+			"newwinhandle=notnew | ignore | back | normal" , NULL);
+
+
+
 	const gchar *sample = "uri:^https?://(www\\.)?google\\..*";
 
-	g_key_file_set_boolean(conf, sample,
-			"enable-javascript", false);
+	g_key_file_set_boolean(conf, sample, "enable-javascript", false);
 	g_key_file_set_comment(conf, sample, NULL,
-			"After 'uri:' is regular expressions for setting.\n"
-			"preferential order of sections: Last > First > set;"
+			"After 'uri:' is regular expressions for 'set'.\n"
+			"preferential order of sections: Last > First > 'set;'"
 			, NULL);
 
 	sample = "uri:^a-zA-Z0-9*";
 
-	g_key_file_set_string(conf, sample,
-			"reg", "^[^a-zA-Z0-9]*$");
-	g_key_file_set_comment(conf, sample, NULL,
+	g_key_file_set_string(conf, sample, "reg", "^[^a-zA-Z0-9]*$");
+	g_key_file_set_comment(conf, sample, "reg",
 			"Use reg if a regular expression has []."
 			, NULL);
 
-	g_key_file_set_string(conf, sample,
-			"sets", "image;sctipt");
-	g_key_file_set_comment(conf, sample, NULL,
+	g_key_file_set_string(conf, sample, "sets", "image;sctipt");
+	g_key_file_set_comment(conf, sample, "sets",
 			"include other sets." , NULL);
 
 	//fill vals not set
@@ -1367,7 +1368,7 @@ static Keybind dkeys[]= {
 	{"unset"         , 'u', 0},
 
 //insert
-	{"editor"        , 'e', GDK_CONTROL_MASK},
+//	{"editor"        , 'e', GDK_CONTROL_MASK},
 
 //nokey
 	{"set"           , 0, 0},
@@ -2087,9 +2088,9 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"\n"
 			"accels:\n"
 			"  You can add your own keys to access context-menu items we added.\n"
-			"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to last \"\"\n"
-			"  in the file 'accels' in the conf directory assigned 'c' key, and\n"
-			"  remeve ';' at line head.\n"
+			"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the\n"
+			"  last \"\" in the file 'accels' in the conf directory assigned 'c' key,\n"
+			"  and remeve the ';' of line head.\n"
 			"\n"
 			"key:\n"
 			"#%d - is ctrl\n"
