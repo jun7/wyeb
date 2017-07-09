@@ -464,6 +464,19 @@ static void senddelay(Win *win, Coms type, gchar *args)
 	g_timeout_add(40, (GSourceFunc)senddelaycb, s);
 }
 
+static void draw2img(Win *win)
+{
+	cairo_surface_t *suf =
+		cairo_image_surface_create(CAIRO_FORMAT_RGB24,
+				gtk_widget_get_allocated_width(win->winw),
+				gtk_widget_get_allocated_height(win->winw));
+	cairo_t *cr = cairo_create(suf);
+
+	gtk_widget_draw(win->winw, cr);
+
+	cairo_surface_write_to_png(suf, "/home/ctw/Desktop/test.png");
+//gdk_offscreen_window_get_surface (GdkWindow *window);
+}
 
 //@conf
 static void checkconf(bool monitor); //declaration
@@ -1593,7 +1606,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			resetconf(win, true);
 	)
 
-	Z("test"  ,)
+	Z("test"  , draw2img(win))
 
 	if (win->mode == Minsert)
 		Z("editor", )//todo
@@ -1723,10 +1736,6 @@ static bool drawcb(GtkWidget *w, cairo_t *cr, Win *win)
 
 	return false;
 
-//	void
-//gtk_widget_draw (GtkWidget *widget,
-//                 cairo_t *cr);
-//gdk_offscreen_window_get_surface (GdkWindow *window);
 
 }
 
@@ -2014,7 +2023,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 				g_strfreev(stra);
 				g_free(line);
 			}
-			g_io_channel_close(io);
+			g_io_channel_unref(io);
 			g_free(path);
 		}
 
