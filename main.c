@@ -349,6 +349,7 @@ static bool history(gchar *str)
 				g_get_user_cache_dir(), fullname, "history", NULL);
 		_mkdirif(logdir, false);
 
+		currenti = -1;
 		for (gchar **file = logs; *file; file++)
 		{
 			currenti++;
