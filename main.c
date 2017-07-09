@@ -350,6 +350,7 @@ static bool history(gchar *str)
 		_mkdirif(logdir, false);
 
 		currenti = -1;
+		logsize = 0;
 		for (gchar **file = logs; *file; file++)
 		{
 			currenti++;
