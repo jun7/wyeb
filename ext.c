@@ -33,16 +33,19 @@ typedef struct {
 	gchar             *apkeys;
 	gchar              lasttype;
 	gchar             *lasthintkeys;
+	WebKitDOMDOMWindow *emitter;
 } Page;
 
 static GPtrArray *pages = NULL;
 
-static void free_page(Page *page)
+static void freepage(Page *page)
 {
 	g_free(page->id);
 	g_slist_free(page->appended);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
+
+	if (page->emitter) g_object_unref(page->emitter);
 
 	g_free(page);
 }
@@ -320,6 +323,9 @@ static void rmhint(Page *page)
 	page->apnode = NULL;
 	page->apkeys = NULL;
 }
+
+
+
 
 static GSList *makelist(Page *page, gchar type, gint *tnum)
 {
@@ -611,7 +617,8 @@ static void pageon(Page *page)
 {
 	//DD(pageon)
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+	if (page->emitter) g_object_unref(page->emitter);
+	page->emitter = webkit_dom_document_get_default_view(doc);
 	WebKitDOMElement   *elm = webkit_dom_document_get_document_element(doc);
 
 //WEBKIT_DOM_EVENT_NONE
@@ -643,9 +650,9 @@ static void pageon(Page *page)
 //			"DOMActivate", G_CALLBACK(domactivatecb), false, page);
 
 	//for refresh hint
-	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(win),
+	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(page->emitter),
 			"resize", G_CALLBACK(hintcb), false, page);
-	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(win),
+	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(page->emitter),
 			"scroll", G_CALLBACK(hintcb), false, page);
 //may be heavy
 //	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
@@ -757,7 +764,7 @@ void ipccb(const gchar *line)
 		break;
 
 	case Cfree:
-		free_page(page);
+		freepage(page);
 		break;
 
 	default:
