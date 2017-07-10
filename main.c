@@ -466,19 +466,14 @@ static void senddelay(Win *win, Coms type, gchar *args)
 	g_timeout_add(40, (GSourceFunc)senddelaycb, s);
 }
 
-static void draw2img(Win *win)
+static Win *winbyid(const gchar *pageid)
 {
-	cairo_surface_t *suf =
-		cairo_image_surface_create(CAIRO_FORMAT_RGB24,
-				gtk_widget_get_allocated_width(win->winw),
-				gtk_widget_get_allocated_height(win->winw));
-	cairo_t *cr = cairo_create(suf);
-
-	gtk_widget_draw(win->winw, cr);
-
-	cairo_surface_write_to_png(suf, "/home/ctw/Desktop/test.png");
-//gdk_offscreen_window_get_surface (GdkWindow *window);
+	for (int i = 0; i < wins->len; i++)
+		if (strcmp(pageid, ((Win *)wins->pdata[i])->pageid) == 0)
+			return wins->pdata[i];
+	return NULL;
 }
+
 
 //@conf
 static void checkconf(bool monitor); //declaration
@@ -1392,10 +1387,8 @@ static Keybind dkeys[]= {
 	{"bookmarklinkor", 0, 0},
 
 //todo pagelist
-//	{"outputthumb"   , 0, 0}, //pageid x y
-//	{"makethumb"     , 0, 0}, //pageid x y outputpath
-//	{"makethumball"  , 0, 0}, //x y output dir path
-//	{"windowlist"    , 0, 0}, //=>pageid uri
+//	{"windowimage"   , 0, 0}, //pageid
+//	{"windowlist"    , 0, 0}, //=>pageid uri title
 //	{"present"       , 0, 0}, //pageid
 
 //test
@@ -1608,7 +1601,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			resetconf(win, true);
 	)
 
-	Z("test"  , draw2img(win))
+	Z("test"  , )
 
 	if (win->mode == Minsert)
 		Z("editor", )//todo
@@ -2316,7 +2309,9 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				else //right
 					run(win, "forward", NULL);
 			} else {
-				if (deltay < 0) //up
+				if (wins->len < 2)
+					showmsg(win, g_strdup("Last Window"));
+				else if (deltay < 0) //up
 				{
 					run(win, "prevwin", NULL);
 					run(win, "quit", NULL);
@@ -3051,15 +3046,11 @@ void ipccb(const gchar *line)
 	if (strcmp(args[0], "0") == 0)
 		run(LASTWIN, args[1], args[2]);
 	else
-		for (int i = 0; i < wins->len; i++)
-		{
-			Win *win = wins->pdata[i];
-			if (strcmp(args[0], win->pageid) == 0)
-			{
-				run(win, args[1], args[2]);
-				break;
-			}
-		}
+	{
+		Win *win = winbyid(args[0]);
+		if (win)
+			run(win, args[1], args[2]);
+	}
 
 	g_strfreev(args);
 }

@@ -22,6 +22,10 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <glib/gstdio.h>
 
+#define HINTKEYS "fsedagwrvxqcz"
+//bt324"
+#define SHARED 0
+
 #if DEBUG
 # define D(f, ...) g_print(#f"\n", __VA_ARGS__);
 # define DNN(f, ...) g_print(#f, __VA_ARGS__);
@@ -41,10 +45,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define SIGW(o, n, c, u) \
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
 
-#define HINTKEYS "fsedagwrvxqcz"
-//bt324"
 
-#define SHARED 0
 
 typedef enum {
 	Con     = 'o',
