@@ -617,28 +617,34 @@ static gchar *addcss(const gchar *name)
 	}
 	return path;
 }
-static void setcss(Win *win, gchar *name)
+static void setcss(Win *win, gchar *namesstr)
 {
 	WebKitUserContentManager *cmgr =
 		webkit_web_view_get_user_content_manager(win->kit);
 	webkit_user_content_manager_remove_all_style_sheets(cmgr);
 
-	gchar *path = addcss(name);
-	if (!path) return;
+	gchar **names = g_strsplit(namesstr, ";", -1);
 
-	gchar *str;
-	if (!g_file_get_contents (path, &str, NULL, NULL)) return;
+	for (gchar **name = names; *name; name++)
+	{
+		gchar *path = addcss(*name);
+		if (!path) return;
 
-	WebKitUserStyleSheet *css =
-		webkit_user_style_sheet_new(str,
-				WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
-				WEBKIT_USER_STYLE_LEVEL_USER,
-				NULL, NULL);
+		gchar *str;
+		if (!g_file_get_contents (path, &str, NULL, NULL)) return;
 
-	webkit_user_content_manager_add_style_sheet(cmgr, css);
+		WebKitUserStyleSheet *css =
+			webkit_user_style_sheet_new(str,
+					WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+					WEBKIT_USER_STYLE_LEVEL_USER,
+					NULL, NULL);
 
-	g_free(str);
-	g_free(path);
+		webkit_user_content_manager_add_style_sheet(cmgr, css);
+
+		g_free(str);
+		g_free(path);
+	}
+	g_strfreev(names);
 }
 static void setprops(Win *win, GKeyFile *kf, gchar *group)
 {
@@ -897,8 +903,8 @@ void checkconf(bool frommonitor)
 				gchar *us = getset(lw, "usercss");
 				if (!us) continue;
 
-				if (!exists || strcmp(us, name) == 0)
-					setcss(lw, name);
+				if (!exists || g_strrstr(us, name))
+					setcss(lw, us);
 			}
 		}
 		g_free(path);
