@@ -179,7 +179,7 @@ Conf dconf[] = {
 	{"main"    , "winheight"    , "1000"},
 	{"main"    , "zoom"         , "1.000"},
 
-	{"main"    , "dlwinlower"   , "true"},
+	{"main"    , "dlwinback"    , "false"},
 	{"main"    , "dlwinclosemsec","3000"},
 	{"main"    , "msgmsec"      , "400"},
 
@@ -1928,7 +1928,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 		gtk_window_move(win->win, MAX(0, x - gy * 2), MAX(0, y + gy));
 	}
 
-	if (confbool("dlwinlower") && LASTWIN &&
+	if (confbool("dlwinback") && LASTWIN &&
 			gtk_window_is_active(LASTWIN->win))
 	{
 		gtk_window_set_accept_focus(win->win, false);
