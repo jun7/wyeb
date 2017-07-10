@@ -2240,12 +2240,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 }
 static bool cancelcontext = false;
 static bool cancelbtn1r = false;
-static bool delayput(GdkEvent *e)
-{
-	gdk_event_put(e);
-	gdk_event_free(e);
-	return false;
-}
+static GdkEvent *pendingmiddlee = NULL;
 static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	static bool block = false;
@@ -2272,12 +2267,12 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	{
 		//workaround
 		//for lacking of target change event when btn event happens with focus in;
-		static bool skip = false;
-		if (skip)
+		if (e->send_event)
 		{
-			skip = false;
+			win->lastx = win->lasty = 0;
 			break;
 		}
+
 		GdkEvent *me = gdk_event_new(GDK_MOTION_NOTIFY);
 		GdkEventMotion *em = (GdkEventMotion *)me;
 
@@ -2297,11 +2292,12 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		em->x      = e->x;         //and now enter !!
 		gtk_widget_event(win->kitw, me);
 
-		em->axes = NULL;//not own then don't free
+		em->axes = NULL; //not own then don't free
 		gdk_event_free(me);
 
-		g_idle_add((GSourceFunc)delayput, gdk_event_copy((GdkEvent *)e));
-		skip = true;
+		if (pendingmiddlee)
+			gdk_event_free(pendingmiddlee);
+		pendingmiddlee = gdk_event_copy((GdkEvent *)e);
 		return true;
 	}
 	case 3:
@@ -2354,17 +2350,26 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		}
 		break;
 	case 2:
-		if (win->oneditable) return false;
+	{
 		gdouble
-			deltax = (e->x - win->lastx) ,
+			deltax = (e->x - win->lastx),
 			deltay = e->y - win->lasty;
 
 		if (win->lastx == 0 && win->lasty == 0)
 			deltax = deltay = 0;
 
+		win->lastx = win->lasty = 0;
+
 		if (MAX(abs(deltax), abs(deltay)) < DIST)
 		{ //default
-			if (win->link)
+			if (win->oneditable)
+			{
+				((GdkEventButton *)pendingmiddlee)->send_event = true;
+				gtk_widget_event(win->kitw, pendingmiddlee);
+				gdk_event_free(pendingmiddlee);
+				pendingmiddlee = NULL;
+			}
+			else if (win->link)
 			{
 				run(win,
 					getset(win, "mdlbtnlinkaction"),
@@ -2387,10 +2392,10 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 				run(win, "bottom", NULL);
 		}
 
-		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->winw);
 
 		return true;
+	}
 	}
 
 	update(win);
