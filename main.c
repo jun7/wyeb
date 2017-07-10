@@ -2309,8 +2309,15 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				else //right
 					run(win, "forward", NULL);
 			} else {
-				if (wins->len < 2)
-					showmsg(win, g_strdup("Last Window"));
+				if (wins->len == 1)
+				{
+					if (strcmp(APP":main", URI(win)) == 0)
+						run(win, "quit", NULL);
+					else {
+						run(win, "showmainpage", NULL);
+						showmsg(win, g_strdup("Last Window"));
+					}
+				}
 				else if (deltay < 0) //up
 				{
 					run(win, "prevwin", NULL);
