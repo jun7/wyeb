@@ -404,6 +404,8 @@ static void removehistory()
 	logdir = NULL;
 }
 
+
+static guint msgfunc = 0;
 static bool clearmsgcb(Win *win)
 {
 	if (isin(wins, win))
@@ -412,13 +414,16 @@ static bool clearmsgcb(Win *win)
 			win->msg = NULL;
 			gtk_widget_queue_draw(win->winw);
 		}
+
+	msgfunc = 0;
 	return false;
 }
 static void showmsg(Win *win, gchar *msg) //msg is freed
 {
+	if (msgfunc) g_source_remove(msgfunc);
 	g_free(win->msg);
 	win->msg = msg;
-	g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
+	msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->winw);
 }
 
@@ -1294,7 +1299,7 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	else
 		append(mdpath, NULL);
 
-	showmsg(win, g_strdup("added"));
+	showmsg(win, g_strdup("Added"));
 	checkconf(false);
 }
 
@@ -1489,7 +1494,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 	Z("yankuri"     ,
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
-		showmsg(win, g_strdup("uri is yanked to clipboard"))
+		showmsg(win, g_strdup("URI is yanked to clipboard"))
 	)
 	Z("bookmarkthis", addlink(win, NULL, arg)) //internal
 	Z("bookmark"    , addlink(win, webkit_web_view_get_title(win->kit), URI(win)))
@@ -1720,18 +1725,20 @@ static bool drawcb(GtkWidget *w, cairo_t *cr, Win *win)
 
 		cairo_set_font_size(cr, csize * .8);
 
+		h -= csize + (
+				gtk_widget_get_visible(win->entw) ?
+				gtk_widget_get_allocated_height(win->entw) : 0);
+
 		cairo_set_source_rgba(cr, .9, .9, .9, .7);
-		cairo_move_to(cr, csize, h - csize);
+		cairo_move_to(cr, csize, h);
 		cairo_show_text(cr, win->msg);
 
 		cairo_set_source_rgba(cr, .9, .0, .9, .7);
-		cairo_move_to(cr, csize + csize / 30, h - csize);
+		cairo_move_to(cr, csize + csize / 30, h);
 		cairo_show_text(cr, win->msg);
 	}
 
 	return false;
-
-
 }
 
 
@@ -2169,27 +2176,6 @@ static void progcb(Win *win)
 		gtk_progress_bar_set_fraction(win->prog, p);
 	}
 }
-static void targetcb(
-		WebKitWebView *w,
-		WebKitHitTestResult *htr,
-		guint m,
-		Win *win)
-{
-	g_free(win->link);
-	win->link = NULL;
-	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
-
-	if (webkit_hit_test_result_context_is_link(htr))
-	{
-		win->link =
-			g_strdup(webkit_hit_test_result_get_link_uri(htr));
-		gchar *str = g_strconcat("Link: ", win->link, NULL);
-		settitle(win, str);
-		g_free(str);
-	}
-	else
-		update(win);
-}
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
@@ -2230,6 +2216,27 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	run(win, action, NULL);
 
 	return true;
+}
+static void targetcb(
+		WebKitWebView *w,
+		WebKitHitTestResult *htr,
+		guint m,
+		Win *win)
+{
+	g_free(win->link);
+	win->link = NULL;
+	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
+
+	if (webkit_hit_test_result_context_is_link(htr))
+	{
+		win->link =
+			g_strdup(webkit_hit_test_result_get_link_uri(htr));
+		gchar *str = g_strconcat("Link: ", win->link, NULL);
+		settitle(win, str);
+		g_free(str);
+	}
+	else
+		update(win);
 }
 static bool cancelcontext = false;
 static bool cancelbtn1r = false;
@@ -2413,6 +2420,21 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->winw);
 	}
+}
+static bool policycb(
+		WebKitWebView *v,
+		WebKitPolicyDecision *dec,
+		WebKitPolicyDecisionType type,
+		Win *win)
+{
+	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
+
+	if (webkit_response_policy_decision_is_mime_type_supported(
+				(WebKitResponsePolicyDecision *)dec))
+		webkit_policy_decision_use(dec);
+	else
+		webkit_policy_decision_download(dec);
+	return true;
 }
 static GtkWidget *createcb(Win *win)
 {
@@ -2842,20 +2864,13 @@ static bool textcb(Win *win)
 	}
 	return false;
 }
-static bool policycb(
-		WebKitWebView *v,
-		WebKitPolicyDecision *dec,
-		WebKitPolicyDecisionType type,
-		Win *win)
+static void findfailedcb(Win *win)
 {
-	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
-
-	if (webkit_response_policy_decision_is_mime_type_supported(
-				(WebKitResponsePolicyDecision *)dec))
-		webkit_policy_decision_use(dec);
-	else
-		webkit_policy_decision_download(dec);
-	return true;
+	showmsg(win, g_strdup("Not found"));
+}
+static void foundcb(Win *win)
+{
+	showmsg(win, NULL); //clear
 }
 
 
@@ -2947,8 +2962,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	}
 	g_object_set_data(win->kito, "win", win); //for context event
 
-	win->findct = webkit_web_view_get_find_controller(win->kit);
-
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
 	webkit_web_view_set_settings(win->kit, win->set);
@@ -2960,15 +2973,14 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIGW(o, "notify::title"       , notifycb  , win);
 	SIGW(o, "notify::uri"         , notifycb  , win);
 	SIGW(o, "notify::estimated-load-progress", progcb, win);
-	SIG( o, "mouse-target-changed", targetcb  , win);
 
-
-	SIG( o, "decide-policy"       , policycb  , win);
 	SIG( o, "key-press-event"     , keycb     , win);
+	SIG( o, "mouse-target-changed", targetcb  , win);
 	SIG( o, "button-press-event"  , btncb     , win);
 	SIG( o, "button-release-event", btnrcb    , win);
 	SIG( o, "enter-notify-event"  , entercb   , win);
 
+	SIG( o, "decide-policy"       , policycb  , win);
 	SIGW(o, "create"              , createcb  , win);
 	SIGW(o, "close"               , closecb   , win);
 	SIG( o, "load-changed"        , loadcb    , win);
@@ -2977,6 +2989,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 	//for entry
 	SIGW(o, "focus-in-event"      , focusincb , win);
+
+	win->findct = webkit_web_view_get_find_controller(win->kit);
+	SIGW(win->findct, "failed-to-find-text", findfailedcb, win);
+	SIGW(win->findct, "found-text"         , foundcb     , win);
 
 //	SIG( o, "event"               , eventcb   , win);
 //	SIG( win->wino, "event"       , eventwcb   , win);
