@@ -472,7 +472,7 @@ static Elm getrect(WebKitDOMElement *te)
 static WebKitDOMElement *_makehintelm(
 		WebKitDOMDocument *doc,
 		bool center ,glong y, glong x, glong h, glong w,
-		const gchar* text, gint len)
+		const gchar* text, gint len, bool head)
 {
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
@@ -543,17 +543,19 @@ static WebKitDOMElement *_makehintelm(
 		"color: white;"
 //		"border: 1px solid red;"
 		"border-radius: .3em;"
-		"opacity: 0.9;"
+		"opacity: 0.%s;"
 		"padding: .0em .2em 0em .12em;"
 //		"font-weight: bold;"
 //		"font-weight: normal;"
 		"top: %s%d%s;"
 		;
 
+	const gchar *opacity = head ? "9" : "6";
+
 	if (center)
-		stylestr = g_strdup_printf(hintstyle, "", h * 3 / 7, "px");
+		stylestr = g_strdup_printf(hintstyle, opacity, "", h * 3 / 7, "px");
 	else
-		stylestr = g_strdup_printf(hintstyle, "-.", y > 6 ? 6 : y, "em");
+		stylestr = g_strdup_printf(hintstyle, opacity, "-.", y > 6 ? 6 : y, "em");
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
@@ -598,7 +600,7 @@ static WebKitDOMElement *makehintelm(
 				webkit_dom_client_rect_get_left(rect) + elm->px,
 				webkit_dom_client_rect_get_height(rect),
 				webkit_dom_client_rect_get_width(rect),
-				text, len);
+				text, len, i == 0);
 
 		webkit_dom_node_append_child(
 				(WebKitDOMNode *)ret, (WebKitDOMNode *)hint, NULL);
@@ -609,7 +611,7 @@ static WebKitDOMElement *makehintelm(
 #else
 
 	return _makehintelm(doc, center,
-			elm->y + elm->py, elm->x + elm->px, elm->h, elm->w, text, len);
+			elm->y + elm->py, elm->x + elm->px, elm->h, elm->w, text, len, true);
 #endif
 }
 
