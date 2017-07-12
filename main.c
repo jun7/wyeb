@@ -1319,6 +1319,8 @@ static Keybind dkeys[]= {
 	{"tohintdl"      , 'd', 0},
 	{"tohintbookmark", 'B', 0},
 
+	{"showdldir"     , 'D', 0},
+
 	{"yankuri"       , 'y', 0},
 	{"bookmark"      , 'b', 0},
 	{"bookmarkbreak" , 'b', GDK_CONTROL_MASK},
@@ -1490,6 +1492,12 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("tohintdl"    , win->mode = Mhintdl)
 	Z("tohintspawn" , win->mode = Mhintspawn) //nokey
 	Z("tohintbookmark", win->mode = Mhintbkmrk)
+
+	Z("showdldir"   ,
+		const gchar *dir =
+			g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?: g_get_home_dir();
+		command(win, confcstr("diropener"), dir);
+	)
 
 	Z("yankuri"     ,
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
