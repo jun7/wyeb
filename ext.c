@@ -210,7 +210,7 @@ static void addblack(Page *page, const gchar *uri)
 }
 static gint pagereq = 0;
 static bool redirected = false;
-static gboolean reqcb( //for adblock
+static gboolean reqcb(
 		WebKitWebPage *p,
 		WebKitURIRequest *req,
 		WebKitURIResponse *res,
@@ -374,7 +374,7 @@ static void showwhite(Page *page, bool white)
 //static void loadcb(WebKitWebPage *wp, gpointer p) {}
 static void uricb(Page* page)
 {
-	//workaround: when in redirect change uri is delayed
+	//workaround: when in redirect change uri delays
 	if (redirected)
 		pagereq = 1;
 	else
