@@ -25,7 +25,7 @@ static gchar *fullname = "";
 #include "general.c"
 
 #if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
-# define NEWV 0
+# define NEWV 1
 #else
 # define NEWV 0
 #endif
@@ -68,6 +68,7 @@ typedef struct {
 	WebKitDOMElement *elm;
 #if NEWV
 	WebKitDOMClientRectList *rects;
+	glong gap; //workaround
 #endif
 	glong py;
 	glong px;
@@ -433,21 +434,6 @@ static Elm getrect(WebKitDOMElement *te)
 {
 	Elm elm = {0};
 
-#if NEWV
-//D(width %d %f %f %s,
-	elm.rects = 
-		webkit_dom_element_get_client_rects(te);
-
-	WebKitDOMClientRect *rect = 
-		webkit_dom_element_get_bounding_client_rect(te);
-	elm.y = webkit_dom_client_rect_get_top(rect);
-	elm.x = webkit_dom_client_rect_get_left(rect);
-	elm.h = webkit_dom_client_rect_get_height(rect);
-	elm.w = webkit_dom_client_rect_get_width(rect);
-
-	g_object_unref(rect);
-#else
-
 	elm.h = webkit_dom_element_get_offset_height(te);
 	elm.w = webkit_dom_element_get_offset_width(te);
 
@@ -462,7 +448,23 @@ static Elm getrect(WebKitDOMElement *te)
 			webkit_dom_element_get_scroll_left(le);
 	}
 
+#if NEWV
+	elm.rects =
+		webkit_dom_element_get_client_rects(te);
+
+	WebKitDOMClientRect *rect =
+		webkit_dom_element_get_bounding_client_rect(te);
+
+	//workaround zoom and scroll causes gap
+	elm.gap = elm.y - webkit_dom_client_rect_get_top(rect);
+//	elm.y = webkit_dom_client_rect_get_top(rect);
+	elm.x = webkit_dom_client_rect_get_left(rect);
+	elm.h = webkit_dom_client_rect_get_height(rect);
+	elm.w = webkit_dom_client_rect_get_width(rect);
+
+	g_object_unref(rect);
 #endif
+
 	return elm;
 }
 
@@ -584,17 +586,15 @@ static WebKitDOMElement *makehintelm(
 	webkit_dom_css_style_declaration_set_css_text(styledec, retstyle, NULL);
 	g_object_unref(styledec);
 
-
-//WebKitDOMNode * webkit_dom_node_list_item ()
 	gulong l = webkit_dom_client_rect_list_get_length(elm->rects);
-
 	for (gulong i = 0; i < l; i++)
 	{
 		WebKitDOMClientRect *rect =
 			webkit_dom_client_rect_list_item(elm->rects, i);
 
 		WebKitDOMElement *hint = _makehintelm(doc, center,
-				webkit_dom_client_rect_get_top(rect) + elm->py,
+				webkit_dom_client_rect_get_top(rect) + elm->py + elm->gap,
+				//gap is workaround. so x is left.
 				webkit_dom_client_rect_get_left(rect) + elm->px,
 				webkit_dom_client_rect_get_height(rect),
 				webkit_dom_client_rect_get_width(rect),
@@ -812,12 +812,15 @@ static Elm winrect(WebKitDOMDocument *doc)
 {
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
 	Elm rect = {0};
-//	D(outer %d, webkit_dom_dom_window_get_outer_height(win));
+	//D(outer %d, webkit_dom_dom_window_get_outer_height(win));
 	rect.h = webkit_dom_dom_window_get_inner_height(win);
 	rect.w = webkit_dom_dom_window_get_inner_width(win);
-//	D(otop %d, webkit_dom_dom_window_get_page_y_offset(win));
+	//D(offy %d, webkit_dom_dom_window_get_page_y_offset(win));
+	//D(scry %d, webkit_dom_dom_window_get_scroll_y(win));
 	rect.y = webkit_dom_dom_window_get_scroll_y(win);
 	rect.x = webkit_dom_dom_window_get_scroll_x(win);
+
+	//D(ratio %f, webkit_dom_dom_window_get_device_pixel_ratio(win));
 
 	g_object_unref(win);
 	return rect;
