@@ -182,6 +182,8 @@ Conf dconf[] = {
 	{"main"    , "dlwinclosemsec","3000"},
 	{"main"    , "msgmsec"      , "400"},
 
+	{"main"    , "enablefavicon", "false"},
+
 	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search"  , "g"            , "https://www.google.com/search?q=%s"},
 	{"search"  , "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
@@ -774,6 +776,11 @@ static void getdconf(GKeyFile *kf, bool isnew)
 	g_key_file_set_comment(conf, "main", "keybindswaps",
 			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"
 			, NULL);
+
+	g_key_file_set_comment(conf, "main", "enablefavicon",
+			"enablefavicon is set at boot only"
+			, NULL);
+
 
 	g_key_file_set_comment(conf, "set;", NULL, "Default of 'set's.", NULL);
 
@@ -2189,6 +2196,21 @@ static void progcb(Win *win)
 		gtk_progress_bar_set_fraction(win->prog, p);
 	}
 }
+static void favcb(Win *win)
+{
+	cairo_surface_t *suf = webkit_web_view_get_favicon(win->kit);
+	if (suf)
+	{
+		GdkPixbuf *pix = gdk_pixbuf_get_from_surface(suf, 0, 0,
+					cairo_image_surface_get_width(suf),
+					cairo_image_surface_get_height(suf));
+
+		gtk_window_set_icon(win->win, pix);
+		g_object_unref(pix);
+	}
+}
+static void favclearcb(Win *win)
+{ gtk_window_set_icon(win->win, NULL); }
 
 //static void soupMessageHeadersForeachFunc(const char *name,
 //                                  const char *value,
@@ -2954,6 +2976,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 					"base-cache-directory", cache,
 					NULL);
 
+
 			g_free(data);
 			g_free(cache);
 
@@ -2992,6 +3015,15 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 			webkit_web_context_register_uri_scheme(
 					ctx, APP, schemecb, NULL, NULL);
+
+
+			if (confbool("enablefavicon"))
+			{
+				gchar *favdir =
+					g_build_filename(g_get_user_cache_dir(), fullname, "favicon", NULL);
+				webkit_web_context_set_favicon_database_directory(ctx, favdir);
+				g_free(favdir);
+			}
 		}
 
 		//win->kitw = webkit_web_view_new_with_context(ctx);
@@ -3011,6 +3043,12 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIGW(o, "notify::title"        , notifycb  , win);
 	SIGW(o, "notify::uri"          , notifycb  , win);
 	SIGW(o, "notify::estimated-load-progress", progcb, win);
+
+	if (confbool("enablefavicon"))
+	{
+		SIGW(o, "notify::favicon"      , favcb     , win);
+		SIGW(o, "notify::uri"          , favclearcb, win);
+	}
 //	SIG( o, "resource-load-started", resloadcb, win);
 
 	SIG( o, "key-press-event"      , keycb     , win);
@@ -3159,11 +3197,8 @@ int main(int argc, char **argv)
 		gtk_icon_theme_get_default(), APP, 128, 0, NULL);
 	if (pix)
 	{
-		GList *icon_list = g_list_append(NULL, pix);
-		gtk_window_set_default_icon_list(icon_list);
-		g_list_free(icon_list);
-
-		g_object_unref(G_OBJECT(pix));
+		gtk_window_set_default_icon(pix);
+		g_object_unref(pix);
 	}
 
 	wins = g_ptr_array_new();
