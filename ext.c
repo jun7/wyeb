@@ -24,6 +24,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 static gchar *fullname = "";
 #include "general.c"
 
+#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
+# define NEWV 0
+#else
+# define NEWV 0
+#endif
 
 typedef struct {
 	WebKitWebPage *kit;
@@ -61,6 +66,11 @@ static void freepage(Page *page)
 
 typedef struct {
 	WebKitDOMElement *elm;
+#if NEWV
+	WebKitDOMClientRectList *rects;
+#endif
+	glong py;
+	glong px;
 	glong y;
 	glong x;
 	glong h;
@@ -423,27 +433,23 @@ static Elm getrect(WebKitDOMElement *te)
 {
 	Elm elm = {0};
 
+#if NEWV
 //D(width %d %f %f %s,
-//		webkit_dom_element_get_scroll_width(te),//editor have if lot inputed then lot
-//		webkit_dom_element_get_offset_width(te),
-//		webkit_dom_element_get_client_width(te),//editor have
-//		webkit_dom_element_get_inner_html(te)
-//)
-		//for version 2.18
-//		WebKitDOMClientRect *rect = 
-//			webkit_dom_element_get_bounding_client_rect(te);
-//		WebKitDOMClientRectList *rects = 
-//			webkit_dom_element_get_client_rects(te);
-//		glong top, left, bottom, right;
-//		top = rect->top();
-//		left = rect->left();
-//		bottom = rect->bottom();
-//		right = rect->right();
-//		width = rect->w();
-//		height = rect->h();
+	elm.rects = 
+		webkit_dom_element_get_client_rects(te);
+
+	WebKitDOMClientRect *rect = 
+		webkit_dom_element_get_bounding_client_rect(te);
+	elm.y = webkit_dom_client_rect_get_top(rect);
+	elm.x = webkit_dom_client_rect_get_left(rect);
+	elm.h = webkit_dom_client_rect_get_height(rect);
+	elm.w = webkit_dom_client_rect_get_width(rect);
+
+	g_object_unref(rect);
+#else
 
 	elm.h = webkit_dom_element_get_offset_height(te);
-	elm.w  = webkit_dom_element_get_offset_width(te);
+	elm.w = webkit_dom_element_get_offset_width(te);
 
 	for (WebKitDOMElement *le = te; le;
 			le = webkit_dom_element_get_offset_parent(le))
@@ -455,12 +461,16 @@ static Elm getrect(WebKitDOMElement *te)
 			webkit_dom_element_get_offset_left(le) -
 			webkit_dom_element_get_scroll_left(le);
 	}
+
+#endif
 	return elm;
 }
 
 
-static WebKitDOMElement *makehintelm(
-		WebKitDOMDocument *doc, Elm *elm, const gchar* text, gint len)
+static WebKitDOMElement *_makehintelm(
+		WebKitDOMDocument *doc,
+		bool center ,glong y, glong x, glong h, glong w,
+		const gchar* text, gint len)
 {
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
@@ -468,11 +478,10 @@ static WebKitDOMElement *makehintelm(
 
 	//ret
 	static const gchar *retstyle =
-		"position: absolute;"
+		"position: absolute;" //somehow if fixed web page crashes
 		"overflow: visible;"
 		"display: block;"
 		"visibility: visible;"
-		"font-size: medium !important;"
 		"padding: 0;"
 		"margin: 0;"
 		"opacity: 1;"
@@ -483,7 +492,7 @@ static WebKitDOMElement *makehintelm(
 		"text-align: center;"
 		;
 	gchar *stylestr = g_strdup_printf(
-			retstyle, elm->y, elm->x, elm->h, elm->w);
+			retstyle, y, x, h, w);
 
 	WebKitDOMCSSStyleDeclaration *styledec = webkit_dom_element_get_style(ret);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
@@ -539,13 +548,10 @@ static WebKitDOMElement *makehintelm(
 		"top: %s%d%s;"
 		;
 
-	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
-
-	if (isin(uritags, tag) && !isin(linktags, tag))
-		stylestr = g_strdup_printf(hintstyle, "", elm->h * 3 / 7, "px");
+	if (center)
+		stylestr = g_strdup_printf(hintstyle, "", h * 3 / 7, "px");
 	else
-		stylestr = g_strdup_printf(hintstyle, "-.", elm->y > 6 ? 6 : elm->y, "em");
-	g_free(tag);
+		stylestr = g_strdup_printf(hintstyle, "-.", y > 6 ? 6 : y, "em");
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
@@ -557,6 +563,56 @@ static WebKitDOMElement *makehintelm(
 
 	return ret;
 }
+static WebKitDOMElement *makehintelm(
+		WebKitDOMDocument *doc, Elm *elm, const gchar* text, gint len)
+{
+	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
+	bool center = isin(uritags, tag) && !isin(linktags, tag);
+	g_free(tag);
+
+#if NEWV
+	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
+	static const gchar *retstyle =
+		"position: absolute;"
+		"overflow: visible;"
+		"top: 0px;"
+		"left: 0px;"
+		"height: 10px;"
+		"width: 10px;"
+		;
+	WebKitDOMCSSStyleDeclaration *styledec = webkit_dom_element_get_style(ret);
+	webkit_dom_css_style_declaration_set_css_text(styledec, retstyle, NULL);
+	g_object_unref(styledec);
+
+
+//WebKitDOMNode * webkit_dom_node_list_item ()
+	gulong l = webkit_dom_client_rect_list_get_length(elm->rects);
+
+	for (gulong i = 0; i < l; i++)
+	{
+		WebKitDOMClientRect *rect =
+			webkit_dom_client_rect_list_item(elm->rects, i);
+
+		WebKitDOMElement *hint = _makehintelm(doc, center,
+				webkit_dom_client_rect_get_top(rect) + elm->py,
+				webkit_dom_client_rect_get_left(rect) + elm->px,
+				webkit_dom_client_rect_get_height(rect),
+				webkit_dom_client_rect_get_width(rect),
+				text, len);
+
+		webkit_dom_node_append_child(
+				(WebKitDOMNode *)ret, (WebKitDOMNode *)hint, NULL);
+		g_object_unref(hint);
+	}
+
+	return ret;
+#else
+
+	return _makehintelm(doc, center,
+			elm->y + elm->py, elm->x + elm->px, elm->h, elm->w, text, len);
+#endif
+}
+
 
 static gint getdigit(gint len, gint num)
 {
@@ -661,6 +717,7 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 			glong bottom = rect.y + rect.h;
 			glong right  = rect.x + rect.w;
 
+#if !NEWV
 			if (styleis(dec, "display", "inline"))
 			{
 				WebKitDOMElement *le = te;
@@ -679,6 +736,7 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 					g_object_unref(decp);
 				}
 			}
+#endif
 
 			if (
 				(rect.y <= 0         && bottom <= 0       ) ||
@@ -687,6 +745,9 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 				(rect.x >= prect->w  && right  >= prect->w)
 				)
 			{
+#if NEWV
+				g_object_unref(rect.rects);
+#endif
 				g_object_unref(dec);
 				continue;
 			}
@@ -696,6 +757,9 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 
 			if (type == Ctext)
 			{
+#if NEWV
+				g_object_unref(rect.rects);
+#endif
 				g_object_unref(dec);
 
 				if (!isinput(te)) continue;
@@ -705,8 +769,8 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 				return NULL;
 			}
 
-			rect.y += prect->y;
-			rect.x += prect->x;
+			rect.py = prect->y;
+			rect.px = prect->x;
 
 			++*tnum;
 			Elm *elm = g_new(Elm, 1);
@@ -782,6 +846,10 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 		Elm frect = winrect(fdoc);
 		frect.y += erect.y + rect.y;
 		frect.x += erect.x + rect.x;
+
+#if NEWV
+		g_object_unref(erect.rects);
+#endif
 
 		elms = _makelist(fdoc, type, tnum, elms, &frect);
 	}
@@ -906,7 +974,9 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 		}
 
 		g_free(key);
-
+#if NEWV
+		g_object_unref(elm->rects);
+#endif
 		g_free(elm);
 	}
 
