@@ -26,13 +26,18 @@ static gchar *fullname = "";
 
 
 typedef struct {
-	WebKitWebPage      *kit;
-	gchar              *id;
-	GSList             *appended;
-	WebKitDOMNode      *apnode;
-	gchar              *apkeys;
-	gchar               lasttype;
-	gchar              *lasthintkeys;
+	WebKitWebPage *kit;
+	gchar         *id;
+	GSList        *aplist;
+	WebKitDOMNode *apnode;
+	gchar         *apkeys;
+	gchar          lasttype;
+	gchar         *lasthintkeys;
+	bool           showblocked;
+	bool           relonly;
+	gchar         *cutheads;
+	GSList        *black;
+	GSList        *white;
 	WebKitDOMDOMWindow *emitter;
 } Page;
 
@@ -41,12 +46,16 @@ static GPtrArray *pages = NULL;
 static void freepage(Page *page)
 {
 	g_free(page->id);
-	g_slist_free(page->appended);
+	g_slist_free(page->aplist);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
+	g_free(page->cutheads);
+	g_slist_free_full(page->black, g_free);
+	g_slist_free_full(page->white, g_free);
 
 	if (page->emitter) g_object_unref(page->emitter);
 
+	g_ptr_array_remove(pages, page);
 	g_free(page);
 }
 
@@ -89,14 +98,292 @@ static const gchar *inottext[] = {
 	NULL
 };
 
-
-static void send(Page *page, gchar *action, gchar *arg)
+//misc
+static void send(Page *page, gchar *action, const gchar *arg)
 {
 	gchar *ss = g_strconcat(page->id, ":", action, ":", arg, NULL);
 	//D(send to main %s, ss)
 	ipcsend("main", ss);
 	g_free(ss);
 }
+
+
+//page cbs
+
+//static gboolean contextcb(
+//		WebKitWebPage *w,
+//		WebKitContextMenu *menu,
+//		WebKitWebHitTestResult *htr,
+//		gpointer p)
+//{ return false; }
+typedef struct {
+	int white;
+	regex_t reg;
+} Wb;
+static void clearwb(Wb *wb)
+{
+	regfree(&wb->reg);
+	g_free(wb);
+}
+static GSList   *wblist = NULL;
+static gchar    *wbpath = NULL;
+static __time_t  wbtime = 0;
+static void setwblist(bool monitor); //declaration
+static void preparewb()
+{
+	prepareif(&wbpath, NULL, "whiteblack.txt",
+			"# first char is 'w':white list or 'b':black list.\n"
+			"# second and following chars are regular expressions.\n"
+			"# preferential order: bottom > top\n"
+			"\n"
+			"w^https?://([a-z0-9]+\\.)*githubusercontent\\.com/\n"
+			"\n"
+			, setwblist);
+
+	if (wbpath)
+		wbpath = path2conf("whiteblack.txt");
+}
+void setwblist(bool monitor)
+{
+	if (monitor && !g_file_test(wbpath, G_FILE_TEST_EXISTS))
+	{
+		g_slist_free_full(wblist, (GDestroyNotify)clearwb);
+		return;
+	}
+
+	preparewb();
+
+	if (!getctime(wbpath, &wbtime)) return;
+	if (wblist)
+		g_slist_free_full(wblist, (GDestroyNotify)clearwb);
+	wblist = NULL;
+
+	GIOChannel *io = g_io_channel_new_file(wbpath, "r", NULL);
+	gchar *line;
+	while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
+			== G_IO_STATUS_NORMAL)
+	{
+		if (*line == 'w' || *line =='b')
+		{
+			g_strchomp(line);
+			Wb *wb = g_new0(Wb, 1);
+			if (regcomp(&wb->reg, line + 1, REG_EXTENDED | REG_NOSUB))
+			{
+				g_free(line);
+				g_free(wb);
+				continue;
+			}
+			wb->white = *line == 'w' ? 1 : 0;
+			wblist = g_slist_prepend(wblist, wb);
+		}
+		g_free(line);
+	}
+	g_io_channel_unref(io);
+
+	if (monitor)
+		send(*pages->pdata, "reloadlast", NULL);
+}
+static gint checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
+{
+	if (!wblist) return -1;
+
+	for (GSList *next = wblist; next; next = next->next)
+	{
+		Wb *wb = next->data;
+		if (regexec(&wb->reg, uri, 0, NULL, 0) == 0)
+			return wb->white;
+	}
+
+	return -1;
+}
+
+static void addwhite(Page *page, const gchar *uri)
+{
+	//D(blocked %s, uri)
+	if (page->showblocked)
+		send(page, "blocked", uri);
+	page->white = g_slist_prepend(page->white, g_strdup(uri));
+}
+static void addblack(Page *page, const gchar *uri)
+{
+	page->black = g_slist_prepend(page->black, g_strdup(uri));
+}
+static gint pagereq = 0;
+static bool redirected = false;
+static gboolean reqcb( //for adblock
+		WebKitWebPage *p,
+		WebKitURIRequest *req,
+		WebKitURIResponse *res,
+		Page *page)
+{
+	const gchar *reqstr =  webkit_uri_request_get_uri(req);
+
+	int check = checkwb(reqstr);
+	if (check == 0)
+	{
+		addwhite(page, reqstr);
+		return true;
+	}
+
+	pagereq++;
+
+	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
+	if (!head) return false; //scheme hasn't header
+	const gchar *ref = soup_message_headers_get_list(head, "Referer");
+	if (!ref) return false; //open page request
+
+	if (res && pagereq == 2) //redirect of page
+	{
+		//in redirection we can't get current uri for reldomain check
+		pagereq = 1;
+		redirected = true;
+		return false;
+	}
+
+	if (check == 1 || !page->relonly)
+	{
+		addblack(page, reqstr);
+		return false;
+	}
+
+
+	//reldomain check
+	bool ret = false;
+	const gchar *uristr = webkit_web_page_get_uri(page->kit);
+
+	SoupURI *puri = soup_uri_new(uristr);
+	SoupURI *ruri = soup_uri_new(reqstr);
+
+	const gchar *phost = soup_uri_get_host(puri);
+
+	if (phost)
+	{
+		gchar **cuts = g_strsplit(page->cutheads, ";", -1);
+		for (gchar **cut = cuts; *cut; cut++)
+			if (g_str_has_prefix(phost, *cut))
+			{
+				phost += strlen(*cut);
+				break;
+			}
+		g_strfreev(cuts);
+
+		const gchar *rhost = soup_uri_get_host(ruri);
+		if (!g_str_has_suffix(rhost, phost))
+		{
+			addwhite(page, reqstr);
+			ret = true;
+		}
+	}
+	else
+		ret = false;
+
+	addblack(page, reqstr);
+
+	soup_uri_free(puri);
+	soup_uri_free(ruri);
+	return ret;
+
+//static void soupMessageHeadersForeachFunc(const char *name,
+//		const char *value, gpointer user_data)
+//{ D(reshead %s %s, name, value) }
+//	if (res)
+//	{
+//		SoupMessageHeaders *resh = webkit_uri_response_get_http_headers(res);
+//		soup_message_headers_foreach (resh,
+//				soupMessageHeadersForeachFunc,
+//				NULL);
+//		const gchar *location = soup_message_headers_get_one(resh, "Location");
+//	}
+//	const gchar *acpt = soup_message_headers_get_list(head, "Accept");
+//	if (g_str_has_prefix(acpt, "text/html,")) {
+////D(accept %s \n %s, acpt, reqstr)
+//		return false;
+//	}
+}
+static gchar *escape(const gchar *str)
+{
+	gulong len = 0;
+	gchar *esc = ".?+";
+	for (const gchar *c = str; *c; c++)
+	{
+		len++;
+		for (gchar *e = esc; *e; e++)
+			if (*e == *c)
+			{
+				len++;
+				break;
+			}
+	}
+	gchar ret[len + 1];
+	ret[len] = '\0';
+
+	gulong i = 0;
+	for (const gchar *c = str; *c; c++)
+	{
+		for (gchar *e = esc; *e; e++)
+			if (*e == *c)
+			{
+				ret[i++] = '\\';
+				break;
+			}
+
+		ret[i++] = *c;
+	}
+
+	return g_strdup(ret);
+}
+static void showwhite(Page *page, bool white)
+{
+	GSList *list = white ? page->white : page->black;
+	if (!list)
+	{
+		send(page, "showmsg", "No List");
+		return;
+	}
+
+	FILE *f = fopen(wbpath, "a");
+	if (!f) return;
+
+	gchar   pre  = white ? 'w' : 'b';
+	guint   len  = g_slist_length(list);
+
+	fprintf(f, "\n# Following list are %s in %s\n",
+			white ? "blocked" : "loaded",
+			webkit_web_page_get_uri(page->kit));
+
+	list = g_slist_reverse(g_slist_copy(list));
+	for (GSList *next = list; next; next = next->next)
+	{
+		gchar *esc = escape(next->data);
+		gchar *line = g_strdup_printf("%c^%s\n", pre, esc);
+		g_free(esc);
+
+		fputs(line, f);
+
+		g_free(line);
+	}
+	g_slist_free(list);
+
+	fclose(f);
+
+	send(page, "openeditor", wbpath);
+}
+
+
+//static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
+//static void loadcb(WebKitWebPage *wp, gpointer p) {}
+static void uricb(Page* page)
+{
+	//workaround: when in redirect change uri is delayed
+	if (redirected)
+		pagereq = 1;
+	else
+		pagereq = 0;
+
+	redirected = false;
+}
+
+
 
 static bool isin(const gchar **ary, gchar *val)
 {
@@ -309,7 +596,7 @@ static void rmhint(Page *page)
 	WebKitDOMElement   *elm  = webkit_dom_document_get_document_element(doc);
 	WebKitDOMNode      *node = (WebKitDOMNode *)elm;
 
-	for (GSList *next = page->appended; next; next = next->next)
+	for (GSList *next = page->aplist; next; next = next->next)
 	{
 		if (page->apnode == node)
 			webkit_dom_node_remove_child(page->apnode, next->data, NULL);
@@ -317,9 +604,9 @@ static void rmhint(Page *page)
 		g_object_unref(next->data);
 	}
 
-	g_slist_free(page->appended);
+	g_slist_free(page->aplist);
 	g_free(page->apkeys);
-	page->appended = NULL;
+	page->aplist = NULL;
 	page->apnode = NULL;
 	page->apkeys = NULL;
 }
@@ -615,7 +902,7 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 			WebKitDOMElement *ne = makehintelm(doc, elm, key, iplen);
 
 			webkit_dom_node_append_child(page->apnode, (WebKitDOMNode *)ne, NULL);
-			page->appended = g_slist_prepend(page->appended, ne);
+			page->aplist = g_slist_prepend(page->aplist, ne);
 		}
 
 		g_free(key);
@@ -638,12 +925,22 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 //{ DD(domactivate!) }
 static void hintcb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
 {
-	if (page->appended)
+	if (page->apnode)
 	{
 		gchar *k = g_strdup(page->lasthintkeys);
 		makehint(page, page->lasttype, k, NULL);
 		g_free(k);
 	}
+}
+static void pagestart(Page *page)
+{
+	setwblist(false);
+
+	g_slist_free_full(page->black, g_free);
+	g_slist_free_full(page->white, g_free);
+	page->black = NULL;
+	page->white = NULL;
+
 }
 static void pageon(Page *page)
 {
@@ -759,6 +1056,13 @@ void ipccb(const gchar *line)
 
 	gchar *ipkeys = NULL;
 	switch (type) {
+	case Cstart:
+		page->relonly     = arg[0] == 'y';
+		page->showblocked = arg[1] == 'y';
+		g_free(page->cutheads);
+		page->cutheads = g_strdup(arg + 3);
+		pagestart(page);
+		break;
 	case Con:
 		pageon(page);
 		break;
@@ -795,6 +1099,10 @@ void ipccb(const gchar *line)
 		rmhint(page);
 		break;
 
+	case Cwhite:
+		showwhite(page, strcmp(arg, "white") == 0 ? true : false );
+		break;
+
 	case Cfree:
 		freepage(page);
 		break;
@@ -804,22 +1112,6 @@ void ipccb(const gchar *line)
 	}
 }
 
-//page cbs
-//static gboolean contextcb(
-//		WebKitWebPage *w,
-//		WebKitContextMenu *menu,
-//		WebKitWebHitTestResult *htr,
-//		gpointer p)
-//{ return false; }
-//static gboolean reqcb( //for adblock
-//		WebKitWebPage *page,
-//		WebKitURIRequest *req,
-//		WebKitURIResponse *res,
-//		gpointer p)
-//{ return false; }
-//static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
-//static void loadcb(WebKitWebPage *wp, gpointer p) {}
-//static void uricb(Page* page) {}
 static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 {
 	Page *page = g_new0(Page, 1);
@@ -832,9 +1124,9 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 #endif
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
-//	SIG( page->kit, "send-request"            , reqcb    , NULL);
+	SIG( page->kit, "send-request"            , reqcb    , page);
 //	SIG( page->kit, "document-loaded"         , loadcb   , NULL);
-//	SIGW(page->kit, "notify::uri"             , uricb    , page);
+	SIGW(page->kit, "notify::uri"             , uricb    , page);
 //	SIG( page->kit, "form-controls-associated", formcb   , NULL);
 }
 G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(

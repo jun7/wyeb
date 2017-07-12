@@ -21,9 +21,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <stdlib.h>
 #include <glib/gstdio.h>
+#include <regex.h>
 
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
+
 #define SHARED 0
 
 #if DEBUG
@@ -48,6 +50,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 
 typedef enum {
+	Cstart  = 'a',
 	Con     = 'o',
 
 	Ckey    = 'k',
@@ -59,6 +62,7 @@ typedef enum {
 	Cfocus  = 's',
 	Cblur   = 'b',
 	Crm     = 'r',
+	Cwhite  = 'w',
 
 	Cfree   = 'f',
 } Coms;
@@ -83,6 +87,77 @@ static void mkdirif(gchar *path)
 {
 	_mkdirif(path, true);
 }
+
+static gchar *path2conf(const gchar *name)
+{
+	return g_build_filename(
+			g_get_user_config_dir(), fullname, name, NULL);
+}
+
+static void monitorcb(
+		GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e, void (*func)(bool))
+{
+	if (e == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT)
+		func(true);
+}
+static void monitor(gchar *path, void (*func)(bool))
+{
+	GFile *gf = g_file_new_for_path(path);
+	GFileMonitor *gm = g_file_monitor_file(
+			gf, G_FILE_MONITOR_NONE, NULL, NULL);
+	SIG(gm, "changed", monitorcb, func);
+
+	g_object_unref(gf);
+}
+
+static bool getctime(gchar *path, __time_t *ctime)
+{
+	struct stat info;
+	g_assert((stat(path, &info) == 0));
+
+	if (*ctime == info.st_ctime) return false;
+	*ctime = info.st_ctime;
+	return true;
+}
+
+static void prepareif(
+		gchar **path, __time_t *ctime,
+		gchar *name, gchar *initstr, void (*monitorcb)(bool))
+{
+	bool first = false;
+	if (!*path)
+	{
+		first = true;
+		*path = path2conf(name);
+		monitor(*path, monitorcb);
+	}
+
+	if (g_file_test(*path, G_FILE_TEST_EXISTS))
+	{
+		if (first && ctime) getctime(*path, ctime);
+		return;
+	}
+
+	GFile *gf = g_file_new_for_path(*path);
+
+	GFileOutputStream *o  = g_file_create(
+			gf, G_FILE_CREATE_PRIVATE, NULL, NULL);
+	g_output_stream_write((GOutputStream *)o,
+			initstr, strlen(initstr), NULL, NULL);
+	g_object_unref(o);
+
+	g_object_unref(gf);
+
+	if (ctime) getctime(*path, ctime);
+}
+
+static void addhash(gchar *str, guint *hash)
+{
+	if (*hash == 0) *hash = 5381;
+	while (*str++)
+		*hash = *hash * 33 + *str;
+}
+
 
 //ipc
 static gchar *ipcpath(gchar *name)

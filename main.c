@@ -18,7 +18,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <webkit2/webkit2.h>
-#include <regex.h>
 #include <gdk/gdkx.h>
 
 #define APPNAME  "wyebrowser"
@@ -90,7 +89,6 @@ typedef struct {
 
 	//conf
 	bool    userreq;
-	gchar  *starturi;
 	gchar  *lasturiconf;
 	gchar  *overset;
 
@@ -98,6 +96,7 @@ typedef struct {
 	gdouble lastx;
 	gdouble lasty;
 	gchar  *msg;
+	bool    smallmsg;
 
 	//hittestresult
 	gchar  *link;
@@ -188,11 +187,16 @@ Conf dconf[] = {
 	{"search"  , "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
 	{"set:script", "enable-javascript", "true"},
+	{"set:script", "reldomaindataonly", "false"},
 	{"set:image" , "auto-load-images" , "true"},
+	{"set:image" , "reldomaindataonly", "false"},
 
 	{DSET      , "search"           , "https://www.google.com/search?q=%s"},
 	{DSET      , "usercss"          , "user.css"},
 //	{DSET      , "loadsightedimages", "false"},
+	{DSET      , "reldomaindataonly", "false"},
+	{DSET      , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
+	{DSET      , "showblocked"      , "false"},
 	{DSET      , "mdlbtnlinkaction" , "openback"},
 	{DSET      , "newwinhandle"     , "normal"},
 	{DSET      , "linkformat"       , "[%.40s](%s)"},
@@ -221,6 +225,10 @@ static gchar *confcstr(gchar *key)
 static gchar *getset(Win *win, gchar *key)
 {
 	return  g_object_get_data(win->seto, key);
+}
+static bool getsetbool(Win *win, gchar *key)
+{
+	return strcmp(getset(win, key), "true") == 0;
 }
 
 static gchar *usage =
@@ -274,22 +282,6 @@ static gchar *mainmdstr =
 
 
 //@misc
-static bool getctime(gchar *path, __time_t *ctime)
-{
-	struct stat info;
-	g_assert((stat(path, &info) == 0));
-
-	if (*ctime == info.st_ctime) return false;
-	*ctime = info.st_ctime;
-	return true;
-}
-
-static gchar *path2conf(const gchar *name)
-{
-	return g_build_filename(
-			g_get_user_config_dir(), fullname, name, NULL);
-}
-
 static bool isin(GPtrArray *ary, void *v)
 {
 	for (int i = 0; i < ary->len; i++)
@@ -404,28 +396,30 @@ static void removehistory()
 	logdir = NULL;
 }
 
-
 static guint msgfunc = 0;
 static bool clearmsgcb(Win *win)
 {
 	if (isin(wins, win))
-		{
-			g_free(win->msg);
-			win->msg = NULL;
-			gtk_widget_queue_draw(win->winw);
-		}
+	{
+		g_free(win->msg);
+		win->msg = NULL;
+		gtk_widget_queue_draw(win->winw);
+	}
 
 	msgfunc = 0;
 	return false;
 }
-static void showmsg(Win *win, gchar *msg) //msg is freed
+static void _showmsg(Win *win, gchar *msg, bool small)
 {
 	if (msgfunc) g_source_remove(msgfunc);
 	g_free(win->msg);
 	win->msg = msg;
+	win->smallmsg = small;
 	msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->winw);
 }
+static void showmsg(Win *win, gchar *msg) //msg is freed
+{ _showmsg(win, msg, false); }
 
 static void send(Win *win, Coms type, gchar *args)
 {
@@ -465,7 +459,7 @@ static bool senddelaycb(Send *s)
 static void senddelay(Win *win, Coms type, gchar *args)
 {
 	Send *s = g_new0(Send, 1);
-	s->win = win;
+	s->win  = win;
 	s->type = type;
 	s->args = args;
 	g_timeout_add(40, (GSourceFunc)senddelaycb, s);
@@ -479,24 +473,21 @@ static Win *winbyid(const gchar *pageid)
 	return NULL;
 }
 
+static guint reloadfunc = 0;
+static bool reloadlastcb()
+{
+	reloadfunc = 0;
+	return false;
+}
+static void reloadlast()
+{
+	if (reloadfunc) return;
+	if (LASTWIN) webkit_web_view_reload(LASTWIN->kit);
+	reloadfunc = g_timeout_add(300, (GSourceFunc)reloadlastcb, NULL);
+}
+
 
 //@conf
-static void checkconf(bool monitor); //declaration
-static void monitorcb(
-		GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e)
-{
-	if (e == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT)
-		checkconf(true);
-}
-static void monitor(gchar *path)
-{
-	GFile *gf = g_file_new_for_path(path);
-	GFileMonitor *gm = g_file_monitor_file(
-			gf, G_FILE_MONITOR_NONE, NULL, NULL);
-	SIG(gm, "changed", monitorcb, NULL);
-
-	g_object_unref(gf);
-}
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 {
 	//properties
@@ -587,6 +578,7 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 		}
 	}
 }
+static void checkconf(bool monitor); //declaration
 static gchar *addcss(const gchar *name)
 {
 	gchar *path = path2conf(name);
@@ -608,7 +600,7 @@ static gchar *addcss(const gchar *name)
 		csslist  = g_slist_prepend(csslist,  g_strdup(name));
 		csstimes = g_slist_prepend(csstimes, time);
 
-		monitor(path);
+		monitor(path, checkconf);
 	}
 	if (!exists)
 	{
@@ -680,7 +672,7 @@ static void setprops(Win *win, GKeyFile *kf, gchar *group)
 		g_object_set_data_full(win->seto, key, val, g_free);
 	}
 }
-static void getprops(GObject *obj, GKeyFile *kf, gchar *group)
+static void getkitprops(GObject *obj, GKeyFile *kf, gchar *group)
 {
 	_kitprops(false, obj, kf, group);
 }
@@ -706,7 +698,11 @@ static bool _seturiconf(Win *win, const gchar* uri)
 		}
 
 		regex_t reg;
-		regcomp(&reg, g, REG_EXTENDED | REG_NOSUB);
+		if (regcomp(&reg, g, REG_EXTENDED | REG_NOSUB))
+		{
+			g_free(tofree);
+			continue;
+		}
 
 		if (regexec(&reg, uri, 0, NULL, 0) == 0) {
 			setprops(win, conf, groups[i]);
@@ -722,12 +718,14 @@ static bool _seturiconf(Win *win, const gchar* uri)
 	g_strfreev(groups);
 	return ret;
 }
-static bool seturiconf(Win *win)
-{
-	return _seturiconf(win, URI(win));
-}
 static void resetconf(Win *win, bool force)
 {
+	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
+	guint hash = 0;
+	if (force)
+		for (gchar **check = checks; *check; check++)
+			addhash(getset(win, *check), &hash);
+
 	if (win->lasturiconf || force)
 	{
 		g_free(win->lasturiconf);
@@ -735,13 +733,22 @@ static void resetconf(Win *win, bool force)
 		setprops(win, conf, DSET);
 	}
 
-	if (seturiconf(win))
-		_seturiconf(win, win->starturi);
+	_seturiconf(win, URI(win));
 
 	if (win->overset) {
 		gchar *setstr = g_strdup_printf("set:%s", win->overset);
 		setprops(win, conf, setstr);
 		g_free(setstr);
+	}
+
+	if (force)
+	{
+		guint last = hash;
+		hash = 0;
+		for (gchar **check = checks; *check; check++)
+			addhash(getset(win, *check), &hash);
+		if (last != hash)
+			reloadlast();
 	}
 }
 static void getdconf(GKeyFile *kf, bool isnew)
@@ -774,7 +781,6 @@ static void getdconf(GKeyFile *kf, bool isnew)
 			"newwinhandle=notnew | ignore | back | normal" , NULL);
 
 
-
 	const gchar *sample = "uri:^https?://(www\\.)?google\\..*";
 
 	g_key_file_set_boolean(conf, sample, "enable-javascript", false);
@@ -796,10 +802,10 @@ static void getdconf(GKeyFile *kf, bool isnew)
 
 	//fill vals not set
 	if (wins && LASTWIN)
-		getprops(LASTWIN->seto, kf, DSET);
+		getkitprops(LASTWIN->seto, kf, DSET);
 	else {
 		WebKitSettings *set = webkit_settings_new();
-		getprops((GObject *)set, kf, DSET);
+		getkitprops((GObject *)set, kf, DSET);
 		g_object_unref(set);
 	}
 }
@@ -833,7 +839,7 @@ void checkconf(bool frommonitor)
 	if (!confpath)
 	{
 		confpath = path2conf("main.conf");
-		monitor(confpath);
+		monitor(confpath, checkconf);
 	}
 
 	bool newfile = false;
@@ -910,35 +916,11 @@ void checkconf(bool frommonitor)
 		g_free(path);
 	}
 }
+
 static void preparemd()
 {
-	bool first = false;
-	if (!mdpath)
-	{
-		first = true;
-		mdpath = path2conf("mainpage.md");
-		monitor(mdpath);
-	}
-
-	if (g_file_test(mdpath, G_FILE_TEST_EXISTS))
-	{
-		if (first) getctime(mdpath, &mdtime);
-		return;
-	}
-
-	GFile *gf = g_file_new_for_path(mdpath);
-
-	GFileOutputStream *o  = g_file_create(
-			gf, G_FILE_CREATE_PRIVATE, NULL, NULL);
-	g_output_stream_write((GOutputStream *)o,
-			mainmdstr, strlen(mainmdstr), NULL, NULL);
-	g_object_unref(o);
-
-	g_object_unref(gf);
-
-	getctime(mdpath, &mdtime);
+	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkconf);
 }
-
 
 //@context
 static void settitle(Win *win, const gchar *pstr)
@@ -1199,10 +1181,20 @@ static void command(Win *win, const gchar *cmd, const gchar *arg)
 	}
 	g_free(str);
 }
-static void openeditor(Win *win, bool shift)
+
+static void openeditor(Win *win, const gchar *path, gchar *editor)
+{
+	if (!editor || *editor == '\0')
+		editor = confcstr("editor");
+	if (*editor == '\0')
+		editor = MIMEOPEN;
+
+	command(win, editor, path);
+}
+static void openconf(Win *win, bool shift)
 {
 	gchar *path;
-	const gchar *editor = NULL;
+	gchar *editor = NULL;
 
 	const gchar *uri = URI(win);
 	if (g_str_has_prefix(uri, APP":main"))
@@ -1232,12 +1224,7 @@ static void openeditor(Win *win, bool shift)
 		}
 	}
 
-	if (!editor || *editor == '\0')
-		editor = confcstr("editor");
-	if (*editor == '\0')
-		editor = MIMEOPEN;
-
-	command(win, editor, path);
+	openeditor(win, path, editor);
 }
 
 static void nextwin(Win *win, bool next)
@@ -1321,7 +1308,7 @@ static Keybind dkeys[]= {
 	{"tonormal"      , GDK_KEY_Escape, 0},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
-//normal /'zpJK' are left
+//normal /'zp' are left
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0},
 
@@ -1388,6 +1375,9 @@ static Keybind dkeys[]= {
 	{"setimage"      , 'i', GDK_CONTROL_MASK},
 	{"unset"         , 'u', 0},
 
+	{"addwhitelist"  , 'a', 0},
+	{"addblacklist"  , 'A', 0},
+
 //insert
 //	{"editor"        , 'e', GDK_CONTROL_MASK},
 
@@ -1396,6 +1386,7 @@ static Keybind dkeys[]= {
 	{"new"           , 0, 0},
 	{"openback"      , 0, 0},
 	{"bookmarklinkor", 0, 0},
+	{"showmsg"       , 0, 0},
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
@@ -1438,7 +1429,7 @@ static gchar *ke2name(GdkEventKey *ke)
 static Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back);
 static bool run(Win *win, gchar* action, const gchar *arg)
 {
-#define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
+#define Z(str, func) if (strcmp(action, str) == 0) {func; goto out;}
 	if (action == NULL) return false;
 	//nokey nowin
 	Z("new", win = newwin(arg, NULL, NULL, false))
@@ -1446,7 +1437,10 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	if (win == NULL) return false;
 
 	//internal
-	if (!strcmp(action, "hintret"))
+	Z("blocked"    , _showmsg(win, g_strdup_printf("Blocked %s", arg), true); return true;)
+	Z("openeditor" , openeditor(win, arg, NULL))
+	Z("reloadlast" , reloadlast())
+	if (strcmp(action, "hintret") == 0)
 	{
 		switch (win->mode) {
 		case Mhintnew  :
@@ -1467,7 +1461,6 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		}
 		win->mode = Mnormal;
 	}
-
 
 	if (arg != NULL) {
 		Z("find"  ,
@@ -1588,8 +1581,8 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 			showmsg(win, g_strdup(action));
 	)
-	Z("edit"        , openeditor(win, false))
-	Z("editconf"    , openeditor(win, true))
+	Z("edit"        , openconf(win, false))
+	Z("editconf"    , openconf(win, true))
 	Z("openconfigdir",
 			gchar *dir = g_path_get_dirname(confpath);
 			command(win, confcstr("diropener"), dir);
@@ -1612,6 +1605,10 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			resetconf(win, true);
 	)
 
+	Z("addwhitelist", send(win, Cwhite, "white"))
+	Z("addblacklist", send(win, Cwhite, "black"))
+
+	Z("showmsg"     , showmsg(win, g_strdup(arg)))
 	Z("test"  , )
 
 	if (win->mode == Minsert)
@@ -1729,7 +1726,10 @@ static bool drawcb(GtkWidget *w, cairo_t *cr, Win *win)
 		gdk_window_get_geometry(
 				gtk_widget_get_window(LASTWIN->winw), NULL, NULL, NULL, &h);
 
-		cairo_set_font_size(cr, csize * .8);
+		if (win->smallmsg)
+			cairo_set_font_size(cr, csize * .6);
+		else
+			cairo_set_font_size(cr, csize * .8);
 
 		h -= csize + (
 				gtk_widget_get_visible(win->entw) ?
@@ -2156,7 +2156,6 @@ static void destroycb(Win *win)
 #endif
 
 	g_free(win->pageid);
-	g_free(win->starturi);
 	g_free(win->lasturiconf);
 	g_free(win->overset);
 	g_free(win->msg);
@@ -2182,6 +2181,31 @@ static void progcb(Win *win)
 		gtk_progress_bar_set_fraction(win->prog, p);
 	}
 }
+
+//static void soupMessageHeadersForeachFunc(const char *name,
+//                                  const char *value,
+//                                  gpointer user_data)
+//{
+//	D(head %s %s, name, value)
+//}
+//void resloadcb(WebKitWebView     *web_view,
+//               WebKitWebResource *resource,
+//               WebKitURIRequest  *request,
+//               Win *win)
+//{
+//return;
+//DD(resloadcb)
+//SoupMessageHeaders *head =
+//	webkit_uri_request_get_http_headers(request);
+//if (head)
+//soup_message_headers_foreach (head,
+//                              soupMessageHeadersForeachFunc,
+//                              NULL);
+//
+//	D(resload uri:%s,webkit_web_resource_get_uri (resource))
+//}
+
+
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
@@ -2462,6 +2486,15 @@ static GtkWidget *closecb(Win *win)
 {
 	gtk_widget_destroy(win->winw);
 }
+static void sendstart(Win *win)
+{
+	gchar head[3] = {0};
+	head[0] = getsetbool(win, "reldomaindataonly") ? 'y' : 'n';
+	head[1] = getsetbool(win, "showblocked"      ) ? 'y' : 'n';
+	gchar *args = g_strconcat(head, getset(win, "reldomaincutheads"),  NULL);
+	send(win, Cstart, args);
+	g_free(args);
+}
 static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 {
 	win->crashed = false;
@@ -2473,29 +2506,22 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		win->mode = Mnormal;
 		update(win);
 		if (win->userreq) {
-			win->userreq = false;
-			g_free(win->starturi);
-			win->starturi = NULL;
-			resetconf(win, false);
-			//has priority
-			win->starturi = g_strdup(URI(win));
-		} else {
-			seturiconf(win);
+			win->userreq = false; //currently not used
 		}
+		resetconf(win, false);
+		sendstart(win);
+
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
-		seturiconf(win);
+		resetconf(win, false);
+		sendstart(win);
+
 		break;
 	case WEBKIT_LOAD_COMMITTED:
 		//D(WEBKIT_LOAD_COMMITED %s, URI(win))
-
 		if (!win->scheme && g_str_has_prefix(URI(win), APP":"))
 			webkit_web_view_reload(win->kit);
-
-		if (win->lasturiconf &&
-				strcmp(win->lasturiconf, win->starturi) != 0)
-			_seturiconf(win, win->starturi);
 
 		send(win, Con, NULL);
 
@@ -2505,8 +2531,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
-
-
 		if (!g_str_has_prefix(URI(win), APP":"))
 		{
 			gchar tstr[99];
@@ -2520,6 +2544,11 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	}
 }
 
+static bool loadfailtlcb(Win *win)
+{
+	DD(load fail tls)
+	return false;
+}
 
 //@contextmenu
 typedef struct {
@@ -2604,11 +2633,6 @@ static void actioncb(GtkAction *action, AItem *ai)
 	g_free(dir);
 }
 static guint menuhash = 0;
-static void addhash(gchar *str)
-{
-	while (*str++)
-		menuhash = menuhash * 33 + *str;
-}
 static GSList *dirmenu(
 		WebKitContextMenu *menu,
 		gchar *dir,
@@ -2664,7 +2688,7 @@ static GSList *dirmenu(
 		} else {
 			ai->action = gtk_action_new(name, name, NULL, NULL);
 			ai->path = path;
-			addhash(path);
+			addhash(path, &menuhash);
 			SIG(ai->action, "activate", actioncb, ai);
 
 			gtk_action_set_accel_group(ai->action, accelg);
@@ -2742,7 +2766,7 @@ void makemenu(WebKitContextMenu *menu)
 		g_object_unref(gf);
 
 		accelp = path2conf("accels");
-		monitor(accelp);
+		monitor(accelp, checkconf);
 	}
 
 	if (g_file_test(accelp, G_FILE_TEST_EXISTS))
@@ -2757,7 +2781,7 @@ void makemenu(WebKitContextMenu *menu)
 			sep = webkit_context_menu_item_new_separator());
 
 	guint lasthash = menuhash;
-	menuhash = 5381;
+	menuhash = 0;
 
 	actions = dirmenu(menu, dir, "<window>");
 
@@ -2974,27 +2998,29 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 
 	GObject *o = win->kito;
-	SIGW(o, "destroy"             , destroycb , win);
-	SIGW(o, "web-process-crashed" , crashcb   , win);
-	SIGW(o, "notify::title"       , notifycb  , win);
-	SIGW(o, "notify::uri"         , notifycb  , win);
+	SIGW(o, "destroy"              , destroycb , win);
+	SIGW(o, "web-process-crashed"  , crashcb   , win);
+	SIGW(o, "notify::title"        , notifycb  , win);
+	SIGW(o, "notify::uri"          , notifycb  , win);
 	SIGW(o, "notify::estimated-load-progress", progcb, win);
+//	SIG( o, "resource-load-started", resloadcb, win);
 
-	SIG( o, "key-press-event"     , keycb     , win);
-	SIG( o, "mouse-target-changed", targetcb  , win);
-	SIG( o, "button-press-event"  , btncb     , win);
-	SIG( o, "button-release-event", btnrcb    , win);
-	SIG( o, "enter-notify-event"  , entercb   , win);
+	SIG( o, "key-press-event"      , keycb     , win);
+	SIG( o, "mouse-target-changed" , targetcb  , win);
+	SIG( o, "button-press-event"   , btncb     , win);
+	SIG( o, "button-release-event" , btnrcb    , win);
+	SIG( o, "enter-notify-event"   , entercb   , win);
 
-	SIG( o, "decide-policy"       , policycb  , win);
-	SIGW(o, "create"              , createcb  , win);
-	SIGW(o, "close"               , closecb   , win);
-	SIG( o, "load-changed"        , loadcb    , win);
+	SIG( o, "decide-policy"        , policycb  , win);
+	SIGW(o, "create"               , createcb  , win);
+	SIGW(o, "close"                , closecb   , win);
+	SIG( o, "load-changed"         , loadcb    , win);
+	SIGW(o, "load-failed-with-tls-errors" , loadfailtlcb    , win);
 
-	SIG( o, "context-menu"        , contextcb , win);
+	SIG( o, "context-menu"         , contextcb , win);
 
 	//for entry
-	SIGW(o, "focus-in-event"      , focusincb , win);
+	SIGW(o, "focus-in-event"       , focusincb , win);
 
 	win->findct = webkit_web_view_get_find_controller(win->kit);
 	SIGW(win->findct, "failed-to-find-text", findfailedcb, win);
