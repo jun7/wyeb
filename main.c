@@ -691,12 +691,11 @@ static bool _seturiconf(Win *win, const gchar* uri)
 	if (uri == NULL || strlen(uri) == 0) return false;
 	
 	bool ret = false;
-	gsize len;
-	gchar **groups = g_key_file_get_groups(conf, &len);
 
-	for (int i = 0; i < len; i++)
+	gchar **groups = g_key_file_get_groups(conf, NULL);
+	for (gchar **gl = groups; *gl; gl++)
 	{
-		gchar *g = groups[i];
+		gchar *g = *gl;
 		if (!g_str_has_prefix(g, "uri:")) continue;
 
 		gchar *tofree = NULL;
@@ -715,7 +714,7 @@ static bool _seturiconf(Win *win, const gchar* uri)
 		}
 
 		if (regexec(&reg, uri, 0, NULL, 0) == 0) {
-			setprops(win, conf, groups[i]);
+			setprops(win, conf, *gl);
 			g_free(win->lasturiconf);
 			win->lasturiconf = g_strdup(uri);
 			ret = true;
@@ -1097,14 +1096,12 @@ static void openuri(Win *win, const gchar *str)
 
 	if (*stra && stra[1])
 	{
-		gsize len;
-		gchar **kv = g_key_file_get_keys(conf, "search", &len, NULL);
-		for (int i = 0; i < len; i++) {
-			gchar *key = kv[i];
+		gchar **kv = g_key_file_get_keys(conf, "search", NULL, NULL);
+		for (gchar **key = kv; *key; key++) {
 
-			if (strcmp(stra[0], key) == 0) {
+			if (strcmp(stra[0], *key) == 0) {
 				uri = g_strdup_printf(
-					g_key_file_get_string(conf, "search", key, NULL),
+					g_key_file_get_string(conf, "search", *key, NULL),
 					stra[1]);
 
 				g_free(win->lastfind);
