@@ -143,9 +143,10 @@ static void setwblist(bool monitor); //declaration
 static void preparewb()
 {
 	prepareif(&wbpath, NULL, "whiteblack.txt",
-			"# first char is 'w':white list or 'b':black list.\n"
-			"# second and following chars are regular expressions.\n"
-			"# preferential order: bottom > top\n"
+			"# First char is 'w':white list or 'b':black list.\n"
+			"# Second and following chars are regular expressions.\n"
+			"# Preferential order: bottom > top\n"
+			"# Keys 'a' and 'A' on wyeb add blocked or loaded list to this file.\n"
 			"\n"
 			"w^https?://([a-z0-9]+\\.)*githubusercontent\\.com/\n"
 			"\n"
@@ -676,9 +677,10 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
 
 	const gchar **taglist = clicktags;
-	if (type == Clink) taglist = linktags;
-	if (type == Curi ) taglist = uritags;
-	if (type == Ctext) taglist = texttags;
+	if (type == Clink ) taglist = linktags;
+	if (type == Curi  ) taglist = uritags;
+	if (type == Cspawn) taglist = uritags;
+	if (type == Ctext ) taglist = texttags;
 
 	for (const gchar **tag = taglist; *tag; tag++)
 	{
@@ -942,26 +944,48 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 
 					g_object_unref(ce);
 				} else {
-					gchar *href = NULL;
-					if (type == Curi)
-						href = webkit_dom_element_get_attribute(te, "SRC");
+					gchar uritype = 'n';
+					gchar *uri = NULL;
+					if (type == Curi || type == Cspawn)
+					{
+						uri = webkit_dom_element_get_attribute(te, "SRC");
+						if (type == Cspawn)
+						{
+							gchar *tag = webkit_dom_element_get_tag_name(te);
+							if (strcmp(tag, "IMG") == 0)
+								uritype = 'i';
+							else
+								uritype = 'm';
 
-					if (!href)
-						href = webkit_dom_element_get_attribute(te, "HREF");
+							g_free(tag);
+						}
+					}
 
-					if (!href)
-						href = g_strdup("about:blank");
+					if (!uri)
+						uri = webkit_dom_element_get_attribute(te, "HREF");
+
+					if (!uri)
+						uri = g_strdup("about:blank");
+					else if (type == Cspawn)
+						uritype = 'l';
 
 					gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
 					SoupURI *base = soup_uri_new(bases);
-					SoupURI *last = soup_uri_new_with_base(base, href);
+					SoupURI *last = soup_uri_new_with_base(base, uri);
 					gchar *retstr = soup_uri_to_string(last, false);
+
+					if (type == Cspawn)
+					{
+						gchar *tmp = retstr;
+						retstr = g_strdup_printf("%c%s", uritype, retstr);
+						g_free(tmp);
+					}
 
 					send(page, "hintret", retstr);
 
 					soup_uri_free(base);
 					soup_uri_free(last);
-					g_free(href);
+					g_free(uri);
 					g_free(bases);
 					g_free(retstr);
 				}
@@ -1157,6 +1181,7 @@ void ipccb(const gchar *line)
 	case Cclick:
 	case Clink:
 	case Curi:
+	case Cspawn:
 		if (!makehint(page, type, arg, ipkeys)) send(page, "tonormal", NULL);
 		break;
 

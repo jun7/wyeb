@@ -58,6 +58,7 @@ typedef enum {
 	Clink   = 'l',
 	Curi    = 'u',
 	Ctext   = 't',
+	Cspawn  = 'p',
 
 	Cfocus  = 's',
 	Cblur   = 'b',

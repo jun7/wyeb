@@ -43,7 +43,7 @@ typedef enum {
 	Mhintback  = 2 + 16,
 	Mhintdl    = 2 + 32,
 	Mhintbkmrk = 2 + 64,
-	Mhintspawn = 2 + 128, //for script //not used
+	Mhintspawn = 2 + 128,
 
 	Msource    = 256, //not used
 	Mopen      = 512,
@@ -101,9 +101,12 @@ typedef struct {
 	//hittestresult
 	gchar  *link;
 	gchar  *linklabel;
+	gchar  *image;
+	gchar  *media;
 	bool    oneditable;
 
 	//misc
+	gchar  *spawn;
 	gchar  *lastfind;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
@@ -183,15 +186,14 @@ Conf dconf[] = {
 	{"main"    , "msgmsec"      , "400"},
 
 	{"main"    , "enablefavicon", "false"},
+	{"main"    , "configreload" , "true"},
 
 	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search"  , "g"            , "https://www.google.com/search?q=%s"},
 	{"search"  , "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
 	{"set:script", "enable-javascript", "true"},
-	{"set:script", "reldomaindataonly", "false"},
 	{"set:image" , "auto-load-images" , "true"},
-	{"set:image" , "reldomaindataonly", "false"},
 
 	{DSET      , "search"           , "https://www.google.com/search?q=%s"},
 	{DSET      , "usercss"          , "user.css"},
@@ -284,6 +286,11 @@ static gchar *mainmdstr =
 
 
 //@misc
+static const gchar *dldir()
+{
+	return g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
+		g_get_home_dir();
+}
 static bool isin(GPtrArray *ary, void *v)
 {
 	for (int i = 0; i < ary->len; i++)
@@ -483,6 +490,7 @@ static bool reloadlastcb()
 }
 static void reloadlast()
 {
+	if (!confbool("configreload")) return;
 	if (reloadfunc) return;
 	if (LASTWIN) webkit_web_view_reload(LASTWIN->kit);
 	reloadfunc = g_timeout_add(300, (GSourceFunc)reloadlastcb, NULL);
@@ -978,13 +986,15 @@ static void _modechanged(Win *win)
 	case Minsert:
 		break;
 
-	case Mhint     :
-	case Mhintopen :
-	case Mhintnew  :
-	case Mhintback :
-	case Mhintdl   :
+	case Mhintspawn:
+		g_free(win->spawn);
+		win->spawn = NULL;
+	case Mhint:
+	case Mhintopen:
+	case Mhintnew:
+	case Mhintback:
+	case Mhintdl:
 	case Mhintbkmrk:
-	case Mhintspawn: //todo not used
 		send(win, Crm, NULL);
 		break;
 	}
@@ -1007,16 +1017,17 @@ static void _modechanged(Win *win)
 		gtk_widget_grab_focus(win->entw);
 		break;
 
-	case Mhint     :
+	case Mhint:
 		com = Cclick;
-	case Mhintopen :
-	case Mhintnew  :
-	case Mhintback :
+	case Mhintopen:
+	case Mhintnew:
+	case Mhintback:
 		if (!com) com = Clink;
-	case Mhintdl   :
+	case Mhintdl:
 	case Mhintbkmrk:
-	case Mhintspawn:
 		if (!com) com = Curi;
+	case Mhintspawn:
+		if (!com) com = Cspawn;
 
 		if (win->crashed)
 			win->mode = Mnormal;
@@ -1130,6 +1141,94 @@ out:
 
 	webkit_web_view_load_uri(win->kit, uri);
 	g_free(uri);
+}
+
+static void spawnwithenv(Win *win, gchar* path, bool ispath)
+{
+	gchar **argv;
+	if (ispath)
+	{
+		argv = g_new0(gchar*, 2);
+		argv[0] = g_strdup(path);
+	} else {
+		GError *err = NULL;
+		if (!g_shell_parse_argv(path, NULL, &argv, &err))
+		{
+			alert(err->message);
+			g_error_free(err);
+			return;
+		}
+	}
+
+	gchar *dir = ispath ? g_path_get_dirname(path) : NULL;
+
+	gchar **envp = g_get_environ();
+	envp = g_environ_setenv(envp, "SUFFIX" , suffix, true);
+	envp = g_environ_setenv(envp, "ISCALLBACK",
+			win->spawn ? "1" : "0", true);
+	gchar buf[9];
+	snprintf(buf, 9, "%d", wins->len);
+	envp = g_environ_setenv(envp, "WINSLEN", buf, true);
+	envp = g_environ_setenv(envp, "WINID"  , win->pageid, true);
+	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
+	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
+
+	const gchar *title = webkit_web_view_get_title(win->kit);
+	if (!title) title = URI(win);
+	envp = g_environ_setenv(envp, "TITLE" , title, true);
+
+	gchar *cbtext;
+	cbtext = gtk_clipboard_wait_for_text(
+			gtk_clipboard_get(GDK_SELECTION_PRIMARY));
+	if (cbtext) {
+		envp = g_environ_setenv(envp, "PRIMARY"  , cbtext, true);
+		envp = g_environ_setenv(envp, "SELECTION", cbtext, true);
+	}
+
+	cbtext = gtk_clipboard_wait_for_text(
+			gtk_clipboard_get(GDK_SELECTION_SECONDARY));
+	if (cbtext)
+		envp = g_environ_setenv(envp, "SECONDARY", cbtext, true);
+
+	cbtext = gtk_clipboard_wait_for_text(
+			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
+	if (cbtext)
+		envp = g_environ_setenv(envp, "CLIPBOARD", cbtext, true);
+
+	if (win->link)
+	{
+		envp = g_environ_setenv(envp, "LINK", win->link, true);
+		envp = g_environ_setenv(envp, "LINK_OR_URI", win->link, true);
+	}
+	if (win->linklabel)
+	{
+		envp = g_environ_setenv(envp, "LINKLABEL", win->linklabel, true);
+	}
+
+	if (win->media)
+		envp = g_environ_setenv(envp, "MEDIA", win->media, true);
+	if (win->image)
+		envp = g_environ_setenv(envp, "IMAGE", win->image, true);
+
+	if (win->media || win->image || win->link)
+		envp = g_environ_setenv(envp, "MEDIA_IMAGE_LINK",
+				win->media ?: win->image ?: win->link, true);
+
+	GPid child_pid;
+	GError *err = NULL;
+	if (!g_spawn_async(
+				dir, argv, envp,
+				ispath ? G_SPAWN_DEFAULT : G_SPAWN_SEARCH_PATH,
+				NULL, NULL, &child_pid, &err))
+	{
+		alert(err->message);
+		g_error_free(err);
+	}
+	g_spawn_close_pid(child_pid);
+
+	g_strfreev(envp);
+	g_strfreev(argv);
+	g_free(dir);
 }
 
 static void scroll(Win *win, gint x, gint y)
@@ -1303,6 +1402,22 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	checkconf(false);
 }
 
+void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
+{
+	gsize len;
+	guchar *data = webkit_web_resource_get_data_finish(
+			(WebKitWebResource *)srco, res, &len, NULL);
+
+	gchar *esc = g_strescape(data, "");
+	gchar *cmd = g_strdup_printf(p, esc);
+	g_spawn_command_line_async(cmd, NULL);
+
+	g_free(cmd);
+	g_free(esc);
+	g_free(data);
+	g_free(p);
+}
+
 
 //@actions
 typedef struct {
@@ -1315,7 +1430,7 @@ static Keybind dkeys[]= {
 	{"tonormal"      , GDK_KEY_Escape, 0},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
-//normal /'zp' are left
+//normal /'pxvz' are left
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0},
 
@@ -1393,9 +1508,17 @@ static Keybind dkeys[]= {
 //nokey
 	{"set"           , 0, 0},
 	{"new"           , 0, 0},
+	{"newclipboard"  , 0, 0},
+	{"newselection"  , 0, 0},
+	{"newsecondary"  , 0, 0},
 	{"openback"      , 0, 0},
+	{"download"      , 0, 0},
+	{"bookmarkthis"  , 0, 0},
 	{"bookmarklinkor", 0, 0},
 	{"showmsg"       , 0, 0},
+	{"tohintcallback", 0, 0},
+	{"sourcecallback", 0, 0},
+//	{"headercallback"  , 0, 0}, //todo
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
@@ -1441,35 +1564,64 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 #define Z(str, func) if (strcmp(action, str) == 0) {func; goto out;}
 	if (action == NULL) return false;
 	//nokey nowin
-	Z("new", win = newwin(arg, NULL, NULL, false))
+
+	Z("new"         , win = newwin(arg, NULL, NULL, false))
+#define CLIP(clip) \
+		gchar *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
+			gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
+		win = newwin(uri, NULL, NULL, false); \
+		g_free(uri)
+	Z("newclipboard", CLIP(GDK_SELECTION_CLIPBOARD))
+	Z("newselection", CLIP(GDK_SELECTION_PRIMARY))
+	Z("newsecondary", CLIP(GDK_SELECTION_SECONDARY))
+#undef NEW
 
 	if (win == NULL) return false;
 
 	//internal
-	Z("blocked"    , _showmsg(win, g_strdup_printf("Blocked %s", arg), true); return true;)
+	Z("blocked"    ,
+			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
+			return true;)
 	Z("openeditor" , openeditor(win, arg, NULL))
 	Z("reloadlast" , reloadlast())
+
 	if (strcmp(action, "hintret") == 0)
 	{
 		switch (win->mode) {
-		case Mhintnew  :
+		case Mhintnew:
 			action = "opennew"     ; break;
-		case Mhintback :
+		case Mhintback:
 			action = "openback"    ; break;
-		case Mhintdl   :
+		case Mhintdl:
 			action = "download"    ; break;
 		case Mhintbkmrk:
 			action = "bookmarkthis"; break;
-		case Mhintopen :
+		case Mhintopen:
 			action = "open"        ; break;
 
-		//todo not used
 		case Mhintspawn:
-		case Mhint     :
+			g_free(win->link);
+			g_free(win->image);
+			g_free(win->media);
+			win->link = win->image = win->media = NULL;
+
+			switch (*arg) {
+			case 'l':
+				win->link  = g_strdup(arg + 1); break;
+			case 'i':
+				win->image = g_strdup(arg + 1); break;
+			case 'm':
+				win->media = g_strdup(arg + 1); break;
+			}
+			action = "spawn";
+			break;
+
+		case Mhint:
 			break;
 		}
 		win->mode = Mnormal;
 	}
+	Z("spawn"      , spawnwithenv(LASTWIN, win->spawn, false))
 
 	if (arg != NULL) {
 		Z("find"  ,
@@ -1497,27 +1649,27 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("tohintnew"   , win->mode = Mhintnew)
 	Z("tohintback"  , win->mode = Mhintback)
 	Z("tohintdl"    , win->mode = Mhintdl)
-	Z("tohintspawn" , win->mode = Mhintspawn) //nokey
 	Z("tohintbookmark", win->mode = Mhintbkmrk)
+	Z("tohintcallback", win->mode = Mhintspawn; win->spawn = g_strdup(arg))
 
 	Z("showdldir"   ,
-		const gchar *dir =
-			g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?: g_get_home_dir();
-		command(win, confcstr("diropener"), dir);
+		command(win, confcstr("diropener"), dldir());
 	)
 
 	Z("yankuri"     ,
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
 		showmsg(win, g_strdup("URI is yanked to clipboard"))
 	)
-	Z("bookmarkthis", addlink(win, NULL, arg)) //internal
+	Z("bookmarkthis", addlink(win, NULL, arg))
 	Z("bookmark"    , addlink(win, webkit_web_view_get_title(win->kit), URI(win)))
 	Z("bookmarkbreak", addlink(win, NULL, NULL))
 	Z("bookmarklinkor",
 		if (win->link)
 			addlink(win, win->linklabel, win->link);
+		else if (arg)
+			addlink(win, NULL, arg);
 		else
-			run(win, "bookmark", NULL);
+			return run(win, "bookmark", NULL);
 	)
 
 	Z("quit"        , gtk_widget_destroy(win->winw); return false)
@@ -1624,6 +1776,12 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("addblacklist", send(win, Cwhite, "black"))
 
 	Z("showmsg"     , showmsg(win, g_strdup(arg)))
+	Z("sourcecallback",
+		WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
+		webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));
+	)
+//	Z("headercallback",)
+
 	Z("test"  , )
 
 	if (win->mode == Minsert)
@@ -1850,8 +2008,7 @@ static void dldestcb(DLWin *win)
 }
 static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 {
-	const gchar *base =
-		g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?: g_get_home_dir();
+	const gchar *base = dldir();
 	gchar *path = g_build_filename(base, name, NULL);
 
 	gchar *check = g_path_get_dirname(path);
@@ -2118,14 +2275,23 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"    press and move up   : go to top.\n"
 			"    press and move down : go to bottom.\n"
 			"\n"
+			"context-menu:\n"
+			"  You can add your own script to context-menu. See 'menu' dir in\n"
+			"  config dir, or click 'addMenu' in context-menu. SUFFIX,\n"
+			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
+			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, MEDIA, IMAGE,\n"
+			"  and MEDIA_IMAGE_LINK are set as environment variables. Available\n"
+			"  actions are in 'key:' section below. Of course it supports dir\n"
+			"  and '.'. '.' hides it from menu but still available in the accels.\n"
 			"accels:\n"
 			"  You can add your own keys to access context-menu items we added.\n"
 			"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the\n"
 			"  last \"\" in the file 'accels' in the conf directory assigned 'c'\n"
-			"  key, and remeve the ';' at the beginning of line.\n"
+			"  key, and remeve the ';' at the beginning of line. alt is &lt;Alt&gt;.\n"
 			"\n"
 			"key:\n"
 			"#%d - is ctrl\n"
+			"#(null) is only for script.\n"
 			, GDK_CONTROL_MASK);
 
 		for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
@@ -2176,6 +2342,9 @@ static void destroycb(Win *win)
 	g_free(win->msg);
 	g_free(win->link);
 	g_free(win->linklabel);
+	g_free(win->image);
+	g_free(win->media);
+	g_free(win->spawn);
 	g_free(win->lastfind);
 	g_free(win);
 }
@@ -2277,20 +2446,38 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	return true;
 }
+static void setresult(Win *win, WebKitHitTestResult *htr)
+{
+	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
+
+	g_free(win->image);
+	win->image = webkit_hit_test_result_context_is_image(htr) ?
+		g_strdup(webkit_hit_test_result_get_image_uri(htr)) : NULL;
+
+	g_free(win->media);
+	win->media = webkit_hit_test_result_context_is_media(htr) ?
+		g_strdup(webkit_hit_test_result_get_media_uri(htr)) : NULL;
+
+	g_free(win->link);
+	win->link = webkit_hit_test_result_context_is_link(htr) ?
+		g_strdup(webkit_hit_test_result_get_link_uri(htr)) : NULL;
+
+	g_free(win->linklabel);
+	const gchar *label = webkit_hit_test_result_get_link_label(htr);
+	if (!label)
+		label = webkit_hit_test_result_get_link_title(htr);
+	win->linklabel = label ? g_strdup(label): NULL;
+}
 static void targetcb(
 		WebKitWebView *w,
 		WebKitHitTestResult *htr,
 		guint m,
 		Win *win)
 {
-	g_free(win->link);
-	win->link = NULL;
-	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
+	setresult(win, htr);
 
-	if (webkit_hit_test_result_context_is_link(htr))
+	if (win->link)
 	{
-		win->link =
-			g_strdup(webkit_hit_test_result_get_link_uri(htr));
 		gchar *str = g_strconcat("Link: ", win->link, NULL);
 		settitle(win, str);
 		g_free(str);
@@ -2601,66 +2788,7 @@ static void clearai(gpointer p)
 }
 static void actioncb(GtkAction *action, AItem *ai)
 {
-	gchar *dir = g_path_get_dirname(ai->path);
-	Win *win = LASTWIN;
-
-	gchar *argv[1] = {
-		ai->path
-	};
-	gchar **envp = g_get_environ();
-	envp = g_environ_setenv(envp, "SUFFIX", suffix, true);
-	envp = g_environ_setenv(envp, "WINID" , win->pageid, true);
-	envp = g_environ_setenv(envp, "URI"   , URI(win), true);
-	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
-
-	const gchar *title = webkit_web_view_get_title(win->kit);
-	if (!title) title = URI(win);
-	envp = g_environ_setenv(envp, "TITLE" , title, true);
-	envp = g_environ_setenv(envp, "LINKLABEL_OR_TITLE" , title, true);
-
-	gchar *cbtext;
-	cbtext = gtk_clipboard_wait_for_text(
-			gtk_clipboard_get(GDK_SELECTION_PRIMARY));
-	if (cbtext) {
-		envp = g_environ_setenv(envp, "PRIMARY"  , cbtext, true);
-		envp = g_environ_setenv(envp, "SELECTION", cbtext, true);
-	}
-
-	cbtext = gtk_clipboard_wait_for_text(
-			gtk_clipboard_get(GDK_SELECTION_SECONDARY));
-	if (cbtext)
-		envp = g_environ_setenv(envp, "SECONDARY", cbtext, true);
-
-	cbtext = gtk_clipboard_wait_for_text(
-			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
-	if (cbtext)
-		envp = g_environ_setenv(envp, "CLIPBOARD", cbtext, true);
-
-	if (win->link)
-	{
-		envp = g_environ_setenv(envp, "LINK", win->link, true);
-		envp = g_environ_setenv(envp, "LINK_OR_URI", win->link, true);
-	}
-	if (win->linklabel)
-	{
-		envp = g_environ_setenv(envp, "LINKLABEL", win->linklabel, true);
-		envp = g_environ_setenv(envp, "LINKLABEL_OR_TITLE" , win->linklabel, true);
-	}
-
-	GPid child_pid;
-	GError *err = NULL;
-	if (!g_spawn_async(
-				dir, argv, envp,
-				G_SPAWN_DEFAULT,
-				NULL, NULL, &child_pid, &err))
-	{
-		alert(err->message);
-		g_error_free(err);
-	}
-	g_spawn_close_pid(child_pid);
-
-	g_strfreev(envp);
-	g_free(dir);
+	spawnwithenv(LASTWIN, ai->path, true);
 }
 static guint menuhash = 0;
 static GSList *dirmenu(
@@ -2676,7 +2804,6 @@ static GSList *dirmenu(
 	const gchar *dn;
 	while (dn = g_dir_read_name(gd))
 	{
-		if (*dn == '.') continue;
 		names = g_slist_insert_sorted(names, g_strdup(dn), (GCompareFunc)strcmp);
 	}
 
@@ -2704,13 +2831,13 @@ static GSList *dirmenu(
 		if (g_file_test(path, G_FILE_TEST_IS_DIR))
 		{
 			WebKitContextMenu *sub = NULL;
-			if (menu)
+			if (menu && *org != '.')
 				sub = webkit_context_menu_new();
 
 			ai->actions = dirmenu(sub, path, accel);
 			if (!ai->actions)
 				nodata = true;
-			else if (menu)
+			else if (menu && *org != '.')
 				webkit_context_menu_append(menu,
 					webkit_context_menu_item_new_with_submenu(name, sub));
 
@@ -2725,7 +2852,7 @@ static GSList *dirmenu(
 			gtk_action_set_accel_path(ai->action, accel);
 			gtk_action_connect_accelerator(ai->action);
 
-			if (menu)
+			if (menu && *org != '.')
 				webkit_context_menu_append(menu,
 					webkit_context_menu_item_new(ai->action));
 		}
@@ -2769,6 +2896,9 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
+		addscript(dir, ".openSrcURI"      ,
+				APP" \"$SUFFIX\" tohintcallback "
+				"'bash -c \""APP" \\\"$SUFFIX\\\" open \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, "0addMenu"         , "mimeopen -n %s");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmarklinkor \"\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
@@ -2780,6 +2910,15 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "3openSelection"   , APP" \"$SUFFIX\" open \"$PRIMARY\"");
 		addscript(dir, "3openSelectionNew", APP" \"$SUFFIX\" opennew \"$PRIMARY\"");
 		addscript(dir, "6searchDictionary", APP" \"$SUFFIX\" open \"u $PRIMARY\"");
+		addscript(dir, "9---"             , "");
+
+		gchar *tmp = g_strdup_printf(APP" \"$SUFFIX\" sourcecallback "
+				"\"bash -c \\\"echo -e \\\\\\\"%%%%s\\\\\\\" >> \\\"%s/"
+				APP"-source\\\"\\\"\"",
+				dldir());
+		addscript(dir, "9saveSource2DLdir", tmp);
+		g_free(tmp);
+
 		addscript(dir, "z---"             , "");
 		addscript(dir, "zchromium"        , "chromium $LINK_OR_URI");
 	}
@@ -2837,22 +2976,8 @@ static bool contextcb(WebKitWebView *web_view,
 		cancelcontext = false;
 		return true;
 	}
-	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
 
-	g_free(win->linklabel);
-	const gchar *label = webkit_hit_test_result_get_link_label(htr);
-	if (!label)
-		label = webkit_hit_test_result_get_link_title(htr);
-	win->linklabel = label ? g_strdup(label): NULL;
-
-	g_free(win->link);
-	const gchar *uri =
-		webkit_hit_test_result_get_link_uri (htr) ?:
-		webkit_hit_test_result_get_image_uri(htr) ?:
-		webkit_hit_test_result_get_media_uri(htr) ;
-
-	win->link = uri ? g_strdup(uri): NULL;
-
+	setresult(win, htr);
 	makemenu(menu);
 
 	//GtkAction * webkit_context_menu_item_get_action(WebKitContextMenuItem *item);
@@ -2986,7 +3111,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 			WebKitCookieManager *cookiemgr =
 				webkit_website_data_manager_get_cookie_manager(mgr);
 
-			//we assume cookies are confs
+			//we assume cookies are conf
 			gchar *cookiefile = path2conf("cookie");
 			webkit_cookie_manager_set_persistent_storage(cookiemgr,
 					cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
@@ -3061,7 +3186,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIGW(o, "create"               , createcb  , win);
 	SIGW(o, "close"                , closecb   , win);
 	SIG( o, "load-changed"         , loadcb    , win);
-	SIGW(o, "load-failed-with-tls-errors" , loadfailtlcb    , win);
+	SIGW(o, "load-failed-with-tls-errors", loadfailtlcb, win);
 
 	SIG( o, "context-menu"         , contextcb , win);
 
@@ -3144,13 +3269,16 @@ void ipccb(const gchar *line)
 {
 	gchar **args = g_strsplit(line, ":", 3);
 
+	gchar *arg = args[2];
+	if (*arg == '\0') arg = NULL;
+
 	if (strcmp(args[0], "0") == 0)
-		run(LASTWIN, args[1], args[2]);
+		run(LASTWIN, args[1], arg);
 	else
 	{
 		Win *win = winbyid(args[0]);
 		if (win)
-			run(win, args[1], args[2]);
+			run(win, args[1], arg);
 	}
 
 	g_strfreev(args);
