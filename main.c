@@ -1146,6 +1146,7 @@ out:
 static void spawnwithenv(Win *win, gchar* path, bool ispath)
 {
 	gchar **argv;
+	showmsg(win, g_strdup_printf("Run %s", path));
 	if (ispath)
 	{
 		argv = g_new0(gchar*, 2);
@@ -1621,7 +1622,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		}
 		win->mode = Mnormal;
 	}
-	Z("spawn"      , spawnwithenv(LASTWIN, win->spawn, false))
+	Z("spawn"      , spawnwithenv(win, win->spawn, false))
 
 	if (arg != NULL) {
 		Z("find"  ,
@@ -2896,9 +2897,9 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
-		addscript(dir, ".openSrcURI"      ,
+		addscript(dir, ".openNewSrcURI"      ,
 				APP" \"$SUFFIX\" tohintcallback "
-				"'bash -c \""APP" \\\"$SUFFIX\\\" open \\\"$MEDIA_IMAGE_LINK\\\"\"'");
+				"'bash -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, "0addMenu"         , "mimeopen -n %s");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmarklinkor \"\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
