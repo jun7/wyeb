@@ -1106,6 +1106,7 @@ static void focus(Page *page)
 	if (an)
 		do {
 			WebKitDOMElement *elm = webkit_dom_node_get_parent_element(an);
+			if (!elm) continue;
 			gchar *tag = webkit_dom_element_get_tag_name(elm);
 
 			if (isin(clicktags , tag))

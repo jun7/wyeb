@@ -3010,7 +3010,7 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 				if (!win->lastfind || strcmp(win->lastfind, text) != 0)
 					run(win, "find", text);
 
-				send(win, Cfocus, NULL);
+				senddelay(win, Cfocus, NULL);
 				break;
 			case Mopen:
 				action = "open";
