@@ -2055,7 +2055,7 @@ static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 }
 static bool dlkeycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
-	if (GDK_KEY_m == ek->keyval) gtk_widget_destroy(w);
+	if (GDK_KEY_q == ek->keyval) gtk_widget_destroy(w);
 	return false;
 }
 static bool accept_focus(GtkWindow *w)
