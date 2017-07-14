@@ -344,6 +344,8 @@ static void append(gchar *path, const gchar *str)
 }
 static bool historycb(Win *win)
 {
+	if (!isin(wins, win)) return false;
+
 #define MAXSIZE 33333
 	static gchar *current = NULL;
 	static gint currenti = -1;
