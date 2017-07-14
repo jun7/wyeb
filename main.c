@@ -166,6 +166,7 @@ typedef struct {
 	gchar *group;
 	gchar *key;
 	gchar *val;
+	gchar *desc;
 } Conf;
 Conf dconf[] = {
 	//{"main"    , "editor"       , "xterm -e nano %s"},
@@ -175,7 +176,8 @@ Conf dconf[] = {
 	{"main"    , "generator"    , "markdown %s"},
 
 	{"main"    , "hintkeys"     , HINTKEYS},
-	{"main"    , "keybindswaps" , ""},
+	{"main"    , "keybindswaps" , "",
+			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
 
 	{"main"    , "winwidth"     , "1000"},
 	{"main"    , "winheight"    , "1000"},
@@ -185,8 +187,10 @@ Conf dconf[] = {
 	{"main"    , "dlwinclosemsec","3000"},
 	{"main"    , "msgmsec"      , "400"},
 
-	{"main"    , "enablefavicon", "false"},
-	{"main"    , "configreload" , "true"},
+	{"main"    , "enablefavicon", "false",
+			"enablefavicon is set at boot only"},
+	{"main"    , "configreload" , "true",
+			"reload last window when whiteblack.text or reldomain are changed"},
 
 	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search"  , "g"            , "https://www.google.com/search?q=%s"},
@@ -202,8 +206,10 @@ Conf dconf[] = {
 	{DSET      , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET      , "showblocked"      , "false"},
 	{DSET      , "mdlbtnlinkaction" , "openback"},
-	{DSET      , "newwinhandle"     , "normal"},
-	{DSET      , "hjkl2allowkeys"   , "false"},
+	{DSET      , "newwinhandle"     , "normal",
+			"newwinhandle=notnew | ignore | back | normal"},
+	{DSET      , "hjkl2allowkeys"   , "false",
+			"hjkl's default are scrolls, not allow keys"},
 	{DSET      , "linkformat"       , "[%.40s](%s)"},
 
 	//changes
@@ -776,25 +782,15 @@ static void getdconf(GKeyFile *kf, bool isnew)
 
 		if (!g_key_file_has_key(kf, c.group, c.key, NULL))
 			g_key_file_set_value(kf, c.group, c.key, c.val);
+
+		if (isnew && c.desc)
+			g_key_file_set_comment(conf, c.group, c.key, c.desc, NULL);
 	}
 
 	if (!isnew) return;
 
 	//sample and comment
-	g_key_file_set_comment(conf, "main", "keybindswaps",
-			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"
-			, NULL);
-
-	g_key_file_set_comment(conf, "main", "enablefavicon",
-			"enablefavicon is set at boot only"
-			, NULL);
-
-
 	g_key_file_set_comment(conf, "set;", NULL, "Default of 'set's.", NULL);
-
-	g_key_file_set_comment(conf, "set;", "newwinhandle",
-			"newwinhandle=notnew | ignore | back | normal" , NULL);
-
 
 	const gchar *sample = "uri:^https?://(www\\.)?google\\..*";
 
@@ -1423,28 +1419,29 @@ typedef struct {
 	gchar *name;
 	guint key;
 	guint mask;
+	gchar *desc;
 } Keybind;
 static Keybind dkeys[]= {
 //every mode
-	{"tonormal"      , GDK_KEY_Escape, 0},
+	{"tonormal"      , GDK_KEY_Escape, 0, "To Normal Mode"},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
 //normal /'pxvz' are left
 	{"toinsert"      , 'i', 0},
-	{"toinsertinput" , 'I', 0},
+	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of rirst input"},
 
 	{"tohint"        , 'f', 0},
 	{"tohintopen"    , 'F', GDK_CONTROL_MASK},
 	{"tohintnew"     , 'F', 0},
 	{"tohintback"    , 'f', GDK_CONTROL_MASK},
-	{"tohintdl"      , 'd', 0},
+	{"tohintdl"      , 'd', 0, "dl is Download"},
 	{"tohintbookmark", 'B', 0},
 
 	{"showdldir"     , 'D', 0},
 
-	{"yankuri"       , 'y', 0},
+	{"yankuri"       , 'y', 0, "Clipboard"},
 	{"bookmark"      , 'b', 0},
-	{"bookmarkbreak" , 'b', GDK_CONTROL_MASK},
+	{"bookmarkbreak" , 'b', GDK_CONTROL_MASK, "Add line break to the main page"},
 
 	{"quit"          , 'q', 0},
 	{"quitall"       , 'Q', 0},
@@ -1473,7 +1470,7 @@ static Keybind dkeys[]= {
 	{"forward"       , 'L', 0},
 	{"stop"          , 's', 0},
 	{"reload"        , 'r', 0},
-	{"reloadbypass"  , 'R', 0},
+	{"reloadbypass"  , 'R', 0, "reload bypass cache"},
 
 	{"find"          , '/', 0},
 	{"findnext"      , 'n', 0},
@@ -1481,7 +1478,7 @@ static Keybind dkeys[]= {
 	{"findselection" , '*', 0},
 
 	{"open"          , 'o', 0},
-	{"opennew"       , 'w', 0},
+	{"opennew"       , 'w', 0, "New window"},
 	{"edituri"       , 'O', 0},
 	{"editurinew"    , 'W', 0},
 
@@ -1495,22 +1492,23 @@ static Keybind dkeys[]= {
 	{"editconf"      , 'E', 0},
 	{"openconfigdir" , 'c', 0},
 
-	{"setscript"     , 's', GDK_CONTROL_MASK},
-	{"setimage"      , 'i', GDK_CONTROL_MASK},
+	{"setscript"     , 's', GDK_CONTROL_MASK, "Use the 'set:script' section"},
+	{"setimage"      , 'i', GDK_CONTROL_MASK, "set:image"},
 	{"unset"         , 'u', 0},
 
-	{"addwhitelist"  , 'a', 0},
-	{"addblacklist"  , 'A', 0},
+	{"addwhitelist"  , 'a', 0,
+		"URIs blocked by reldomain limitation and black list are added to whiteblack.txt"},
+	{"addblacklist"  , 'A', 0, "URIs loaded"},
 
 //insert
 //	{"editor"        , 'e', GDK_CONTROL_MASK},
 
 //nokey
-	{"set"           , 0, 0},
+	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf"},
 	{"new"           , 0, 0},
-	{"newclipboard"  , 0, 0},
-	{"newselection"  , 0, 0},
-	{"newsecondary"  , 0, 0},
+	{"newclipboard"  , 0, 0, "Open clipboard [arg + ' ' +] text in new window."},
+	{"newselection"  , 0, 0, "Open selection ..."},
+	{"newsecondary"  , 0, 0, "Open secondaly ..."},
 	{"findclipboard" , 0, 0},
 	{"findsecondary" , 0, 0},
 	{"openback"      , 0, 0},
@@ -1518,7 +1516,7 @@ static Keybind dkeys[]= {
 	{"bookmarkthis"  , 0, 0},
 	{"bookmarklinkor", 0, 0},
 	{"showmsg"       , 0, 0},
-	{"tohintcallback", 0, 0},
+	{"tohintcallback", 0, 0, "arg is called with environment variables selected by hint."},
 	{"sourcecallback", 0, 0},
 //	{"headercallback"  , 0, 0}, //todo
 
@@ -2311,8 +2309,11 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 
 		for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
 		{
-			gchar *tmp = g_strdup_printf("%d - %-11s: %s\n",
-					dkeys[i].mask, gdk_keyval_name(dkeys[i].key), dkeys[i].name);
+			gchar *tmp = g_strdup_printf("%d - %-11s: %-22s : %s\n",
+					dkeys[i].mask,
+					gdk_keyval_name(dkeys[i].key),
+					dkeys[i].name,
+					dkeys[i].desc ?: "");
 			gchar *last = data;
 			data = g_strconcat(data, tmp, NULL);
 			g_free(last);
