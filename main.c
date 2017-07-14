@@ -342,7 +342,7 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
-static bool history(gchar *str)
+static bool historycb(Win *win)
 {
 #define MAXSIZE 33333
 	static gchar *current = NULL;
@@ -376,7 +376,24 @@ static bool history(gchar *str)
 		}
 	}
 
-	if (!str) return false;
+	if (!win) return false;
+
+	gchar tstr[99];
+	time_t t = time(NULL);
+	strftime(tstr, sizeof(tstr), "%T/%d/%b/%y", localtime(&t));
+	gchar *str = g_strdup_printf("%s %s %s", tstr, URI(win),
+			webkit_web_view_get_title(win->kit) ?: "");
+
+	static gchar *last = NULL;
+	if (last && strcmp(str + 18, last + 18) == 0)
+	{
+		g_free(str);
+		return false;
+	}
+	g_free(last);
+	last = str;
+
+
 	append(current, str);
 
 	logsize += strlen(str) + 1;
@@ -396,12 +413,17 @@ static bool history(gchar *str)
 		logsize = 0;
 	}
 
-	g_free(str);
 	return false;
+}
+static void addhistory(Win *win)
+{
+	if (g_str_has_prefix(URI(win), APP":")) return;
+
+	g_idle_add((GSourceFunc)historycb, win);
 }
 static void removehistory()
 {
-	history(NULL);
+	historycb(NULL);
 	for (gchar **file = logs; *file; file++)
 	{
 		gchar *tmp = g_build_filename(logdir, *file, NULL);
@@ -1885,9 +1907,11 @@ out:
 
 
 static bool focuscb(Win *win) {
-	checkconf(false);
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
+	checkconf(false);
+	if (!webkit_web_view_is_loading(win->kit))
+		addhistory(win);
 	return false;
 }
 static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
@@ -2172,7 +2196,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			);
 
 		//log
-		history(NULL);
+		historycb(NULL);
 		GSList *hist = NULL;
 		gint start = 0;
 		gint num = 0;
@@ -2765,15 +2789,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
-		if (!g_str_has_prefix(URI(win), APP":"))
-		{
-			gchar tstr[99];
-			time_t t = time(NULL);
-
-			strftime(tstr, sizeof(tstr), "%T/%d/%b/%y", localtime(&t));
-			g_idle_add((GSourceFunc)history, g_strdup_printf("%s %s %s",
-						tstr, URI(win), webkit_web_view_get_title(win->kit) ?: ""));
-		}
+		addhistory(win);
 		break;
 	}
 }
@@ -3272,7 +3288,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 			back && LASTWIN ? LASTWIN->win : win->win);
 
 	win->pageid = g_strdup_printf("%lu", webkit_web_view_get_page_id(win->kit));
-	g_ptr_array_insert(wins, 0, win);
+	g_ptr_array_add(wins, win);
 
 	if (!cbwin)
 		openuri(win, uri);
