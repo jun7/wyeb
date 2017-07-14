@@ -203,6 +203,7 @@ Conf dconf[] = {
 	{DSET      , "showblocked"      , "false"},
 	{DSET      , "mdlbtnlinkaction" , "openback"},
 	{DSET      , "newwinhandle"     , "normal"},
+	{DSET      , "hjkl2allowkeys"   , "false"},
 	{DSET      , "linkformat"       , "[%.40s](%s)"},
 
 	//changes
@@ -1572,7 +1573,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("newclipboard", CLIP(GDK_SELECTION_CLIPBOARD))
 	Z("newselection", CLIP(GDK_SELECTION_PRIMARY))
 	Z("newsecondary", CLIP(GDK_SELECTION_SECONDARY))
-#undef NEW
+#undef CLIP
 
 	if (win == NULL) return false;
 
@@ -1673,14 +1674,18 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("quit"        , gtk_widget_destroy(win->winw); return false)
 	Z("quitall"     , quitif(true))
 
-	Z("scrolldown"  , scroll(win, 0, 1))
-	Z("scrollup"    , scroll(win, 0, -1))
-	Z("scrollleft"  , scroll(win, -1, 0))
-	Z("scrollright" , scroll(win, 1, 0))
-	//Z("arrowdown"   , sendkey(win, GDK_KEY_Down))
-	//Z("arrowup"     , sendkey(win, GDK_KEY_Up))
-	//Z("arrowleft"   , sendkey(win, GDK_KEY_Left))
-	//Z("arrowright"  , sendkey(win, GDK_KEY_Right))
+	if (getsetbool(win, "hjkl2allowkeys"))
+	{
+		Z("scrolldown"  , sendkey(win, GDK_KEY_Down))
+		Z("scrollup"    , sendkey(win, GDK_KEY_Up))
+		Z("scrollleft"  , sendkey(win, GDK_KEY_Left))
+		Z("scrollright" , sendkey(win, GDK_KEY_Right))
+	} else {
+		Z("scrolldown"  , scroll(win, 0, 1))
+		Z("scrollup"    , scroll(win, 0, -1))
+		Z("scrollleft"  , scroll(win, -1, 0))
+		Z("scrollright" , scroll(win, 1, 0))
+	}
 
 	Z("top"         , sendkey(win, GDK_KEY_Home))
 	Z("bottom"      , sendkey(win, GDK_KEY_End))
