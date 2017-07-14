@@ -1478,6 +1478,7 @@ static Keybind dkeys[]= {
 	{"find"          , '/', 0},
 	{"findnext"      , 'n', 0},
 	{"findprev"      , 'N', 0},
+	{"findselection" , '*', 0},
 
 	{"open"          , 'o', 0},
 	{"opennew"       , 'w', 0},
@@ -1510,6 +1511,8 @@ static Keybind dkeys[]= {
 	{"newclipboard"  , 0, 0},
 	{"newselection"  , 0, 0},
 	{"newsecondary"  , 0, 0},
+	{"findclipboard" , 0, 0},
+	{"findsecondary" , 0, 0},
 	{"openback"      , 0, 0},
 	{"download"      , 0, 0},
 	{"bookmarkthis"  , 0, 0},
@@ -1726,6 +1729,15 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			webkit_find_controller_search_previous(win->findct);
 			senddelay(win, Cfocus, NULL);
 			)
+
+#define CLIP(clip) \
+	run(win, "find", gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
+	senddelay(win, Cfocus, NULL);
+
+	Z("findselection", CLIP(GDK_SELECTION_PRIMARY))
+	Z("findclipboard", CLIP(GDK_SELECTION_CLIPBOARD))
+	Z("findsecondary", CLIP(GDK_SELECTION_SECONDARY))
+#undef CLIP
 
 	Z("open"        , win->mode = Mopen)
 	Z("edituri"     ,
