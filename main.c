@@ -189,8 +189,8 @@ Conf dconf[] = {
 
 	{"main"    , "enablefavicon", "false",
 			"enablefavicon is set at boot only"},
-	{"main"    , "configreload" , "true",
-			"reload last window when whiteblack.text or reldomain are changed"},
+//	{"main"    , "configreload" , "true",
+//			"reload last window when whiteblack.text or reldomain are changed"},
 
 	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search"  , "g"            , "https://www.google.com/search?q=%s"},
@@ -497,7 +497,7 @@ static bool reloadlastcb()
 }
 static void reloadlast()
 {
-	if (!confbool("configreload")) return;
+//	if (!confbool("configreload")) return;
 	if (reloadfunc) return;
 	if (LASTWIN) webkit_web_view_reload(LASTWIN->kit);
 	reloadfunc = g_timeout_add(300, (GSourceFunc)reloadlastcb, NULL);
@@ -736,7 +736,8 @@ static bool _seturiconf(Win *win, const gchar* uri)
 }
 static void resetconf(Win *win, bool force)
 {
-	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
+//	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
+	gchar *checks[] = {"reldomaincutheads", NULL};
 	guint hash = 0;
 	if (force)
 		for (gchar **check = checks; *check; check++)
@@ -1140,12 +1141,12 @@ out:
 static void spawnwithenv(Win *win, gchar* path, bool ispath)
 {
 	gchar **argv;
-	showmsg(win, g_strdup_printf("Run %s", path));
 	if (ispath)
 	{
 		argv = g_new0(gchar*, 2);
 		argv[0] = g_strdup(path);
 	} else {
+		//showmsg(win, g_strdup_printf("Run %s", path));
 		GError *err = NULL;
 		if (!g_shell_parse_argv(path, NULL, &argv, &err))
 		{
@@ -1889,7 +1890,7 @@ static bool focuscb(Win *win) {
 	g_ptr_array_insert(wins, 0, win);
 	return false;
 }
-static bool drawcb(GtkWidget *w, cairo_t *cr, Win *win)
+static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
 	static guint csize = 0;
 	if (!csize) csize = gdk_display_get_default_cursor_size(
