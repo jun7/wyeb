@@ -378,6 +378,7 @@ static void showwhite(Page *page, bool white)
 
 	fclose(f);
 
+	setwblist(false);
 	send(page, "openeditor", wbpath);
 }
 
