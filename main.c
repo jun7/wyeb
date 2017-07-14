@@ -2607,7 +2607,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				if (wins->len == 1)
 				{
 					if (strcmp(APP":main", URI(win)) == 0)
-						run(win, "quit", NULL);
+						return run(win, "quit", NULL);
 					else {
 						run(win, "showmainpage", NULL);
 						showmsg(win, g_strdup("Last Window"));
@@ -2616,12 +2616,12 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				else if (deltay < 0) //up
 				{
 					run(win, "prevwin", NULL);
-					run(win, "quit", NULL);
+					return run(win, "quit", NULL);
 				}
 				else //down
 				{
 					run(win, "nextwin", NULL);
-					run(win, "quit", NULL);
+					return run(win, "quit", NULL);
 				}
 			}
 			cancelcontext = true;
