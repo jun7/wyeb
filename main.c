@@ -1507,9 +1507,9 @@ static Keybind dkeys[]= {
 //nokey
 	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf"},
 	{"new"           , 0, 0},
-	{"newclipboard"  , 0, 0, "Open clipboard [arg + ' ' +] text in new window."},
-	{"newselection"  , 0, 0, "Open selection ..."},
-	{"newsecondary"  , 0, 0, "Open secondaly ..."},
+	{"newclipboard"  , 0, 0, "Open [arg + ' ' +] clipboard text in new window."},
+	{"newselection"  , 0, 0, "Open [arg + ' ' +] selection ..."},
+	{"newsecondary"  , 0, 0, "Open [arg + ' ' +] secondaly ..."},
 	{"findclipboard" , 0, 0},
 	{"findsecondary" , 0, 0},
 	{"openback"      , 0, 0},
