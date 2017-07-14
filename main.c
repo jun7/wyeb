@@ -2914,7 +2914,7 @@ void makemenu(WebKitContextMenu *menu)
 				"\"bash -c \\\"echo -e \\\\\\\"%%%%s\\\\\\\" >> \\\"%s/"
 				APP"-source\\\"\\\"\"",
 				dldir());
-		addscript(dir, "9saveSource2DLdir", tmp);
+		addscript(dir, "9saveHTMLSource2DLdir", tmp);
 		g_free(tmp);
 
 		addscript(dir, "z---"             , "");
