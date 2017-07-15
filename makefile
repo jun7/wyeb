@@ -13,7 +13,7 @@ wyeb: main.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< \
 		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
 		-DEXTENSION_DIR=\"$(EXTENSION_DIR)\" \
-		$(DDEBUG)
+		$(DDEBUG) -lm
 
 ext.so: ext.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -shared -fPIC \

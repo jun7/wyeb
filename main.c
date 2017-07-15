@@ -19,6 +19,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <webkit2/webkit2.h>
 #include <gdk/gdkx.h>
+#include <math.h>
 
 #define APPNAME  "wyebrowser"
 #define APP      "wyeb"
@@ -45,7 +46,8 @@ typedef enum {
 	Mhintbkmrk = 2 + 64,
 	Mhintspawn = 2 + 128,
 
-	Msource    = 256, //not used
+	Mselect    = 256,
+
 	Mopen      = 512,
 	Mopennew   = 1024,
 	Mfind      = 2048,
@@ -106,11 +108,12 @@ typedef struct {
 	bool    oneditable;
 
 	//misc
+	gint    cursorx;
+	gint    cursory;
 	gchar  *spawn;
 	gchar  *lastfind;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
-
 //	gint    backwinnum;
 } Win;
 
@@ -206,6 +209,7 @@ Conf dconf[] = {
 	{DSET      , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET      , "showblocked"      , "false"},
 	{DSET      , "mdlbtnlinkaction" , "openback"},
+	{DSET      , "mdlbtn2winlist"   , "true"},
 	{DSET      , "newwinhandle"     , "normal",
 			"newwinhandle=notnew | ignore | back | normal"},
 	{DSET      , "hjkl2allowkeys"   , "false",
@@ -344,7 +348,7 @@ static void append(gchar *path, const gchar *str)
 }
 static bool historycb(Win *win)
 {
-	if (!isin(wins, win)) return false;
+	if (win && !isin(wins, win)) return false;
 
 #define MAXSIZE 33333
 	static gchar *current = NULL;
@@ -458,8 +462,8 @@ static void _showmsg(Win *win, gchar *msg, bool small)
 	msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->winw);
 }
-static void showmsg(Win *win, gchar *msg) //msg is freed
-{ _showmsg(win, msg, false); }
+static void showmsg(Win *win, const gchar *msg)
+{ _showmsg(win, g_strdup(msg), false); }
 
 static void send(Win *win, Coms type, gchar *args)
 {
@@ -987,6 +991,7 @@ static void settitle(Win *win, const gchar *pstr)
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
+static bool winlist(Win *win, guint type, cairo_t *cr); //declaration
 static void _modechanged(Win *win)
 {
 	Modes last = win->lastmode;
@@ -1004,8 +1009,12 @@ static void _modechanged(Win *win)
 		gtk_widget_grab_focus(win->kitw);
 		break;
 
-	case Minsert:
+	case Mselect:
+		gtk_widget_queue_draw(win->winw);
+		gdk_window_set_cursor(gtk_widget_get_window(win->winw), NULL);
+//		gtk_widget_set_sensitive(win->kitw, true);
 		break;
+	case Minsert: break;
 
 	case Mhintspawn:
 		g_free(win->spawn);
@@ -1020,8 +1029,8 @@ static void _modechanged(Win *win)
 		break;
 	}
 
-	Coms com = 0;
 	//into
+	Coms com = 0;
 	switch (win->mode) {
 	case Mfind:
 		if (win->crashed)
@@ -1036,6 +1045,12 @@ static void _modechanged(Win *win)
 	case Mopennew:
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
+		break;
+
+	case Mselect:
+//		gtk_widget_set_sensitive(win->kitw, false);
+		winlist(win, 2, NULL);
+		gtk_widget_queue_draw(win->winw);
 		break;
 
 	case Mhint:
@@ -1063,8 +1078,14 @@ static void update(Win *win)
 	if (win->lastmode != win->mode) _modechanged(win);
 
 	switch (win->mode) {
+	case Mnormal: break;
 	case Minsert:
 		settitle(win, "-- INSERT MODE --");
+		break;
+
+	case Mselect:
+		settitle(win, "-- SELECT MODE --");
+
 		break;
 
 	case Mhint:
@@ -1084,9 +1105,17 @@ static void update(Win *win)
 		settitle(win, "-- UNKNOWN MODE --");
 	}
 
+	//normal mode
 	if (win->mode != Mnormal) return;
 
-	settitle(win, NULL);
+	if (win->link)
+	{
+		gchar *str = g_strconcat("Link: ", win->link, NULL);
+		settitle(win, str);
+		g_free(str);
+	}
+	else
+		settitle(win, NULL);
 }
 
 
@@ -1170,7 +1199,7 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath)
 		argv = g_new0(gchar*, 2);
 		argv[0] = g_strdup(path);
 	} else {
-		//showmsg(win, g_strdup_printf("Run %s", path));
+		//_showmsg(win, g_strdup_printf("Run %s", path), false);
 		GError *err = NULL;
 		if (!g_shell_parse_argv(path, NULL, &argv, &err))
 		{
@@ -1296,7 +1325,7 @@ static void sendkey(Win *win, guint key)
 
 static void command(Win *win, const gchar *cmd, const gchar *arg)
 {
-	showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg));
+	_showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg), false);
 
 	gchar *str = g_strdup_printf(cmd, arg);
 	GError *err = NULL;
@@ -1333,7 +1362,7 @@ static void openconf(Win *win, bool shift)
 		}
 	} else if (!shift && g_str_has_prefix(uri, APP":"))
 	{
-		showmsg(win, g_strdup("No config"));
+		showmsg(win, "No config");
 		return;
 	} else {
 		path = confpath;
@@ -1379,7 +1408,7 @@ static void nextwin(Win *win, bool next)
 
 	if (dwins->len < 2)
 	{
-		showmsg(win, g_strdup("No other window"));
+		showmsg(win, "No other window");
 		goto out;
 	}
 
@@ -1400,6 +1429,225 @@ static void nextwin(Win *win, bool next)
 out:
 	g_ptr_array_free(dwins, TRUE);
 }
+static gint inwins(Win *win, GSList **list, bool onlylen)
+{
+	guint len = wins->len - 1;
+
+	GdkWindow  *dw = gtk_widget_get_window(win->winw);
+	GdkDisplay *dd = gdk_window_get_display(dw);
+	for (int i = 1; i < wins->len; i++)
+	{
+		Win *lw = wins->pdata[i];
+		GdkWindow *ldw = gtk_widget_get_window(lw->winw);
+
+#ifdef GDK_WINDOWING_X11
+		if (GDK_IS_X11_DISPLAY(dd) &&
+			(gdk_x11_window_get_desktop(dw) !=
+					gdk_x11_window_get_desktop(ldw)))
+		{
+			len--;
+			continue;
+		}
+#endif
+
+		if (gdk_window_get_state(ldw) & GDK_WINDOW_STATE_ICONIFIED)
+			len--;
+		else if (!onlylen)
+			*list = g_slist_append(*list, lw);
+	}
+	return len;
+}
+bool winlist(Win *win, guint type, cairo_t *cr)
+//type: 0: none 1:present 2:setcursor, and GDK_KEY_Down ... GDK_KEY_Right
+{
+	//for window select mode
+	if (win->mode != Mselect) return false;
+	GSList *actvs = NULL;
+	guint len = inwins(win, &actvs, false);
+	if (len < 1)
+	{
+		g_slist_free(actvs);
+		return false;
+	}
+
+	gdouble w = gtk_widget_get_allocated_width(win->winw);
+	gdouble h = gtk_widget_get_allocated_height(win->winw);
+
+	gdouble yrate = h / w;
+
+	gdouble yunitd = sqrt(len * yrate);
+	gdouble xunitd = yunitd / yrate;
+	gint yunit = yunitd;
+	gint xunit = xunitd;
+
+	if (yunit * xunit >= len)
+		; //do nothing
+	else if ((yunit + 1) * xunit >= len && (xunit + 1) * yunit >= len)
+	{
+		if (w > h)
+			xunit++;
+		else
+			yunit++;
+	}
+	else if ((yunit + 1) * xunit >= len)
+		yunit++;
+	else if ((xunit + 1) * yunit >= len)
+		xunit++;
+	else {
+		xunit++;
+		yunit++;
+	}
+
+	switch (type) {
+	case GDK_KEY_Up:
+	case GDK_KEY_Down:
+	case GDK_KEY_Left:
+	case GDK_KEY_Right:
+		if (win->cursorx > 0 && win->cursory > 0)
+			break;
+	case 2:
+		win->cursorx = xunit / 2.0 - .5;
+		win->cursory = yunit / 2.0 - .5;
+		win->cursorx++;
+		win->cursory++;
+		if (type == 2)
+			return true;
+	}
+	switch (type) {
+	case GDK_KEY_Up:
+		if (--win->cursory < 1) win->cursory = yunit;
+		return true;
+	case GDK_KEY_Down:
+		if (++win->cursory > yunit) win->cursory = 1;
+		return true;
+	case GDK_KEY_Left:
+		if (--win->cursorx < 1) win->cursorx = xunit;
+		return true;
+	case GDK_KEY_Right:
+		if (++win->cursorx > xunit) win->cursorx = 1;
+		return true;
+	}
+
+	gdouble uw = w / xunit;
+	gdouble uh = h / yunit;
+
+	if (cr)
+	{
+		cairo_set_source_rgba(cr, .5, .4, .6, .6);
+		cairo_paint(cr);
+	}
+
+	gdouble px, py;
+	gdk_window_get_device_position_double(
+			gtk_widget_get_window(win->kitw),
+			gdk_seat_get_pointer(gdk_display_get_default_seat(
+					gdk_display_get_default())),
+			&px, &py, NULL);
+
+	Win *titlew = NULL;
+	bool ret = false;
+	GSList *crnt = actvs;
+	for (int yi = 0; yi < yunit; yi++) for (int xi = 0; xi < xunit; xi++)
+	{
+		if (!crnt) break;
+		Win *lw = crnt->data;
+
+		bool issuf =
+			gtk_widget_get_visible(lw->kitw) &&
+			gtk_widget_is_drawable(lw->kitw) ;
+
+		gdouble lww = gtk_widget_get_allocated_width(lw->kitw);
+		gdouble lwh = gtk_widget_get_allocated_height(lw->kitw);
+
+		if (lww == 0 || lwh == 0) lww = lwh = 9;
+
+		gdouble scale = MIN(uw / lww, uh / lwh) * (1.0 - 1.0/(yunit * xunit + 1));
+		gdouble tw = lww * scale;
+		gdouble th = lwh * scale;
+		gdouble tx = xi * uw + (uw - tw) / 2;
+		gdouble ty = yi * uh + (uh - th) / 2;
+		gdouble tr = tx + tw;
+		gdouble tb = ty + th;
+
+		bool pin = win->cursorx + win->cursory == 0 ?
+			px > tx && px < tr && py > ty && py < tb :
+			xi + 1 == win->cursorx && yi + 1 == win->cursory;
+		ret = ret || pin;
+
+		if (pin)
+		{
+			gchar *title = g_strdup_printf("SELECT| %s",
+					webkit_web_view_get_title(lw->kit));
+			settitle(win, title);
+			g_free(title);
+
+			win->cursorx = xi + 1;
+			win->cursory = yi + 1;
+		}
+
+		if (!cr)
+		{
+			if (pin)
+			{
+				if (type == 1) //present
+					gtk_window_present(lw->win);
+				break;
+			}
+
+			crnt = crnt->next;
+			continue;
+		}
+
+		cairo_reset_clip(cr);
+		gdouble r   = 4 + th / 66.0;
+		gdouble deg = M_PI / 180.0;
+		cairo_new_sub_path (cr);
+		cairo_arc (cr, tr - r, ty + r, r, -90 * deg,   0 * deg);
+		cairo_arc (cr, tr - r, tb - r, r,   0 * deg,  90 * deg);
+		cairo_arc (cr, tx + r, tb - r, r,  90 * deg, 180 * deg);
+		cairo_arc (cr, tx + r, ty + r, r, 180 * deg, 270 * deg);
+		cairo_close_path (cr);
+		if (pin)
+		{
+			cairo_set_source_rgba(cr, .9, .0, .4, .7);
+			cairo_set_line_width(cr, 4.0);
+			cairo_stroke_preserve(cr);
+		}
+		cairo_clip(cr);
+
+		if (issuf)
+		{
+			cairo_scale(cr, scale, scale);
+
+			GdkPixbuf *pix = gdk_pixbuf_get_from_window(
+				gtk_widget_get_window(lw->kitw), 0, 0, lww, lwh);
+			cairo_surface_t *suf =
+				gdk_cairo_surface_create_from_pixbuf(pix, 0, NULL);
+			cairo_set_source_surface(cr, suf, tx / scale, ty / scale);
+
+			cairo_paint(cr);
+
+			cairo_surface_destroy(suf);
+			g_object_unref(pix);
+
+			cairo_scale(cr, 1 / scale, 1 / scale);
+		}
+		else
+		{
+			cairo_set_source_rgba(cr, .1, .0, .2, .4);
+			cairo_paint(cr);
+		}
+
+		crnt = crnt->next;
+	}
+
+	g_slist_free(actvs);
+
+	if (!ret)
+		update(win);
+
+	return ret;
+}
 
 static void addlink(Win *win, const gchar *title, const gchar *uri)
 {
@@ -1418,9 +1666,10 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	else
 		append(mdpath, NULL);
 
-	showmsg(win, g_strdup("Added"));
+	showmsg(win, "Added");
 	checkconf(false);
 }
+
 
 void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 {
@@ -1490,6 +1739,7 @@ static Keybind dkeys[]= {
 	//tab
 	{"nextwin"       , 'J', 0},
 	{"prevwin"       , 'K', 0},
+	{"selectwin"     , 'x', 0},
 
 	{"back"          , 'H', 0},
 	{"forward"       , 'L', 0},
@@ -1683,7 +1933,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 	Z("yankuri"     ,
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
-		showmsg(win, g_strdup("URI is yanked to clipboard"))
+		showmsg(win, "URI is yanked to clipboard")
 	)
 	Z("bookmarkthis", addlink(win, NULL, arg))
 	Z("bookmark"    , addlink(win, webkit_web_view_get_title(win->kit), URI(win)))
@@ -1726,18 +1976,24 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 	Z("nextwin"     , nextwin(win, true))
 	Z("prevwin"     , nextwin(win, false))
+	Z("selectwin"   ,
+			if (inwins(win, NULL, true) > 0)
+				win->mode = Mselect;
+			else
+				showmsg(win, "No other window");
+	)
 
 	Z("back"        ,
 			if (webkit_web_view_can_go_back(win->kit))
 			webkit_web_view_go_back(win->kit);
 			else
-			showmsg(win, g_strdup("No Previous Page"))
+			showmsg(win, "No Previous Page")
 	)
 	Z("forward"     ,
 			if (webkit_web_view_can_go_forward(win->kit))
 			webkit_web_view_go_forward(win->kit);
 			else
-			showmsg(win, g_strdup("No Next Page"))
+			showmsg(win, "No Next Page")
 	 )
 	Z("stop"        , webkit_web_view_stop_loading(win->kit))
 	Z("reload"      , webkit_web_view_reload(win->kit))
@@ -1784,7 +2040,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 			removehistory();
 
-			showmsg(win, g_strdup(action));
+			showmsg(win, action);
 	)
 	Z("edit"        , openconf(win, false))
 	Z("editconf"    , openconf(win, true))
@@ -1813,7 +2069,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("addwhitelist", send(win, Cwhite, "white"))
 	Z("addblacklist", send(win, Cwhite, "black"))
 
-	Z("showmsg"     , showmsg(win, g_strdup(arg)))
+	Z("showmsg"     , showmsg(win, arg))
 	Z("sourcecallback",
 		WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
 		webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));
@@ -1908,12 +2164,22 @@ out:
 //{ eventname(e, "k"); return false; }
 
 
-static bool focuscb(Win *win) {
+static bool focuscb(Win *win)
+{
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
 	checkconf(false);
 	if (!webkit_web_view_is_loading(win->kit))
 		addhistory(win);
+	return false;
+}
+static bool focusoutcb(Win *win)
+{
+	if (win->mode == Mselect)
+	{
+		win->mode = Mnormal;
+		update(win);
+	}
 	return false;
 }
 static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
@@ -1957,6 +2223,7 @@ static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_show_text(cr, win->msg);
 	}
 
+	winlist(win, 0, cr);
 	return false;
 }
 
@@ -2309,8 +2576,9 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"    left press and move down  and right: raise next   window and close.\n"
 			"  middle button:\n"
 			"    on a link           : new background window.\n"
-			"    on free space       : raise bottom window.\n"
-			"    press and move left : raise bottom window.\n"
+			"    on free space       : show win list / raise bottom window.\n"
+			"    press and move left : show win list / raise bottom window.\n"
+			"                                        / if mdlbtn2winlist: false\n"
 			"    press and move right: raise next   window.\n"
 			"    press and move up   : go to top.\n"
 			"    press and move down : go to bottom.\n"
@@ -2479,6 +2747,30 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		return true;
 	}
 
+	if (win->mode == Mselect)
+	{
+#define Z(str, func) if (action && strcmp(action, str) == 0) {func;}
+		Z("scrolldown"  , winlist(win, GDK_KEY_Down , NULL))
+		Z("scrollup"    , winlist(win, GDK_KEY_Up   , NULL))
+		Z("scrollleft"  , winlist(win, GDK_KEY_Left , NULL))
+		Z("scrollright" , winlist(win, GDK_KEY_Right, NULL))
+#undef Z
+		switch (ek->keyval) {
+		case GDK_KEY_Down:
+		case GDK_KEY_Up:
+		case GDK_KEY_Left:
+		case GDK_KEY_Right:
+			winlist(win, ek->keyval, NULL);
+			break;
+
+		case GDK_KEY_Return:
+		case GDK_KEY_space:
+			winlist(win, 1, NULL);
+			return true;
+		}
+		gtk_widget_queue_draw(win->winw);
+		return true;
+	}
 
 	win->userreq = true;
 
@@ -2518,15 +2810,7 @@ static void targetcb(
 		Win *win)
 {
 	setresult(win, htr);
-
-	if (win->link)
-	{
-		gchar *str = g_strconcat("Link: ", win->link, NULL);
-		settitle(win, str);
-		g_free(str);
-	}
-	else
-		update(win);
+	update(win);
 }
 static bool cancelcontext = false;
 static bool cancelbtn1r = false;
@@ -2536,7 +2820,17 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	static bool block = false;
 	win->userreq = true;
 
-	if (e->type != GDK_BUTTON_PRESS) return FALSE;
+	if (e->type != GDK_BUTTON_PRESS) return false;
+
+	if (win->mode == Mselect)
+	{
+		if (e->button == 1 && winlist(win, 0, NULL))
+			return winlist(win, 1, NULL);
+
+		win->mode = Mnormal;
+		update(win);
+		return true;
+	}
 
 	if (win->oneditable)
 		win->mode = Minsert;
@@ -2557,6 +2851,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	{
 		//workaround
 		//for lacking of target change event when btn event happens with focus in;
+		//now this is also for back from mselect mode may be
 		if (e->send_event)
 		{
 			win->lastx = win->lasty = 0;
@@ -2606,13 +2901,13 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				else //right
 					run(win, "forward", NULL);
 			} else {
-				if (wins->len == 1)
+				if (inwins(win, NULL, true) < 1)
 				{
 					if (strcmp(APP":main", URI(win)) == 0)
 						return run(win, "quit", NULL);
 					else {
 						run(win, "showmainpage", NULL);
-						showmsg(win, g_strdup("Last Window"));
+						showmsg(win, "Last Window");
 					}
 				}
 				else if (deltay < 0) //up
@@ -2676,12 +2971,18 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 			}
 			else if (gtk_window_is_active(win->win))
 			{
-				run(win, "prevwin", NULL);
+				if (getsetbool(win, "mdlbtn2winlist"))
+					run(win, "selectwin", NULL);
+				else
+					run(win, "prevwin", NULL);
 			}
 		}
 		else if (abs(deltax) > abs(deltay)) {
 			if (deltax < 0) //left
-				run(win, "prevwin", NULL);
+				if (getsetbool(win, "mdlbtn2winlist"))
+					run(win, "selectwin", NULL);
+				else
+					run(win, "prevwin", NULL);
 			else //right
 				run(win, "nextwin", NULL);
 		} else {
@@ -2710,6 +3011,23 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->winw);
 	}
+	update(win);
+}
+static bool motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
+{
+	if (win->mode == Mselect)
+	{
+		win->cursorx = win->cursory = 0;
+		gtk_widget_queue_draw(win->winw);
+
+		static GdkCursor *hand = NULL;
+		if (!hand) hand = gdk_cursor_new(GDK_HAND2);
+		gdk_window_set_cursor(gtk_widget_get_window(win->winw),
+				winlist(win, 0, NULL) ? hand : NULL);
+
+		return true;
+	}
+	return false;
 }
 static bool policycb(
 		WebKitWebView *v,
@@ -3086,11 +3404,11 @@ static bool textcb(Win *win)
 }
 static void findfailedcb(Win *win)
 {
-	showmsg(win, g_strdup("Not found"));
+	showmsg(win, "Not found");
 }
 static void foundcb(Win *win)
 {
-	showmsg(win, NULL); //clear
+	_showmsg(win, NULL, false); //clear
 }
 
 
@@ -3117,6 +3435,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 	SIGA(win->wino, "draw"           , drawcb, win);
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
+	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
 	WebKitUserContentManager *cmgr =
 		webkit_user_content_manager_new();
@@ -3216,6 +3535,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIG( o, "button-press-event"   , btncb     , win);
 	SIG( o, "button-release-event" , btnrcb    , win);
 	SIG( o, "enter-notify-event"   , entercb   , win);
+	SIG( o, "motion-notify-event"  , motioncb  , win);
 
 	SIG( o, "decide-policy"        , policycb  , win);
 	SIGW(o, "create"               , createcb  , win);
