@@ -1084,7 +1084,7 @@ static void update(Win *win)
 		break;
 
 	case Mselect:
-		settitle(win, "-- SELECT MODE --");
+		settitle(win, "-- LIST MODE --");
 
 		break;
 
@@ -1576,7 +1576,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 		if (pin)
 		{
-			gchar *title = g_strdup_printf("SELECT| %s",
+			gchar *title = g_strdup_printf("LIST| %s",
 					webkit_web_view_get_title(lw->kit));
 			settitle(win, title);
 			g_free(title);
