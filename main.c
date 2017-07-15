@@ -2973,7 +2973,7 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 			else if (gtk_window_is_active(win->win))
 			{
 				if (getsetbool(win, "mdlbtn2winlist"))
-					run(win, "selectwin", NULL);
+					run(win, "winlist", NULL);
 				else
 					run(win, "prevwin", NULL);
 			}
@@ -2981,7 +2981,7 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		else if (abs(deltax) > abs(deltay)) {
 			if (deltax < 0) //left
 				if (getsetbool(win, "mdlbtn2winlist"))
-					run(win, "selectwin", NULL);
+					run(win, "winlist", NULL);
 				else
 					run(win, "prevwin", NULL);
 			else //right
