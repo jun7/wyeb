@@ -62,6 +62,7 @@ typedef enum {
 
 	Cfocus  = 's',
 	Cblur   = 'b',
+	Cmode   = 'm',
 	Crm     = 'r',
 	Cwhite  = 'w',
 

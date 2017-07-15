@@ -2833,16 +2833,20 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		return true;
 	}
 
-	if (win->oneditable)
-		win->mode = Minsert;
-	else
-		win->mode = Mnormal;
+	//workaround
+	//for lacking of target change event when btn event happens with focus in;
+	senddelay(win, Cmode, NULL);
+//	if (win->oneditable)
+//		win->mode = Minsert;
+//	else
+//		win->mode = Mnormal;
 
 	update(win);
 
 	//D(event button %d, e->button)
 	switch (e->button) {
 	case 1:
+
 	case 2:
 		win->lastx = e->x;
 		win->lasty = e->y;

@@ -1089,6 +1089,16 @@ static void pageon(Page *page)
 }
 
 
+static void mode(Page *page)
+{
+	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
+	if (isinput(te))
+		send(page, "toinsert", NULL);
+	else
+		send(page, "tonormal", NULL);
+}
+
 static void focus(Page *page)
 {
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
@@ -1189,6 +1199,10 @@ void ipccb(const gchar *line)
 
 	case Ctext:
 		makelist(page, Ctext, NULL);
+		break;
+
+	case Cmode:
+		mode(page);
 		break;
 
 	case Cfocus:
