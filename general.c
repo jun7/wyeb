@@ -60,9 +60,9 @@ typedef enum {
 	Ctext   = 't',
 	Cspawn  = 'p',
 
+	Cmode   = 'm',
 	Cfocus  = 's',
 	Cblur   = 'b',
-	Cmode   = 'm',
 	Crm     = 'r',
 	Cwhite  = 'w',
 

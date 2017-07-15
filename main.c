@@ -247,7 +247,7 @@ static bool getsetbool(Win *win, gchar *key)
 }
 
 static gchar *usage =
-	"Usage: "APP" [[[suffix] action|\"\"] uri|\"\"]\n"
+	"Usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"  suffix: Process ID.\n"
 	"    It added to all directories conf, cache and etc.\n"
 	"  action: Such as new(default), open, opennew ...\n"
@@ -1702,7 +1702,7 @@ static Keybind dkeys[]= {
 
 //normal /'pxvz' are left
 	{"toinsert"      , 'i', 0},
-	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of rirst input"},
+	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 
 	{"tohint"        , 'f', 0},
 	{"tohintopen"    , 'F', GDK_CONTROL_MASK},
@@ -2576,8 +2576,8 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"    left press and move down  and right: raise next   window and close\n"
 			"  middle button:\n"
 			"    on a link           : new background window\n"
-			"    on free space       : raise bottom window / show win list\n"
-			"    press and move left : raise bottom window / show win list\n"
+			"    on free space       : raise bottom window / show window list\n"
+			"    press and move left : raise bottom window / show window list\n"
 			"                                              / if mdlbtn2winlist: true\n"
 			"    press and move right: raise next   window\n"
 			"    press and move up   : go to top\n"
@@ -2585,7 +2585,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"\n"
 			"context-menu:\n"
 			"  You can add your own script to context-menu. See 'menu' dir in\n"
-			"  config dir, or click 'addMenu' in context-menu. SUFFIX,\n"
+			"  the config dir, or click 'addMenu' in the context-menu. SUFFIX,\n"
 			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, MEDIA, IMAGE,\n"
 			"  and MEDIA_IMAGE_LINK are set as environment variables. Available\n"
