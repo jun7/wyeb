@@ -2783,25 +2783,27 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 }
 static void setresult(Win *win, WebKitHitTestResult *htr)
 {
-	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
-
 	g_free(win->image);
+	g_free(win->media);
+	g_free(win->link);
+	g_free(win->linklabel);
+
+	win->image = win->media = win->link = win->linklabel = NULL;
+	if (!htr) return;
+
 	win->image = webkit_hit_test_result_context_is_image(htr) ?
 		g_strdup(webkit_hit_test_result_get_image_uri(htr)) : NULL;
-
-	g_free(win->media);
 	win->media = webkit_hit_test_result_context_is_media(htr) ?
 		g_strdup(webkit_hit_test_result_get_media_uri(htr)) : NULL;
-
-	g_free(win->link);
 	win->link = webkit_hit_test_result_context_is_link(htr) ?
 		g_strdup(webkit_hit_test_result_get_link_uri(htr)) : NULL;
 
-	g_free(win->linklabel);
 	const gchar *label = webkit_hit_test_result_get_link_label(htr);
 	if (!label)
 		label = webkit_hit_test_result_get_link_title(htr);
 	win->linklabel = label ? g_strdup(label): NULL;
+
+	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
 }
 static void targetcb(
 		WebKitWebView *w,
@@ -3085,7 +3087,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	case WEBKIT_LOAD_STARTED:
 		//D(WEBKIT_LOAD_STARTED %s, URI(win))
 		win->scheme = false;
-
+		setresult(win, NULL);
 		win->mode = Mnormal;
 		update(win);
 		if (win->userreq) {
