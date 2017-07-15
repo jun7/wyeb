@@ -3522,6 +3522,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
 	webkit_web_view_set_settings(win->kit, win->set);
+	g_object_unref(win->set);
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 
 	GObject *o = win->kito;
