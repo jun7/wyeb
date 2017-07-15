@@ -3468,7 +3468,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 				webkit_website_data_manager_get_cookie_manager(mgr);
 
 			//we assume cookies are conf
-			gchar *cookiefile = path2conf("cookie");
+			gchar *cookiefile = path2conf("cookies");
 			webkit_cookie_manager_set_persistent_storage(cookiemgr,
 					cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
 			g_free(cookiefile);
