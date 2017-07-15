@@ -1533,7 +1533,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 	if (cr)
 	{
-		cairo_set_source_rgba(cr, .5, .4, .6, .6);
+		cairo_set_source_rgba(cr, .4, .4, .4, .6);
 		cairo_paint(cr);
 	}
 
@@ -1610,7 +1610,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		if (pin)
 		{
 			cairo_set_source_rgba(cr, .9, .0, .4, .7);
-			cairo_set_line_width(cr, 4.0);
+			cairo_set_line_width(cr, 6.0);
 			cairo_stroke_preserve(cr);
 		}
 		cairo_clip(cr);
@@ -1739,7 +1739,7 @@ static Keybind dkeys[]= {
 	//tab
 	{"nextwin"       , 'J', 0},
 	{"prevwin"       , 'K', 0},
-	{"selectwin"     , 'x', 0},
+	{"winlist"       , 'x', 0},
 
 	{"back"          , 'H', 0},
 	{"forward"       , 'L', 0},
@@ -1976,7 +1976,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 	Z("nextwin"     , nextwin(win, true))
 	Z("prevwin"     , nextwin(win, false))
-	Z("selectwin"   ,
+	Z("winlist"     ,
 			if (inwins(win, NULL, true) > 0)
 				win->mode = Mselect;
 			else
@@ -2570,18 +2570,18 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"<pre style=\"font-size: large\">\n"
 			"mouse:\n"
 			"  rocker gesture:\n"
-			"    left press and       -        right: back.\n"
-			"    left press and move right and right: forward.\n"
-			"    left press and move up    and right: raise bottom window and close.\n"
-			"    left press and move down  and right: raise next   window and close.\n"
+			"    left press and       -        right: back\n"
+			"    left press and move right and right: forward\n"
+			"    left press and move up    and right: raise bottom window and close\n"
+			"    left press and move down  and right: raise next   window and close\n"
 			"  middle button:\n"
-			"    on a link           : new background window.\n"
-			"    on free space       : show win list / raise bottom window.\n"
-			"    press and move left : show win list / raise bottom window.\n"
-			"                                        / if mdlbtn2winlist: false\n"
-			"    press and move right: raise next   window.\n"
-			"    press and move up   : go to top.\n"
-			"    press and move down : go to bottom.\n"
+			"    on a link           : new background window\n"
+			"    on free space       : raise bottom window / show win list\n"
+			"    press and move left : raise bottom window / show win list\n"
+			"                                              / if mdlbtn2winlist: true\n"
+			"    press and move right: raise next   window\n"
+			"    press and move up   : go to top\n"
+			"    press and move down : go to bottom\n"
 			"\n"
 			"context-menu:\n"
 			"  You can add your own script to context-menu. See 'menu' dir in\n"
@@ -2599,7 +2599,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"\n"
 			"key:\n"
 			"#%d - is ctrl\n"
-			"#(null) is only for script.\n"
+			"#(null) is only for script\n"
 			, GDK_CONTROL_MASK);
 
 		for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
@@ -3257,7 +3257,8 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmarklinkor \"\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
 		addscript(dir, "0history"         , APP" \"$SUFFIX\" showhistory \"\"");
-		addscript(dir, "0main"            , APP" \"$SUFFIX\" open "APP":main");
+		addscript(dir, "0windowList"      , APP" \"$SUFFIX\" winlist \"\"");
+		addscript(dir, "1main"            , APP" \"$SUFFIX\" open "APP":main");
 		addscript(dir, "3---"             , "");
 		addscript(dir, "3openClipboard"   , APP" \"$SUFFIX\" open \"$CLIPBOARD\"");
 		addscript(dir, "3openClipboardNew", APP" \"$SUFFIX\" opennew \"$CLIPBOARD\"");
