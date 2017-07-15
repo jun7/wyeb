@@ -2824,6 +2824,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	if (win->mode == Mselect)
 	{
+		win->cursorx = win->cursory = 0;
 		if (e->button == 1 && winlist(win, 0, NULL))
 			return winlist(win, 1, NULL);
 
