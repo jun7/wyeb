@@ -121,11 +121,13 @@ key:
 4 - s          : setscript              : Use the 'set:script' section
 4 - i          : setimage               : set:image
 0 - u          : unset                  : 
-0 - a          : addwhitelist           : URIs blocked by reldomain limitation and black list are added to whiteblack.txt
+0 - a          : addwhitelist           : URIs blocked by reldomain limitation and
+                                          black list are added to whiteblack.txt
 0 - A          : addblacklist           : URIs loaded
 0 - (null)     : set                    : Use 'set:' + arg section of main.conf
 0 - (null)     : new                    : 
-0 - (null)     : newclipboard           : Open [arg + ' ' +] clipboard text in new window.
+0 - (null)     : newclipboard           : Open [arg + ' ' +] clipboard text
+                                          in new window.
 0 - (null)     : newselection           : Open [arg + ' ' +] selection ...
 0 - (null)     : newsecondary           : Open [arg + ' ' +] secondaly ...
 0 - (null)     : findclipboard          : 
@@ -135,7 +137,8 @@ key:
 0 - (null)     : bookmarkthis           : 
 0 - (null)     : bookmarklinkor         : 
 0 - (null)     : showmsg                : 
-0 - (null)     : tohintcallback         : arg is called with environment variables selected by hint.
+0 - (null)     : tohintcallback         : arg is called with environment variables
+                                          selected by hint.
 0 - (null)     : sourcecallback         : 
 0 - t          : test                   : 
 
