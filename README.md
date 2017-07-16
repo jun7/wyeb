@@ -22,7 +22,7 @@ wyeb is inspired from dwb and luakit, so basically usage is similar to those.
 - Open actions. Most of actions assigned to keys are also can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
-- [Window thumbnail list.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
+- [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
 - No tab. But keys J/K/x or button actions.
 - Focused history. Instead of loaded history.
 - Misc. monitored conf files, saved search word for find, related domain only loading, new window with clipboard text, hinting for callback script.
