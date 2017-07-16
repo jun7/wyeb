@@ -69,6 +69,7 @@ accels:
 key:
 4 - is ctrl
 (null) is only for script
+
 0 - Escape     : tonormal               : To Normal Mode
 4 - bracketleft: tonormal               : 
 0 - i          : toinsert               : 
@@ -138,9 +139,10 @@ key:
 0 - (null)     : sourcecallback         : 
 0 - t          : test                   : 
 
-
-
+</pre>
 <hr>
+<pre>
+
 Copyright 2017 jun7
 
 This program is free software: you can redistribute it and/or modify
