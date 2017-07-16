@@ -3629,6 +3629,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	gtk_widget_hide(win->progw);
 
 	gtk_window_present(
+			back && relwin  ? relwin-> win :
 			back && LASTWIN ? LASTWIN->win : win->win);
 
 	win->pageid = g_strdup_printf("%lu", webkit_web_view_get_page_id(win->kit));
