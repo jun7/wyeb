@@ -423,7 +423,8 @@ static bool historycb(Win *win)
 }
 static void addhistory(Win *win)
 {
-	if (g_str_has_prefix(URI(win), APP":")) return;
+	const gchar *uri = URI(win);
+	if (!uri || g_str_has_prefix(uri, APP":")) return;
 
 	g_idle_add((GSourceFunc)historycb, win);
 }
