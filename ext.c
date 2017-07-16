@@ -312,38 +312,6 @@ static gboolean reqcb(
 //		return false;
 //	}
 }
-static gchar *escape(const gchar *str)
-{
-	gulong len = 0;
-	gchar *esc = ".?+";
-	for (const gchar *c = str; *c; c++)
-	{
-		len++;
-		for (gchar *e = esc; *e; e++)
-			if (*e == *c)
-			{
-				len++;
-				break;
-			}
-	}
-	gchar ret[len + 1];
-	ret[len] = '\0';
-
-	gulong i = 0;
-	for (const gchar *c = str; *c; c++)
-	{
-		for (gchar *e = esc; *e; e++)
-			if (*e == *c)
-			{
-				ret[i++] = '\\';
-				break;
-			}
-
-		ret[i++] = *c;
-	}
-
-	return g_strdup(ret);
-}
 static void showwhite(Page *page, bool white)
 {
 	GSList *list = white ? page->white : page->black;

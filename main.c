@@ -1374,7 +1374,9 @@ static void openconf(Win *win, bool shift)
 		path = confpath;
 		if (!shift)
 		{
-			gchar *name = g_strdup_printf("uri:^%s", uri);
+
+			gchar *esc = escape(uri);
+			gchar *name = g_strdup_printf("uri:^%s", esc);
 			if (!g_key_file_has_group(conf, name))
 			{
 				gchar *str = g_strdup_printf("\n[%s]", name);
@@ -1382,6 +1384,7 @@ static void openconf(Win *win, bool shift)
 				g_free(str);
 			}
 			g_free(name);
+			g_free(esc);
 		}
 	}
 
