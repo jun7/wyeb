@@ -1069,9 +1069,7 @@ static void mode(Page *page)
 	if (iseditable || isinput(te))
 		send(page, "toinsert", NULL);
 	else
-	{
 		send(page, "tonormal", NULL);
-	}
 }
 
 static void focus(Page *page)
