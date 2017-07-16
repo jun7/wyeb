@@ -73,7 +73,7 @@ key:
 0 - Escape     : tonormal               : To Normal Mode
 4 - bracketleft: tonormal               : 
 0 - i          : toinsert               : 
-0 - I          : toinsertinput          : To Insert Mode with focus of rirst input
+0 - I          : toinsertinput          : To Insert Mode with focus of first input
 0 - f          : tohint                 : 
 4 - F          : tohintopen             : 
 0 - F          : tohintnew              : 
