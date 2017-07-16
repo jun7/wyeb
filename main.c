@@ -266,7 +266,7 @@ static gchar *mainmdstr =
 "\n"
 "If **e**,**E**,**c** don't work, open 'main.conf' in\n"
 "config directory/'"APPNAME"' and edit '"MIMEOPEN"' values.\n"
-"If you haven't any gui editor or filer, set they like 'xterm -e nano %s'.\n"
+"If you haven't any gui editor or filer, set them like 'xterm -e nano %s'.\n"
 "\n"
 "For other keys, see [help](wyeb:help) assigned '**:**'.\n"
 "Since this application is inspired from dwb and luakit,\n"
