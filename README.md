@@ -1,6 +1,6 @@
 # WithYourEditorBrowser / wyeb
 
-![](https://github.com/jun7/wyeb/wiki/img/screenshot.png)
+[Screenshot](https://github.com/jun7/wyeb/wiki/img/screenshot.png)
 
 ### Todo
 - adblock //I use reldomaindataonly though
