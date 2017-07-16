@@ -215,6 +215,7 @@ Conf dconf[] = {
 	{DSET      , "hjkl2allowkeys"   , "false",
 			"hjkl's default are scrolls, not allow keys"},
 	{DSET      , "linkformat"       , "[%.40s](%s)"},
+	{DSET      , "scriptdialog"     , "true"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -3073,9 +3074,16 @@ static GtkWidget *createcb(Win *win)
 
 	return new->kitw;
 }
-static GtkWidget *closecb(Win *win)
+static void closecb(Win *win)
 {
 	gtk_widget_destroy(win->winw);
+}
+static bool sdialogcb(Win *win)
+{
+	if (getsetbool(win, "scriptdialog"))
+		return false;
+	showmsg(win, "Script dialog is blocked");
+	return true;
 }
 static void sendstart(Win *win)
 {
@@ -3551,6 +3559,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIG( o, "decide-policy"        , policycb  , win);
 	SIGW(o, "create"               , createcb  , win);
 	SIGW(o, "close"                , closecb   , win);
+	SIGW(o, "script-dialog"        , sdialogcb , win);
 	SIG( o, "load-changed"         , loadcb    , win);
 	SIGW(o, "load-failed-with-tls-errors", loadfailtlcb, win);
 
