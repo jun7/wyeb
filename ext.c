@@ -1235,6 +1235,7 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 	page->id = g_strdup_printf("%lu", webkit_web_page_get_id(wp));
 	g_ptr_array_add(pages, page);
 
+	setwblist(false);
 #if ! SHARED
 	ipcwatch(page->id);
 #endif
