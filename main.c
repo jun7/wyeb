@@ -172,8 +172,10 @@ typedef struct {
 	gchar *desc;
 } Conf;
 Conf dconf[] = {
-	//{"main"    , "editor"       , "xterm -e nano %s"},
-	{"main"    , "editor"       , MIMEOPEN},
+	{"main"    , "editor"       , MIMEOPEN,
+		"editor=xterm -e nano %s\n"
+		"editor=gvim --servername wyeb --remote-silent \"%s\""
+	},
 	{"main"    , "mdeditor"     , ""},
 	{"main"    , "diropener"    , MIMEOPEN},
 	{"main"    , "generator"    , "markdown %s"},
