@@ -1,5 +1,8 @@
 # WithYourEditorBrowser / wyeb
 
+![](wiki/img/screenshot.png)
+![](wiki/img/windowlist.png)
+
 ### Todo
 - adblock //I use reldomaindataonly though
 - Waiting for Webkit2gtk version 2.18 to get correct rects of elements
@@ -11,7 +14,6 @@ depends 'webkit2gtk' 'markdown' 'perl-file-mimeinfo' //on arch linux
 
 	make
 	make install
-
 
 ### Features
 wyeb is inspired from dwb and luakit, so basically usage is similar to those.
@@ -140,9 +142,6 @@ key:
 
 
 <hr>
-
-
-
 Copyright 2017 jun7
 
 This program is free software: you can redistribute it and/or modify

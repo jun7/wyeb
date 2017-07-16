@@ -290,7 +290,7 @@ static gchar *mainmdstr =
 "</style>\n"
 "<div class=links style=line-height:1.4;>\n"
 "\n"
-"[WYEBrowser](https://github.com/jun7/wyeb/wiki)\n"
+"[WYEBrowser](https://github.com/jun7/wyeb)\n"
 "[Arch Linux](https://www.archlinux.org/)\n"
 "[dwb - ArchWiki](https://wiki.archlinux.org/index.php/dwb)\n"
 ;
