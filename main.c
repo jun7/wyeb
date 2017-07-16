@@ -1118,6 +1118,11 @@ static void update(Win *win)
 	else
 		settitle(win, NULL);
 }
+static void tonormal(Win *win)
+{
+	win->mode = Mnormal;
+	update(win);
+}
 
 
 //@funcs for actions
@@ -1671,7 +1676,6 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	checkconf(false);
 }
 
-
 void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 {
 	gsize len;
@@ -2177,10 +2181,7 @@ static bool focuscb(Win *win)
 static bool focusoutcb(Win *win)
 {
 	if (win->mode == Mselect)
-	{
-		win->mode = Mnormal;
-		update(win);
-	}
+		tonormal(win);
 	return false;
 }
 static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
@@ -2663,8 +2664,7 @@ static void destroycb(Win *win)
 static void crashcb(Win *win)
 {
 	win->crashed = true;
-	win->mode = Mnormal;
-	update(win);
+	tonormal(win);
 }
 static void notifycb(Win *win) { update(win); }
 static void progcb(Win *win)
@@ -2732,8 +2732,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 			return false;
 		}
 
-		win->mode = Mnormal;
-		update(win);
+		tonormal(win);
 	}
 
 
@@ -2831,8 +2830,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		if (e->button == 1 && winlist(win, 0, NULL))
 			return winlist(win, 1, NULL);
 
-		win->mode = Mnormal;
-		update(win);
+		tonormal(win);
 		return true;
 	}
 
@@ -3089,8 +3087,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		//D(WEBKIT_LOAD_STARTED %s, URI(win))
 		win->scheme = false;
 		setresult(win, NULL);
-		win->mode = Mnormal;
-		update(win);
+		tonormal(win);
 		if (win->userreq) {
 			win->userreq = false; //currently not used
 		}
@@ -3351,10 +3348,8 @@ static bool contextcb(WebKitWebView *web_view,
 //@entry
 static bool focusincb(Win *win)
 {
-	if (gtk_widget_get_visible(win->entw)) {
-		win->mode = Mnormal;
-		update(win);
-	}
+	if (gtk_widget_get_visible(win->entw))
+		tonormal(win);
 	return false;
 }
 static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
@@ -3385,19 +3380,18 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 			default:
 					g_assert_not_reached();
 			}
-			win->mode = Mnormal;
+			tonormal(win);
 		}
 		break;
 	case GDK_KEY_Escape:
 		if (win->mode == Mfind) {
 			webkit_find_controller_search_finish(win->findct);
 		}
-		win->mode = Mnormal;
+		tonormal(win);
 		break;
 	default:
 		return false;
 	}
-	update(win);
 	return true;
 }
 static bool textcb(Win *win)
