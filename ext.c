@@ -142,7 +142,7 @@ static __time_t  wbtime = 0;
 static void setwblist(bool monitor); //declaration
 static void preparewb()
 {
-	prepareif(&wbpath, NULL, "whiteblack.txt",
+	prepareif(&wbpath, NULL, "whiteblack.conf",
 			"# First char is 'w':white list or 'b':black list.\n"
 			"# Second and following chars are regular expressions.\n"
 			"# Preferential order: bottom > top\n"
@@ -153,7 +153,7 @@ static void preparewb()
 			, setwblist);
 
 	if (wbpath)
-		wbpath = path2conf("whiteblack.txt");
+		wbpath = path2conf("whiteblack.conf");
 }
 void setwblist(bool monitor)
 {

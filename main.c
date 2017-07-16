@@ -195,7 +195,7 @@ Conf dconf[] = {
 	{"main"    , "enablefavicon", "false",
 			"enablefavicon is set at boot only"},
 //	{"main"    , "configreload" , "true",
-//			"reload last window when whiteblack.text or reldomain are changed"},
+//			"reload last window when whiteblack.conf or reldomain are changed"},
 
 	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search"  , "g"            , "https://www.google.com/search?q=%s"},
@@ -1787,7 +1787,7 @@ static Keybind dkeys[]= {
 	{"unset"         , 'u', 0},
 
 	{"addwhitelist"  , 'a', 0,
-		"URIs blocked by reldomain limitation and black list are added to whiteblack.txt"},
+		"URIs blocked by reldomain limitation and black list are added to whiteblack.conf"},
 	{"addblacklist"  , 'A', 0, "URIs loaded"},
 
 //insert
