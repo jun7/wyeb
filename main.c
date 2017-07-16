@@ -211,7 +211,7 @@ Conf dconf[] = {
 	{DSET      , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET      , "showblocked"      , "false"},
 	{DSET      , "mdlbtnlinkaction" , "openback"},
-	{DSET      , "mdlbtn2winlist"   , "true"},
+	{DSET      , "mdlbtn2winlist"   , "false"},
 	{DSET      , "newwinhandle"     , "normal",
 			"newwinhandle=notnew | ignore | back | normal"},
 	{DSET      , "hjkl2allowkeys"   , "false",
