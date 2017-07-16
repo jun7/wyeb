@@ -495,12 +495,9 @@ static WebKitDOMElement *_makehintelm(
 	g_object_unref(area);
 
 	//hint
-	gchar *pre = g_strdup(text);
-	pre[len] = '\0';
-	gchar *ht = g_strdup_printf("%s<b>%s</b>", pre, text + len);
+	gchar *ht = g_strdup_printf("%s", text + len);
 	webkit_dom_element_set_inner_html(hint, ht, NULL);
 	g_free(ht);
-	g_free(pre);
 
 	static const gchar *hintstyle =
 //		"position: absolute;"
@@ -514,7 +511,7 @@ static WebKitDOMElement *_makehintelm(
 //		"border: 1px solid red;"
 		"border-radius: .3em;"
 		"opacity: 0.%s;"
-		"padding: .0em .2em 0em .12em;"
+		"padding: .0em .2em 0em .2em;"
 //		"font-weight: bold;"
 //		"font-weight: normal;"
 		"top: %s%d%s;"
