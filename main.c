@@ -172,52 +172,52 @@ typedef struct {
 	gchar *desc;
 } Conf;
 Conf dconf[] = {
-	{"main"    , "editor"       , MIMEOPEN,
+	{"all"   , "editor"       , MIMEOPEN,
 		"editor=xterm -e nano %s\n"
 		"editor=gvim --servername wyeb --remote-silent \"%s\""
 	},
-	{"main"    , "mdeditor"     , ""},
-	{"main"    , "diropener"    , MIMEOPEN},
-	{"main"    , "generator"    , "markdown %s"},
+	{"all"   , "mdeditor"     , ""},
+	{"all"   , "diropener"    , MIMEOPEN},
+	{"all"   , "generator"    , "markdown %s"},
 
-	{"main"    , "hintkeys"     , HINTKEYS},
-	{"main"    , "keybindswaps" , "",
+	{"all"   , "hintkeys"     , HINTKEYS},
+	{"all"   , "keybindswaps" , "",
 			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
 
-	{"main"    , "winwidth"     , "1000"},
-	{"main"    , "winheight"    , "1000"},
-	{"main"    , "zoom"         , "1.000"},
+	{"all"   , "winwidth"     , "1000"},
+	{"all"   , "winheight"    , "1000"},
+	{"all"   , "zoom"         , "1.000"},
 
-	{"main"    , "dlwinback"    , "false"},
-	{"main"    , "dlwinclosemsec","3000"},
-	{"main"    , "msgmsec"      , "400"},
+	{"all"   , "dlwinback"    , "false"},
+	{"all"   , "dlwinclosemsec","3000"},
+	{"all"   , "msgmsec"      , "400"},
 
-	{"main"    , "enablefavicon", "false",
-			"enablefavicon is set at boot only"},
-//	{"main"    , "configreload" , "true",
+	{"boot"  , "enablefavicon", "false"},
+	{"boot"  , "extensionargs", "adblock:true;"},
+//	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
 
-	{"search"  , "d"            , "https://duckduckgo.com/?q=%s"},
-	{"search"  , "g"            , "https://www.google.com/search?q=%s"},
-	{"search"  , "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
+	{"search", "d"            , "https://duckduckgo.com/?q=%s"},
+	{"search", "g"            , "https://www.google.com/search?q=%s"},
+	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
 	{"set:script", "enable-javascript", "true"},
 	{"set:image" , "auto-load-images" , "true"},
 
-	{DSET      , "search"           , "https://www.google.com/search?q=%s"},
-	{DSET      , "usercss"          , "user.css"},
-//	{DSET      , "loadsightedimages", "false"},
-	{DSET      , "reldomaindataonly", "false"},
-	{DSET      , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
-	{DSET      , "showblocked"      , "false"},
-	{DSET      , "mdlbtnlinkaction" , "openback"},
-	{DSET      , "mdlbtn2winlist"   , "false"},
-	{DSET      , "newwinhandle"     , "normal",
+	{DSET    , "search"           , "https://www.google.com/search?q=%s"},
+	{DSET    , "usercss"          , "user.css"},
+//	{DSET    , "loadsightedimages", "false"},
+	{DSET    , "reldomaindataonly", "false"},
+	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
+	{DSET    , "showblocked"      , "false"},
+	{DSET    , "mdlbtnlinkaction" , "openback"},
+	{DSET    , "mdlbtn2winlist"   , "false"},
+	{DSET    , "newwinhandle"     , "normal",
 			"newwinhandle=notnew | ignore | back | normal"},
-	{DSET      , "hjkl2allowkeys"   , "false",
+	{DSET    , "hjkl2allowkeys"   , "false",
 			"hjkl's default are scrolls, not allow keys"},
-	{DSET      , "linkformat"       , "[%.40s](%s)"},
-	{DSET      , "scriptdialog"     , "true"},
+	{DSET    , "linkformat"       , "[%.40s](%s)"},
+	{DSET    , "scriptdialog"     , "true"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -225,19 +225,19 @@ Conf dconf[] = {
 	//{DSET      , "enable-java"      , "false"},
 	//{DSET      , "enable-fullscreen", "false"},
 
-//	{"main"    , "nostorewebcontext", "false"}, //ephemeral
+//	{"all"    , "nostorewebcontext", "false"}, //ephemeral
 };
 static bool confbool(gchar *key)
-{ return g_key_file_get_boolean(conf, "main", key, NULL); }
+{ return g_key_file_get_boolean(conf, "all", key, NULL); }
 static gint confint(gchar *key)
-{ return g_key_file_get_integer(conf, "main", key, NULL); }
+{ return g_key_file_get_integer(conf, "all", key, NULL); }
 static gdouble confdouble(gchar *key)
-{ return g_key_file_get_double(conf, "main", key, NULL); }
+{ return g_key_file_get_double(conf, "all", key, NULL); }
 static gchar *confcstr(gchar *key)
 {//return is static string
 	static gchar *str = NULL;
 	g_free(str);
-	str = g_key_file_get_string(conf, "main", key, NULL);
+	str = g_key_file_get_string(conf, "all", key, NULL);
 	return str;
 }
 static gchar *getset(Win *win, gchar *key)
@@ -701,6 +701,7 @@ static void setprops(Win *win, GKeyFile *kf, gchar *group)
 		deps--;
 		g_free(setstr);
 	}
+	g_strfreev(sets);
 
 	//D(set props group: %s, group)
 	_kitprops(true, win->seto, kf, group);
@@ -1828,7 +1829,7 @@ static gchar *ke2name(GdkEventKey *ke)
 	guint key = ke->keyval;
 
 	gchar **swaps = g_key_file_get_string_list(
-			conf, "main", "keybindswaps", NULL, NULL);
+			conf, "all", "keybindswaps", NULL, NULL);
 
 	for (gchar **swap = swaps; *swap; swap++) {
 		if (!**swap || !*(*swap + 1)) continue;
@@ -3504,8 +3505,16 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 					WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 #endif
 
+			gchar **argv = g_key_file_get_string_list(
+					conf, "boot", "extensionargs", NULL, NULL);
+			gchar *args = g_strjoinv(";", argv);
+			g_strfreev(argv);
+			gchar *udata = g_strconcat(args, ";", fullname, NULL);
+			g_free(args);
+
 			webkit_web_context_set_web_extensions_initialization_user_data(
-					ctx, g_variant_new_string(fullname));
+					ctx, g_variant_new_string(udata));
+			g_free(udata);
 
 #if DEBUG
 			gchar *extdir = g_get_current_dir();
@@ -3520,8 +3529,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 			webkit_web_context_register_uri_scheme(
 					ctx, APP, schemecb, NULL, NULL);
 
-
-			if (confbool("enablefavicon"))
+			if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
 			{
 				gchar *favdir =
 					g_build_filename(g_get_user_cache_dir(), fullname, "favicon", NULL);
@@ -3549,7 +3557,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIGW(o, "notify::uri"          , notifycb  , win);
 	SIGW(o, "notify::estimated-load-progress", progcb, win);
 
-	if (confbool("enablefavicon"))
+	if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
 	{
 		SIGW(o, "notify::favicon"      , favcb     , win);
 		SIGW(o, "notify::uri"          , favclearcb, win);

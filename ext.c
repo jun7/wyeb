@@ -1221,7 +1221,8 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 		WebKitWebExtension *ex, const GVariant *v)
 {
-	fullname = g_strdup(g_variant_get_string((GVariant *)v, NULL));
+	const gchar *str = g_variant_get_string((GVariant *)v, NULL);
+	fullname = g_strdup(g_strrstr(str, ";") + 1);
 
 #if SHARED
 	ipcwatch("ext");
