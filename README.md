@@ -17,7 +17,7 @@ depends 'webkit2gtk' 'markdown' 'perl-file-mimeinfo' //on arch linux
 wyeb is inspired from dwb and luakit, so basically usage is similar to those.
 
 - Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor.
-- Settings per URI matched regular expression. And Ctrl + i/s switch setting set can be edited.
+- Settings per URI matched regular expression. **e** on a page adds URI to conf and opens. And another thing, Ctrl + i/s switch setting set can be edited.
 - Open actions. Most of actions assigned to keys are also can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
