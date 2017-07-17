@@ -353,7 +353,7 @@ static bool historycb(Win *win)
 {
 	if (win && !isin(wins, win)) return false;
 
-#define MAXSIZE 33333
+#define MAXSIZE 22222
 	static gchar *current = NULL;
 	static gint currenti = -1;
 	static gint logsize = 0;
