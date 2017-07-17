@@ -9,7 +9,7 @@ arch=('x86_64')
 conflicts=('wyeb')
 provides=('wyeb')
 license=('GPL')
-url="https://github.com/jun7/wyeb/wiki"
+url="https://github.com/jun7/wyeb"
 depends=('webkit2gtk' 'markdown' 'perl-file-mimeinfo')
 makedepends=('git')
 source=("git://github.com/jun7/wyeb.git#branch=$branch")

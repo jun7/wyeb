@@ -60,7 +60,9 @@ static void freepage(Page *page)
 
 	if (page->emitter) g_object_unref(page->emitter);
 
-	g_ptr_array_remove(pages, page);
+	// do not remove because we assume index == pageid
+	//g_ptr_array_remove(pages, page);
+
 	g_free(page);
 }
 

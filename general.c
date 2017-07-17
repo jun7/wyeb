@@ -26,7 +26,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
 
-#define SHARED 0
+#define SHARED 1
 
 #if DEBUG
 # define D(f, ...) g_print(#f"\n", __VA_ARGS__);
