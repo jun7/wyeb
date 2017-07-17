@@ -131,7 +131,7 @@ key:
 0 - (null)     : set                    : Use 'set:' + arg section of main.conf
 0 - (null)     : new                    : 
 0 - (null)     : newclipboard           : Open [arg + ' ' +] clipboard text
-                                          in new window.
+                                          in a new window.
 0 - (null)     : newselection           : Open [arg + ' ' +] selection ...
 0 - (null)     : newsecondary           : Open [arg + ' ' +] secondaly ...
 0 - (null)     : findclipboard          : 
