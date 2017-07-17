@@ -75,21 +75,26 @@ key:
 0 - i          : toinsert               : 
 0 - I          : toinsertinput          : To Insert Mode with focus of first input
 0 - f          : tohint                 : 
-4 - F          : tohintopen             : 
 0 - F          : tohintnew              : 
-4 - f          : tohintback             : 
+0 - t          : tohintback             : 
+0 - T          : tohintbookmark         : 
 0 - d          : tohintdl               : dl is Download
-0 - B          : tohintbookmark         : 
 0 - D          : showdldir              : 
 0 - y          : yankuri                : Clipboard
 0 - b          : bookmark               : 
-4 - b          : bookmarkbreak          : Add line break to the main page
+0 - B          : bookmarkbreak          : Add line break to the main page
 0 - q          : quit                   : 
 0 - Q          : quitall                : 
 0 - j          : scrolldown             : 
 0 - k          : scrollup               : 
 0 - h          : scrollleft             : 
 0 - l          : scrollright            : 
+4 - j          : arrowdown              : 
+4 - k          : arrowup                : 
+4 - h          : arrowleft              : 
+4 - l          : arrowright             : 
+4 - f          : pagedown               : 
+4 - b          : pageup                 : 
 0 - g          : top                    : 
 0 - G          : bottom                 : 
 0 - plus       : zoomin                 : 
@@ -112,7 +117,7 @@ key:
 0 - O          : edituri                : 
 0 - W          : editurinew             : 
 0 - colon      : showhelp               : 
-4 - h          : showhistory            : 
+0 - M          : showhistory            : 
 0 - m          : showmainpage           : 
 4 - C          : clearallwebsitedata    : 
 0 - e          : edit                   : 
@@ -121,8 +126,8 @@ key:
 4 - s          : setscript              : Use the 'set:script' section
 4 - i          : setimage               : set:image
 0 - u          : unset                  : 
-0 - a          : addwhitelist           : URIs blocked by reldomain limitation and
-                                          black list are added to whiteblack.txt
+0 - a          : addwhitelist           : URIs blocked by reldomain limitation
+                                          and black list are added to whiteblack.conf
 0 - A          : addblacklist           : URIs loaded
 0 - (null)     : set                    : Use 'set:' + arg section of main.conf
 0 - (null)     : new                    : 
@@ -132,6 +137,7 @@ key:
 0 - (null)     : newsecondary           : Open [arg + ' ' +] secondaly ...
 0 - (null)     : findclipboard          : 
 0 - (null)     : findsecondary          : 
+0 - (null)     : tohintopen             : 
 0 - (null)     : openback               : 
 0 - (null)     : download               : 
 0 - (null)     : bookmarkthis           : 
@@ -140,7 +146,7 @@ key:
 0 - (null)     : tohintcallback         : arg is called with environment variables
                                           selected by hint.
 0 - (null)     : sourcecallback         : 
-0 - t          : test                   : 
+
 
 </pre>
 <hr>

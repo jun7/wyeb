@@ -1715,12 +1715,14 @@ static Keybind dkeys[]= {
 	{"tonormal"      , GDK_KEY_Escape, 0, "To Normal Mode"},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
-//normal /'pxvz' are left
+//normal /'pvz' are left
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
+	{"tohintback"    , 't', 0},
+	{"tohintbookmark", 'T', 0},
 	{"tohintdl"      , 'd', 0, "dl is Download"},
 
 	{"showdldir"     , 'D', 0},
@@ -1737,10 +1739,11 @@ static Keybind dkeys[]= {
 	{"scrollup"      , 'k', 0},
 	{"scrollleft"    , 'h', 0},
 	{"scrollright"   , 'l', 0},
-	//{"arrowdown"     , 'j', GDK_CONTROL_MASK},
-	//{"arrowup"       , 'k', GDK_CONTROL_MASK},
-	//{"arrowleft"     , 'h', GDK_CONTROL_MASK}, //history
-	//{"arrowright"    , 'l', GDK_CONTROL_MASK},
+	{"arrowdown"     , 'j', GDK_CONTROL_MASK},
+	{"arrowup"       , 'k', GDK_CONTROL_MASK},
+	{"arrowleft"     , 'h', GDK_CONTROL_MASK},
+	{"arrowright"    , 'l', GDK_CONTROL_MASK},
+
 	{"pagedown"      , 'f', GDK_CONTROL_MASK},
 	{"pageup"        , 'b', GDK_CONTROL_MASK},
 
@@ -1773,7 +1776,7 @@ static Keybind dkeys[]= {
 
 //	{"showsource"    , 'S', 0}, //not good
 	{"showhelp"      , ':', 0},
-	{"showhistory"   , 'h', GDK_CONTROL_MASK},
+	{"showhistory"   , 'M', 0},
 	{"showmainpage"  , 'm', 0},
 
 	{"clearallwebsitedata", 'C', GDK_CONTROL_MASK},
@@ -1801,16 +1804,15 @@ static Keybind dkeys[]= {
 	{"findclipboard" , 0, 0},
 	{"findsecondary" , 0, 0},
 
-	{"tohintbookmark", 0, 0},
 	{"tohintopen"    , 0, 0},
-	{"tohintback"    , 0, 0},
 	{"openback"      , 0, 0},
 
 	{"download"      , 0, 0},
 	{"bookmarkthis"  , 0, 0},
 	{"bookmarklinkor", 0, 0},
 	{"showmsg"       , 0, 0},
-	{"tohintcallback", 0, 0, "arg is called with environment variables selected by hint."},
+	{"tohintcallback", 0, 0,
+		"arg is called with environment variables selected by hint."},
 	{"sourcecallback", 0, 0},
 //	{"headercallback"  , 0, 0}, //todo
 
@@ -1819,8 +1821,6 @@ static Keybind dkeys[]= {
 //	{"windowlist"    , 0, 0}, //=>pageid uri title
 //	{"present"       , 0, 0}, //pageid
 
-//test
-	{"test"          , 't', 0},
 };
 static gchar *ke2name(GdkEventKey *ke)
 {
@@ -1885,6 +1885,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		case Mhintnew:
 			action = "opennew"     ; break;
 		case Mhintback:
+			showmsg(win, "Opened");
 			action = "openback"    ; break;
 		case Mhintdl:
 			action = "download"    ; break;
@@ -1969,18 +1970,15 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("quit"        , gtk_widget_destroy(win->winw); return false)
 	Z("quitall"     , quitif(true))
 
-	if (getsetbool(win, "hjkl2allowkeys"))
-	{
-		Z("scrolldown"  , sendkey(win, GDK_KEY_Down))
-		Z("scrollup"    , sendkey(win, GDK_KEY_Up))
-		Z("scrollleft"  , sendkey(win, GDK_KEY_Left))
-		Z("scrollright" , sendkey(win, GDK_KEY_Right))
-	} else {
-		Z("scrolldown"  , scroll(win, 0, 1))
-		Z("scrollup"    , scroll(win, 0, -1))
-		Z("scrollleft"  , scroll(win, -1, 0))
-		Z("scrollright" , scroll(win, 1, 0))
-	}
+	bool arrow = getsetbool(win, "hjkl2allowkeys");
+	Z(arrow ? "scrolldown"  : "arrowdown" , sendkey(win, GDK_KEY_Down))
+	Z(arrow ? "scrollup"    : "arrowup"   , sendkey(win, GDK_KEY_Up))
+	Z(arrow ? "scrollleft"  : "arrowleft" , sendkey(win, GDK_KEY_Left))
+	Z(arrow ? "scrollright" : "arrowright", sendkey(win, GDK_KEY_Right))
+	Z(arrow ? "arrowdown"  : "scrolldown" , scroll(win, 0, 1))
+	Z(arrow ? "arrowup"    : "scrollup"   , scroll(win, 0, -1))
+	Z(arrow ? "arrowleft"  : "scrollleft" , scroll(win, -1, 0))
+	Z(arrow ? "arrowright" : "scrollright", scroll(win, 1, 0))
 
 	Z("pagedown"    , sendkey(win, GDK_KEY_Page_Down))
 	Z("pageup"      , sendkey(win, GDK_KEY_Page_Up))
@@ -2098,8 +2096,6 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));
 	)
 //	Z("headercallback",)
-
-	Z("test"  , )
 
 	if (win->mode == Minsert)
 		Z("editor", )//todo
