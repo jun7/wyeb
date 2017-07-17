@@ -626,9 +626,10 @@ static void rmhint(Page *page)
 	for (GSList *next = page->aplist; next; next = next->next)
 	{
 		if (page->apnode == node)
+		{
 			webkit_dom_node_remove_child(page->apnode, next->data, NULL);
-
-		g_object_unref(next->data);
+			g_object_unref(next->data);
+		}
 	}
 
 	g_slist_free(page->aplist);
@@ -896,7 +897,7 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 //							0,       //glong detail,
 //							0,       //glong screenX,
 //							0,       //glong screenY,
-//					  		//glong clientX,
+//							//glong clientX,
 //							webkit_dom_element_get_client_left(elm->elm) + 1,
 //							//glong clientY,
 //							webkit_dom_element_get_client_top(elm->elm) + 1,
@@ -965,7 +966,6 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 		{
 			ret = true;
 			WebKitDOMElement *ne = makehintelm(doc, elm, key, iplen);
-
 			webkit_dom_node_append_child(page->apnode, (WebKitDOMNode *)ne, NULL);
 			page->aplist = g_slist_prepend(page->aplist, ne);
 		}
