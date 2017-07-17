@@ -625,6 +625,7 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 			//D(change value %s, key)
 			g_object_set_property(obj, key, &gv);
 		}
+		g_value_unset(&gv);
 	}
 }
 static void checkconf(bool monitor); //declaration
