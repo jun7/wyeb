@@ -24,7 +24,7 @@ For example, context-menu items we added are just shell scripts.
 - [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
 - No tab. But keys J/K/x or button actions.
 - Focused history. Instead of loaded history.
-- Misc. monitored conf files, saved search word for find, related domain only loading, new window with clipboard text, hinting for callback script.
+- Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time a lot and not controllable.
 
 ### Usage:
