@@ -1720,17 +1720,14 @@ static Keybind dkeys[]= {
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 
 	{"tohint"        , 'f', 0},
-	{"tohintopen"    , 'F', GDK_CONTROL_MASK},
 	{"tohintnew"     , 'F', 0},
-	{"tohintback"    , 'f', GDK_CONTROL_MASK},
 	{"tohintdl"      , 'd', 0, "dl is Download"},
-	{"tohintbookmark", 'B', 0},
 
 	{"showdldir"     , 'D', 0},
 
 	{"yankuri"       , 'y', 0, "Clipboard"},
 	{"bookmark"      , 'b', 0},
-	{"bookmarkbreak" , 'b', GDK_CONTROL_MASK, "Add line break to the main page"},
+	{"bookmarkbreak" , 'B', 0, "Add line break to the main page"},
 
 	{"quit"          , 'q', 0},
 	{"quitall"       , 'Q', 0},
@@ -1744,6 +1741,8 @@ static Keybind dkeys[]= {
 	//{"arrowup"       , 'k', GDK_CONTROL_MASK},
 	//{"arrowleft"     , 'h', GDK_CONTROL_MASK}, //history
 	//{"arrowright"    , 'l', GDK_CONTROL_MASK},
+	{"pagedown"      , 'f', GDK_CONTROL_MASK},
+	{"pageup"        , 'b', GDK_CONTROL_MASK},
 
 	{"top"           , 'g', 0},
 	{"bottom"        , 'G', 0},
@@ -1801,7 +1800,12 @@ static Keybind dkeys[]= {
 	{"newsecondary"  , 0, 0, "Open [arg + ' ' +] secondaly ..."},
 	{"findclipboard" , 0, 0},
 	{"findsecondary" , 0, 0},
+
+	{"tohintbookmark", 0, 0},
+	{"tohintopen"    , 0, 0},
+	{"tohintback"    , 0, 0},
 	{"openback"      , 0, 0},
+
 	{"download"      , 0, 0},
 	{"bookmarkthis"  , 0, 0},
 	{"bookmarklinkor", 0, 0},
@@ -1977,6 +1981,10 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		Z("scrollleft"  , scroll(win, -1, 0))
 		Z("scrollright" , scroll(win, 1, 0))
 	}
+
+	Z("pagedown"    , sendkey(win, GDK_KEY_Page_Down))
+	Z("pageup"      , sendkey(win, GDK_KEY_Page_Up))
+
 
 	Z("top"         , sendkey(win, GDK_KEY_Home))
 	Z("bottom"      , sendkey(win, GDK_KEY_End))
