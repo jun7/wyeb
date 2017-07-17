@@ -3,7 +3,6 @@
 [Screenshot](https://github.com/jun7/wyeb/wiki/img/screenshot.png)
 
 ### Todo
-- adblock //I use reldomaindataonly though
 - Waiting for Webkit2gtk version 2.18 to get correct rects of elements
 
 ### Installation
@@ -26,7 +25,7 @@ For example, context-menu items we added are just shell scripts.
 - No tab. But keys J/K/x or button actions.
 - Focused history. Instead of loaded history.
 - Misc. monitored conf files, saved search word for find, related domain only loading, new window with clipboard text, hinting for callback script.
-
+- [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time a lot and not controllable.
 
 ### Usage:
 <pre>
