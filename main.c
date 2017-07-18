@@ -2706,9 +2706,9 @@ static void favcb(Win *win)
 		gtk_window_set_icon(win->win, pix);
 		g_object_unref(pix);
 	}
+	else
+		gtk_window_set_icon(win->win, NULL);
 }
-static void favclearcb(Win *win)
-{ gtk_window_set_icon(win->win, NULL); }
 
 //static void soupMessageHeadersForeachFunc(const char *name,
 //                                  const char *value,
@@ -3138,7 +3138,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
-		favcb(win);
 		addhistory(win);
 		break;
 	}
@@ -3560,10 +3559,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	SIGW(o, "notify::estimated-load-progress", progcb, win);
 
 	if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
-	{
 		SIGW(o, "notify::favicon"      , favcb     , win);
-		SIGW(o, "notify::uri"          , favclearcb, win);
-	}
+
 //	SIG( o, "resource-load-started", resloadcb, win);
 
 	SIG( o, "key-press-event"      , keycb     , win);
