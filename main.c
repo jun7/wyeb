@@ -294,6 +294,7 @@ static gchar *mainmdstr =
 "<div class=links style=line-height:1.4;>\n"
 "\n"
 "[WYEBrowser](https://github.com/jun7/wyeb)\n"
+"[WYEBAdblock](https://github.com/jun7/wyebadblock)\n"
 "[Arch Linux](https://www.archlinux.org/)\n"
 "[dwb - ArchWiki](https://wiki.archlinux.org/index.php/dwb)\n"
 ;

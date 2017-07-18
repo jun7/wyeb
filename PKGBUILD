@@ -1,18 +1,15 @@
 # Maintainer: jun7 <jun7@hush.com>
-
-pkgname=wyeb
+pkgname=wyeb-git
 pkgver=1.1
 pkgrel=1
-branch=master
 pkgdesc="A vim-like keybind webkit2gtk browser which focused to be simple."
 arch=('x86_64')
-conflicts=('wyeb')
-provides=('wyeb')
-license=('GPL')
 url="https://github.com/jun7/wyeb"
+license=('GPL3')
 depends=('webkit2gtk' 'markdown' 'perl-file-mimeinfo')
 makedepends=('git')
-source=("git://github.com/jun7/wyeb.git#branch=$branch")
+_branch=master
+source=("git://github.com/jun7/wyeb.git#branch=$_branch")
 md5sums=('SKIP')
 
 pkgver(){
@@ -22,7 +19,7 @@ pkgver(){
 
 prepare() {
 	cd "$srcdir/wyeb"
-	git pull --rebase origin $branch
+	git pull --rebase origin $_branch
 }
 
 build() {
@@ -33,7 +30,7 @@ build() {
 package() {
 	cd "$srcdir/wyeb"
 	install -Dm755 wyeb   "$pkgdir/usr/bin/wyeb"
-	install -Dm755 ext.so   "$pkgdir/usr/share/wyebrowser/ext.so"
+	install -Dm755 ext.so   "$pkgdir/usr/lib/wyebrowser/ext.so"
 	install -Dm644 wyeb.png   "$pkgdir/usr/share/pixmaps/wyeb.png"
 	install -Dm644 wyeb.desktop "$pkgdir/usr/share/applications/wyeb.desktop"
 }
