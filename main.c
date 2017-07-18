@@ -250,14 +250,14 @@ static bool getsetbool(Win *win, gchar *key)
 }
 
 static gchar *usage =
-	"Usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
+	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"  suffix: Process ID.\n"
 	"    It added to all directories conf, cache and etc.\n"
 	"  action: Such as new(default), open, opennew ...\n"
 	"    Except 'new' and some, actions are sent to a window last focused.\n"
 	;
 
-static gchar *mainmdstr = 
+static gchar *mainmdstr =
 "<!-- this is text/markdown -->\n"
 "<meta charset=utf8>\n"
 "Key:\n"
@@ -2587,6 +2587,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 	if (g_str_has_prefix(path, "help")) {
 		data = g_strdup_printf(
 			"<pre style=\"font-size: large\">\n"
+			"%s\n"
 			"mouse:\n"
 			"  rocker gesture:\n"
 			"    left press and       -        right: back\n"
@@ -2619,7 +2620,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"key:\n"
 			"#%d - is ctrl\n"
 			"#(null) is only for script\n"
-			, GDK_CONTROL_MASK);
+			, usage, GDK_CONTROL_MASK);
 
 		for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
 		{
