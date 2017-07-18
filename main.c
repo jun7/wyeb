@@ -1435,9 +1435,9 @@ static void nextwin(Win *win, bool next)
 	{
 		g_ptr_array_remove(wins, win);
 		g_ptr_array_add(wins, win);
-		gdk_window_lower(gtk_widget_get_window(win->winw));
-
+		//present first to keep focus on xfce
 		gtk_window_present(((Win *)dwins->pdata[1])->win);
+		gdk_window_lower(gtk_widget_get_window(win->winw));
 	}
 	else
 	{
