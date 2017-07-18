@@ -3138,6 +3138,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
+		favcb(win);
 		addhistory(win);
 		break;
 	}
