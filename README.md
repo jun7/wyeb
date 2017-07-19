@@ -14,7 +14,7 @@ depends 'webkit2gtk' 'markdown' 'perl-file-mimeinfo' //on arch linux
 	make install
 
 ### Features
-wyeb is inspired from dwb and luakit, so basically usage is similar to those.
+wyeb is inspired by dwb and luakit, so basically usage is similar to those.
 
 - Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor. As this all settings are thrown to editor.
 - Settings per URI matched regular expression. **e** on a page adds URI to conf and opens. And another thing, Ctrl + i/s switch setting set can be edited.

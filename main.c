@@ -272,7 +272,7 @@ static gchar *mainmdstr =
 "If you haven't any gui editor or filer, set them like 'xterm -e nano %s'.\n"
 "\n"
 "For other keys, see [help](wyeb:help) assigned '**:**'.\n"
-"Since this application is inspired from dwb and luakit,\n"
+"Since this application is inspired by dwb and luakit,\n"
 "usage is similar to those,\n"
 "\n"
 "<form style=display:inline method=get "
@@ -836,7 +836,7 @@ static void getdconf(GKeyFile *kf, bool isnew)
 			"preferential order of sections: Last > First > 'set;'"
 			, NULL);
 
-	sample = "uri:^foo|a-zA-Z0-9*";
+	sample = "uri:^foo|a-zA-Z0-9|*";
 
 	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
 	g_key_file_set_comment(conf, sample, "reg",
