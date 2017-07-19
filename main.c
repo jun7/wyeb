@@ -191,7 +191,7 @@ Conf dconf[] = {
 	{"all"   , "dlwinback"    , "false"},
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "400"},
-	{"all"   , "ignoretlserrs", "false"},
+	{"all"   , "ignoretlserrs", "true"},
 
 	{"boot"  , "enablefavicon", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
@@ -3160,12 +3160,10 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 static bool loadfailtlcb(Win *win)
 {
 	if (confbool("ignoretlserrs"))
-	{
-		showmsg(win, "TLS Error");
-		return true;
-	}
-	else
 		return false;
+
+	showmsg(win, "TLS Error");
+	return true;
 }
 
 //@contextmenu
@@ -3556,6 +3554,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 				webkit_web_context_set_favicon_database_directory(ctx, favdir);
 				g_free(favdir);
 			}
+
+			webkit_web_context_set_tls_errors_policy(ctx,
+					WEBKIT_TLS_ERRORS_POLICY_FAIL);
 		}
 
 		//win->kitw = webkit_web_view_new_with_context(ctx);
