@@ -828,17 +828,17 @@ static void getdconf(GKeyFile *kf, bool isnew)
 	//sample and comment
 	g_key_file_set_comment(conf, "set;", NULL, "Default of 'set's.", NULL);
 
-	const gchar *sample = "uri:^https?://(www\\.)?google\\..*";
+	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
 
-	g_key_file_set_boolean(conf, sample, "enable-javascript", false);
+	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
 	g_key_file_set_comment(conf, sample, NULL,
 			"After 'uri:' is regular expressions for 'set'.\n"
 			"preferential order of sections: Last > First > 'set;'"
 			, NULL);
 
-	sample = "uri:^a-zA-Z0-9*";
+	sample = "uri:^foo|a-zA-Z0-9*";
 
-	g_key_file_set_string(conf, sample, "reg", "^[^a-zA-Z0-9]*$");
+	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
 	g_key_file_set_comment(conf, sample, "reg",
 			"Use reg if a regular expression has []."
 			, NULL);
