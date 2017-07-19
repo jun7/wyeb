@@ -354,13 +354,11 @@ static void showwhite(Page *page, bool white)
 	send(page, "openeditor", wbpath);
 }
 
-static gchar    *tlpath = NULL;
-static __time_t  tltime = 0;
 //textlink
-static Page *tlpage = NULL;
+static gchar *tlpath = NULL;
+static Page  *tlpage = NULL;
 static WebKitDOMElement *tldoc;
 static WebKitDOMHTMLTextAreaElement *tlelm;
-
 static void textlinkcheck(bool monitor)
 {
 	if (!tlpage || tlpage->removed) return;
