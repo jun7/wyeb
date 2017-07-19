@@ -128,6 +128,7 @@ key:
 0 - a          : addwhitelist           : URIs blocked by reldomain limitation
                                           and black list are added to whiteblack.conf
 0 - A          : addblacklist           : URIs loaded
+4 - e          : textlink               : For textarea in insert mode
 0 - (null)     : set                    : Use 'set:' + arg section of main.conf
 0 - (null)     : new                    : 
 0 - (null)     : newclipboard           : Open [arg + ' ' +] clipboard text

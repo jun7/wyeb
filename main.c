@@ -1797,7 +1797,7 @@ static Keybind dkeys[]= {
 	{"addblacklist"  , 'A', 0, "URIs loaded"},
 
 //insert
-	{"textlink"      , 'e', GDK_CONTROL_MASK},
+	{"textlink"      , 'e', GDK_CONTROL_MASK, "For textarea in insert mode"},
 
 //nokey
 	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf"},
