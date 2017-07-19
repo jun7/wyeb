@@ -191,6 +191,7 @@ Conf dconf[] = {
 	{"all"   , "dlwinback"    , "false"},
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "400"},
+	{"all"   , "ignoretlserrs", "false"},
 
 	{"boot"  , "enablefavicon", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
@@ -2755,7 +2756,19 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 
 	if (win->mode == Minsert)
+	{
+		if (ek->state & GDK_CONTROL_MASK &&
+				(ek->keyval == GDK_KEY_z || ek->keyval == GDK_KEY_Z))
+		{
+			if (ek->state & GDK_SHIFT_MASK)
+				webkit_web_view_execute_editing_command(win->kit, "Redo");
+			else
+				webkit_web_view_execute_editing_command(win->kit, "Undo");
+
+			return true;
+		}
 		return false;
+	}
 
 	if (win->mode & Mhint)
 	{
@@ -3146,8 +3159,13 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 static bool loadfailtlcb(Win *win)
 {
-	DD(load fail tls)
-	return false;
+	if (confbool("ignoretlserrs"))
+	{
+		showmsg(win, "TLS Error");
+		return true;
+	}
+	else
+		return false;
 }
 
 //@contextmenu
