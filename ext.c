@@ -31,11 +31,14 @@ static gchar *fullname = "";
 #endif
 
 typedef struct {
+	bool           removed;
 	WebKitWebPage *kit;
 	gchar         *id;
+
 	GSList        *aplist;
 	WebKitDOMNode *apnode;
 	gchar         *apkeys;
+
 	gchar          lasttype;
 	gchar         *lasthintkeys;
 	bool           showblocked;
@@ -50,6 +53,8 @@ static GPtrArray *pages = NULL;
 
 static void freepage(Page *page)
 {
+	page->removed = true;
+
 	g_free(page->id);
 	g_slist_free(page->aplist);
 	g_free(page->apkeys);
@@ -352,6 +357,58 @@ static void showwhite(Page *page, bool white)
 	send(page, "openeditor", wbpath);
 }
 
+static gchar    *tlpath = NULL;
+static __time_t  tltime = 0;
+//textlink
+static Page *tlpage = NULL;
+static WebKitDOMElement *tldoc;
+static WebKitDOMHTMLTextAreaElement *tlelm;
+
+static void textlinkcheck(bool monitor)
+{
+	if (!tlpage || tlpage->removed) return;
+	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(tlpage->kit);
+	if (tldoc != webkit_dom_document_get_document_element(doc)) return;
+
+	GIOChannel *io = g_io_channel_new_file(tlpath, "r", NULL);
+	gchar *text;
+	g_io_channel_read_to_end(io, &text, NULL, NULL);
+	g_io_channel_unref(io);
+
+	webkit_dom_html_text_area_element_set_value(tlelm, text);
+	g_free(text);
+}
+static void textlinkon(Page *page)
+{
+	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
+	gchar *tag = webkit_dom_element_get_tag_name(te);
+	bool ist = strcmp(tag, "TEXTAREA") == 0;
+	g_free(tag);
+	if (!ist)
+	{
+		send(page, "showmsg", "Not textare");
+		return;
+	}
+
+	if (!tlpath)
+	{
+		tlpath = g_build_filename(
+			g_get_user_data_dir(), fullname, "textlink.txt", NULL);
+		monitor(tlpath, textlinkcheck);
+	}
+	tlpage = page;
+	tldoc = webkit_dom_document_get_document_element(doc);
+	tlelm = (WebKitDOMHTMLTextAreaElement *)te;
+
+	gchar *text = webkit_dom_html_text_area_element_get_value(tlelm);
+	GIOChannel *io = g_io_channel_new_file(tlpath, "w", NULL);
+	g_io_channel_write_chars(io, text, -1, NULL, NULL);
+	g_io_channel_unref(io);
+	g_free(text);
+
+	send(page, "openeditor", tlpath);
+}
 
 //static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
 //static void loadcb(WebKitWebPage *wp, gpointer p) {}
@@ -1189,6 +1246,13 @@ void ipccb(const gchar *line)
 
 	case Cwhite:
 		showwhite(page, strcmp(arg, "white") == 0 ? true : false );
+		break;
+
+	case Ctlon:
+		textlinkon(page);
+		break;
+	case Ctlcheck:
+		textlinkcheck(false);
 		break;
 
 	case Cfree:

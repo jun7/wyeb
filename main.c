@@ -1797,7 +1797,7 @@ static Keybind dkeys[]= {
 	{"addblacklist"  , 'A', 0, "URIs loaded"},
 
 //insert
-//	{"editor"        , 'e', GDK_CONTROL_MASK},
+	{"textlink"      , 'e', GDK_CONTROL_MASK},
 
 //nokey
 	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf"},
@@ -2101,8 +2101,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	)
 //	Z("headercallback",)
 
-	if (win->mode == Minsert)
-		Z("editor", )//todo
+	Z("textlink", send(win, Ctlon, NULL));
 
 	D(Not Yet! %s, action)
 	return false;
@@ -2193,7 +2192,10 @@ static bool focuscb(Win *win)
 	g_ptr_array_insert(wins, 0, win);
 	checkconf(false);
 	if (!webkit_web_view_is_loading(win->kit))
+	{
 		addhistory(win);
+		send(win, Ctlcheck, NULL);
+	}
 	return false;
 }
 static bool focusoutcb(Win *win)
@@ -2754,7 +2756,6 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		tonormal(win);
 	}
 
-
 	if (win->mode == Minsert)
 	{
 		if (ek->state & GDK_CONTROL_MASK &&
@@ -2767,6 +2768,9 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 			return true;
 		}
+		if (action && strcmp(action, "textlink") == 0)
+			return run(win, action, NULL);
+
 		return false;
 	}
 

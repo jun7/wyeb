@@ -26,6 +26,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
 
+//currently textlink supports shared only
 #define SHARED 1
 
 #if DEBUG
@@ -65,6 +66,8 @@ typedef enum {
 	Cblur   = 'b',
 	Crm     = 'r',
 	Cwhite  = 'w',
+	Ctlon   = 'n',
+	Ctlcheck= 'h',
 
 	Cfree   = 'f',
 } Coms;
@@ -142,7 +145,7 @@ static void prepareif(
 
 	GFile *gf = g_file_new_for_path(*path);
 
-	GFileOutputStream *o  = g_file_create(
+	GFileOutputStream *o = g_file_create(
 			gf, G_FILE_CREATE_PRIVATE, NULL, NULL);
 	g_output_stream_write((GOutputStream *)o,
 			initstr, strlen(initstr), NULL, NULL);
