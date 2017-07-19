@@ -191,7 +191,7 @@ Conf dconf[] = {
 	{"all"   , "dlwinback"    , "false"},
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "400"},
-	{"all"   , "ignoretlserrs", "true"},
+	{"all"   , "ignoretlserr" , "true"},
 
 	{"boot"  , "enablefavicon", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
@@ -3159,7 +3159,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 static bool loadfailtlcb(Win *win)
 {
-	if (confbool("ignoretlserrs"))
+	if (confbool("ignoretlserr"))
 		return false;
 
 	showmsg(win, "TLS Error");
