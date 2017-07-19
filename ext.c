@@ -33,7 +33,7 @@ static gchar *fullname = "";
 typedef struct {
 	bool           removed;
 	WebKitWebPage *kit;
-	gchar         *id;
+	guint64        id;
 
 	GSList        *aplist;
 	WebKitDOMNode *apnode;
@@ -55,7 +55,6 @@ static void freepage(Page *page)
 {
 	page->removed = true;
 
-	g_free(page->id);
 	g_slist_free(page->aplist);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
@@ -65,9 +64,7 @@ static void freepage(Page *page)
 
 	if (page->emitter) g_object_unref(page->emitter);
 
-	// do not remove because we assume index == pageid
-	//g_ptr_array_remove(pages, page);
-
+	g_ptr_array_remove(pages, page);
 	g_free(page);
 }
 
@@ -119,7 +116,7 @@ static const gchar *inottext[] = {
 //misc
 static void send(Page *page, gchar *action, const gchar *arg)
 {
-	gchar *ss = g_strconcat(page->id, ":", action, ":", arg, NULL);
+	gchar *ss = g_strdup_printf("%d:%s:%s", page->id, action, arg);
 	//D(send to main %s, ss)
 	ipcsend("main", ss);
 	g_free(ss);
@@ -1186,9 +1183,12 @@ void ipccb(const gchar *line)
 
 	Page *page;
 #if SHARED
-		page = pages->pdata[atoi(args[0]) - 1];
+	long lid = atol(args[0]);
+	for (int i = 0; i < pages->len; i++)
+		if (((Page *)pages->pdata[i])->id == lid)
+			page = pages->pdata[i];
 #else
-		page = *pages->pdata;
+	page = *pages->pdata;
 #endif
 
 	gchar type = *args[1];
@@ -1268,12 +1268,15 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 {
 	Page *page = g_new0(Page, 1);
 	page->kit = wp;
-	page->id = g_strdup_printf("%lu", webkit_web_page_get_id(wp));
+	page->id = webkit_web_page_get_id(wp);
 	g_ptr_array_add(pages, page);
+
 
 	setwblist(false);
 #if ! SHARED
-	ipcwatch(page->id);
+	gchar *tmp = g_strdup_printf("%lu", page->id);
+	ipcwatch(tmp);
+	g_free(tmp);
 #endif
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
@@ -1285,6 +1288,8 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 		WebKitWebExtension *ex, const GVariant *v)
 {
+DD(initialize!!!!!!!!!!)
+
 	const gchar *str = g_variant_get_string((GVariant *)v, NULL);
 	fullname = g_strdup(g_strrstr(str, ";") + 1);
 
