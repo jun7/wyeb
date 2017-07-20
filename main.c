@@ -2125,78 +2125,6 @@ out:
 
 
 //@win and cbs:
-
-//static void eventname(GdkEvent *e, gchar *str)
-//{
-//	static int motion = 0;
-//	if (e->type == GDK_MOTION_NOTIFY)
-//		motion++;
-//	else
-//		motion = 0;
-//
-//	if (motion > 2) return;
-//
-//	D("%s", str)
-//
-//	DENUM(e->type, GDK_NOTHING                     )
-//	DENUM(e->type, GDK_DELETE                      )
-//	DENUM(e->type, GDK_DESTROY                     )
-//	DENUM(e->type, GDK_EXPOSE                      )
-//	DENUM(e->type, GDK_MOTION_NOTIFY               )
-//	DENUM(e->type, GDK_BUTTON_PRESS                )
-//	DENUM(e->type, GDK_2BUTTON_PRESS               )
-//	DENUM(e->type, GDK_DOUBLE_BUTTON_PRESS         )
-//	DENUM(e->type, GDK_3BUTTON_PRESS               )
-//	DENUM(e->type, GDK_TRIPLE_BUTTON_PRESS         )
-//	DENUM(e->type, GDK_BUTTON_RELEASE              )
-//	DENUM(e->type, GDK_KEY_PRESS                   )
-//	DENUM(e->type, GDK_KEY_RELEASE                 )
-//	DENUM(e->type, GDK_ENTER_NOTIFY                )
-//	DENUM(e->type, GDK_LEAVE_NOTIFY                )
-//	DENUM(e->type, GDK_FOCUS_CHANGE                )
-//	DENUM(e->type, GDK_CONFIGURE                   )
-//	DENUM(e->type, GDK_MAP                         )
-//	DENUM(e->type, GDK_UNMAP                       )
-//	DENUM(e->type, GDK_PROPERTY_NOTIFY             )
-//	DENUM(e->type, GDK_SELECTION_CLEAR             )
-//	DENUM(e->type, GDK_SELECTION_REQUEST           )
-//	DENUM(e->type, GDK_SELECTION_NOTIFY            )
-//	DENUM(e->type, GDK_PROXIMITY_IN                )
-//	DENUM(e->type, GDK_PROXIMITY_OUT               )
-//	DENUM(e->type, GDK_DRAG_ENTER                  )
-//	DENUM(e->type, GDK_DRAG_LEAVE                  )
-//	DENUM(e->type, GDK_DRAG_MOTION                 )
-//	DENUM(e->type, GDK_DRAG_STATUS                 )
-//	DENUM(e->type, GDK_DROP_START                  )
-//	DENUM(e->type, GDK_DROP_FINISHED               )
-//	DENUM(e->type, GDK_CLIENT_EVENT                )
-//	DENUM(e->type, GDK_VISIBILITY_NOTIFY           )
-//	DENUM(e->type, GDK_SCROLL                      )
-//	DENUM(e->type, GDK_WINDOW_STATE                )
-//	DENUM(e->type, GDK_SETTING                     )
-//	DENUM(e->type, GDK_OWNER_CHANGE                )
-//	DENUM(e->type, GDK_GRAB_BROKEN                 )
-//	DENUM(e->type, GDK_DAMAGE                      )
-//	DENUM(e->type, GDK_TOUCH_BEGIN                 )
-//	DENUM(e->type, GDK_TOUCH_UPDATE                )
-//	DENUM(e->type, GDK_TOUCH_END                   )
-//	DENUM(e->type, GDK_TOUCH_CANCEL                )
-//	DENUM(e->type, GDK_TOUCHPAD_SWIPE              )
-//	DENUM(e->type, GDK_TOUCHPAD_PINCH              )
-//	DENUM(e->type, GDK_PAD_BUTTON_PRESS            )
-//	DENUM(e->type, GDK_PAD_BUTTON_RELEASE          )
-//	DENUM(e->type, GDK_PAD_RING                    )
-//	DENUM(e->type, GDK_PAD_STRIP                   )
-//	DENUM(e->type, GDK_PAD_GROUP_MODE              )
-//	DENUM(e->type, GDK_EVENT_LAST                  )
-//
-//}
-//static gboolean eventwcb(GtkWidget *w, GdkEvent *e, Win *win)
-//{ eventname(e, "w"); return false; }
-//static gboolean eventcb(GtkWidget *w, GdkEvent *e, Win *win)
-//{ eventname(e, "k"); return false; }
-
-
 static bool focuscb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
@@ -2316,8 +2244,6 @@ static void dlfailcb(DLWin *win)
 }
 static void dldatacb(DLWin *win)
 {
-	//gdouble webkit_download_get_elapsed_time (WebKitDownload *download);
-
 	gdouble p = webkit_download_get_estimated_progress(win->dl);
 	gtk_progress_bar_set_fraction(win->prog, p);
 
@@ -2571,35 +2497,6 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			data = g_strconcat(data, "<p>No Data</p>", NULL);
 			g_free(last);
 		}
-
-//			"<p>Back List<p>\n\n"
-//		WebKitBackForwardList *list =
-//			webkit_web_view_get_back_forward_list(kit);
-//
-//		GList *bl = webkit_back_forward_list_get_back_list(list);
-//
-//		if (bl)
-//			for (GList *n = bl; n; n = n->next)
-//			{
-//				gchar *tmp = g_strdup_printf(
-//					"<p>%s<br><a href=\"%s\">%s</a><p>\n",
-//					webkit_back_forward_list_item_get_title(n->data) ?: "-",
-//					webkit_back_forward_list_item_get_uri  (n->data),
-//					webkit_back_forward_list_item_get_uri  (n->data));
-//
-//				last = data;
-//				data = g_strconcat(data, tmp, NULL);
-//				g_free(last);
-//				g_free(tmp);
-//			}
-//		else
-//		{
-//			last = data;
-//			data = g_strconcat(data, "<b>-- first page --</b>", NULL);
-//			g_free(last);
-//		}
-//		g_list_free(bl);
-
 	}
 	if (g_str_has_prefix(path, "help")) {
 		data = g_strdup_printf(
@@ -2727,30 +2624,6 @@ static void favcb(Win *win)
 	else
 		gtk_window_set_icon(win->win, NULL);
 }
-
-//static void soupMessageHeadersForeachFunc(const char *name,
-//                                  const char *value,
-//                                  gpointer user_data)
-//{
-//	D(head %s %s, name, value)
-//}
-//void resloadcb(WebKitWebView     *web_view,
-//               WebKitWebResource *resource,
-//               WebKitURIRequest  *request,
-//               Win *win)
-//{
-//return;
-//DD(resloadcb)
-//SoupMessageHeaders *head =
-//	webkit_uri_request_get_http_headers(request);
-//if (head)
-//soup_message_headers_foreach (head,
-//                              soupMessageHeadersForeachFunc,
-//                              NULL);
-//
-//	D(resload uri:%s,webkit_web_resource_get_uri (resource))
-//}
-
 
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
@@ -2986,8 +2859,6 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 }
 static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
-	//D(release button %d, e->button)
-
 	switch (e->button) {
 	case 1:
 		win->lastx = win->lasty = 0;
@@ -3464,7 +3335,7 @@ static void foundcb(Win *win)
 	_showmsg(win, NULL, false); //clear
 }
 
-
+//@newwin
 Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 {
 	Win *win = g_new0(Win, 1);
@@ -3565,7 +3436,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 			}
 		}
 
-		//win->kitw = webkit_web_view_new_with_context(ctx);
 		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
 			"web-context", ctx, "user-content-manager", cmgr, NULL);
 	}
@@ -3586,8 +3456,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 
 	if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
 		SIGW(o, "notify::favicon"      , favcb     , win);
-
-//	SIG( o, "resource-load-started", resloadcb, win);
 
 	SIG( o, "key-press-event"      , keycb     , win);
 	SIG( o, "mouse-target-changed" , targetcb  , win);
@@ -3610,9 +3478,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	win->findct = webkit_web_view_get_find_controller(win->kit);
 	SIGW(win->findct, "failed-to-find-text", findfailedcb, win);
 	SIGW(win->findct, "found-text"         , foundcb     , win);
-
-//	SIG( o, "event"               , eventcb   , win);
-//	SIG( win->wino, "event"       , eventwcb   , win);
 
 	//entry
 	win->entw = gtk_entry_new();

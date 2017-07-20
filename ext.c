@@ -113,7 +113,7 @@ static const gchar *inottext[] = {
 	NULL
 };
 
-//misc
+//@misc
 static void send(Page *page, gchar *action, const gchar *arg)
 {
 	gchar *ss = g_strdup_printf("%d:%s:%s", page->id, action, arg);
@@ -121,16 +121,32 @@ static void send(Page *page, gchar *action, const gchar *arg)
 	ipcsend("main", ss);
 	g_free(ss);
 }
+static bool isin(const gchar **ary, gchar *val)
+{
+	if (!val) return false;
+	for (;*ary; ary++)
+		if (strcmp(val, *ary) == 0) return true;
+	return false;
+}
+static bool isinput(WebKitDOMElement *te)
+{
+	gchar *tag = webkit_dom_element_get_tag_name(te);
+	bool ret = false;
+	if (isin(inputtags, tag))
+	{
+		if (strcmp(tag, "input") != 0) return true;
+
+		gchar *type = webkit_dom_element_get_attribute(te, "type");
+		if (!type || !isin(inottext, type))
+			ret = true;
+	}
+	g_free(tag);
+
+	return ret;
+}
 
 
-//page cbs
-
-//static gboolean contextcb(
-//		WebKitWebPage *w,
-//		WebKitContextMenu *menu,
-//		WebKitWebHitTestResult *htr,
-//		gpointer p)
-//{ return false; }
+//@whiteblack
 typedef struct {
 	int white;
 	regex_t reg;
@@ -224,98 +240,6 @@ static void addblack(Page *page, const gchar *uri)
 {
 	page->black = g_slist_prepend(page->black, g_strdup(uri));
 }
-static gint pagereq = 0;
-static bool redirected = false;
-static gboolean reqcb(
-		WebKitWebPage *p,
-		WebKitURIRequest *req,
-		WebKitURIResponse *res,
-		Page *page)
-{
-	const gchar *reqstr =  webkit_uri_request_get_uri(req);
-
-	int check = checkwb(reqstr);
-	if (check == 0)
-	{
-		addwhite(page, reqstr);
-		return true;
-	}
-
-	pagereq++;
-
-	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
-	if (!head) return false; //scheme hasn't header
-	const gchar *ref = soup_message_headers_get_list(head, "Referer");
-	if (!ref) return false; //open page request
-
-	if (res && pagereq == 2) //redirect of page
-	{
-		//in redirection we can't get current uri for reldomain check
-		pagereq = 1;
-		redirected = true;
-		return false;
-	}
-
-	if (check == 1 || !page->relonly)
-	{
-		addblack(page, reqstr);
-		return false;
-	}
-
-
-	//reldomain check
-	bool ret = false;
-	const gchar *uristr = webkit_web_page_get_uri(page->kit);
-
-	SoupURI *puri = soup_uri_new(uristr);
-	SoupURI *ruri = soup_uri_new(reqstr);
-
-	const gchar *phost = soup_uri_get_host(puri);
-
-	if (phost)
-	{
-		gchar **cuts = g_strsplit(page->cutheads, ";", -1);
-		for (gchar **cut = cuts; *cut; cut++)
-			if (g_str_has_prefix(phost, *cut))
-			{
-				phost += strlen(*cut);
-				break;
-			}
-		g_strfreev(cuts);
-
-		const gchar *rhost = soup_uri_get_host(ruri);
-		if (!g_str_has_suffix(rhost, phost))
-		{
-			addwhite(page, reqstr);
-			ret = true;
-		}
-	}
-	else
-		ret = false;
-
-	addblack(page, reqstr);
-
-	soup_uri_free(puri);
-	soup_uri_free(ruri);
-	return ret;
-
-//static void soupMessageHeadersForeachFunc(const char *name,
-//		const char *value, gpointer user_data)
-//{ D(reshead %s %s, name, value) }
-//	if (res)
-//	{
-//		SoupMessageHeaders *resh = webkit_uri_response_get_http_headers(res);
-//		soup_message_headers_foreach (resh,
-//				soupMessageHeadersForeachFunc,
-//				NULL);
-//		const gchar *location = soup_message_headers_get_one(resh, "Location");
-//	}
-//	const gchar *acpt = soup_message_headers_get_list(head, "Accept");
-//	if (g_str_has_prefix(acpt, "text/html,")) {
-////D(accept %s \n %s, acpt, reqstr)
-//		return false;
-//	}
-}
 static void showwhite(Page *page, bool white)
 {
 	GSList *list = white ? page->white : page->black;
@@ -354,7 +278,9 @@ static void showwhite(Page *page, bool white)
 	send(page, "openeditor", wbpath);
 }
 
-//textlink
+
+
+//@textlink
 static gchar *tlpath = NULL;
 static Page  *tlpage = NULL;
 static WebKitDOMElement *tldoc;
@@ -405,46 +331,8 @@ static void textlinkon(Page *page)
 	send(page, "openeditor", tlpath);
 }
 
-//static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
-//static void loadcb(WebKitWebPage *wp, gpointer p) {}
-static void uricb(Page* page)
-{
-	//workaround: when in redirect change uri delays
-	if (redirected)
-		pagereq = 1;
-	else
-		pagereq = 0;
 
-	redirected = false;
-}
-
-
-
-static bool isin(const gchar **ary, gchar *val)
-{
-	if (!val) return false;
-	for (;*ary; ary++)
-		if (strcmp(val, *ary) == 0) return true;
-	return false;
-}
-
-static bool isinput(WebKitDOMElement *te)
-{
-	gchar *tag = webkit_dom_element_get_tag_name(te);
-	bool ret = false;
-	if (isin(inputtags, tag))
-	{
-		if (strcmp(tag, "input") != 0) return true;
-
-		gchar *type = webkit_dom_element_get_attribute(te, "type");
-		if (!type || !isin(inottext, type))
-			ret = true;
-	}
-	g_free(tag);
-
-	return ret;
-}
-
+//@hinting
 static bool styleis(WebKitDOMCSSStyleDeclaration *dec, gchar* name, gchar *pval)
 {
 	gchar *val = webkit_dom_css_style_declaration_get_property_value(dec, name);
@@ -491,7 +379,6 @@ static Elm getrect(WebKitDOMElement *te)
 
 	return elm;
 }
-
 
 static WebKitDOMElement *_makehintelm(
 		WebKitDOMDocument *doc,
@@ -1018,7 +905,9 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	return ret;
 }
 
-//dom cbs
+
+
+//@dom cbs
 
 //static void domfocusincb(WebKitDOMElement *elm, WebKitDOMEvent *e, Page *page)
 //{ send(page, "toinsert", NULL); }
@@ -1035,6 +924,9 @@ static void hintcb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
 		g_free(k);
 	}
 }
+
+
+//@misc com funcs
 static void pagestart(Page *page)
 {
 	setwblist(false);
@@ -1047,6 +939,7 @@ static void pagestart(Page *page)
 	if (tlpage == page)
 		tlpage = NULL;
 }
+
 static void pageon(Page *page)
 {
 	//DD(pageon)
@@ -1054,27 +947,6 @@ static void pageon(Page *page)
 	if (page->emitter) g_object_unref(page->emitter);
 	page->emitter = webkit_dom_document_get_default_view(doc);
 	WebKitDOMElement   *elm = webkit_dom_document_get_document_element(doc);
-
-//WEBKIT_DOM_EVENT_NONE
-//WEBKIT_DOM_EVENT_CAPTURING_PHASE
-//WEBKIT_DOM_EVENT_AT_TARGET
-//WEBKIT_DOM_EVENT_BUBBLING_PHASE
-//WEBKIT_DOM_EVENT_MOUSEDOWN
-//WEBKIT_DOM_EVENT_MOUSEUP
-//WEBKIT_DOM_EVENT_MOUSEOVER
-//WEBKIT_DOM_EVENT_MOUSEOUT
-//WEBKIT_DOM_EVENT_MOUSEMOVE
-//WEBKIT_DOM_EVENT_MOUSEDRAG
-//WEBKIT_DOM_EVENT_CLICK
-//WEBKIT_DOM_EVENT_DBLCLICK
-//WEBKIT_DOM_EVENT_KEYDOWN
-//WEBKIT_DOM_EVENT_KEYUP
-//WEBKIT_DOM_EVENT_KEYPRESS
-//WEBKIT_DOM_EVENT_DRAGDROP
-//WEBKIT_DOM_EVENT_FOCUS
-//WEBKIT_DOM_EVENT_BLUR
-//WEBKIT_DOM_EVENT_SELECT
-//WEBKIT_DOM_EVENT_CHANGE
 
 //	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
 //			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);
@@ -1092,7 +964,6 @@ static void pageon(Page *page)
 //	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
 //			"DOMSubtreeModified", G_CALLBACK(hintcb), false, page);
 }
-
 
 static void mode(Page *page)
 {
@@ -1161,6 +1032,8 @@ static void blur(Page *page)
 	g_object_unref(win);
 }
 
+
+//@ipccb
 void ipccb(const gchar *line)
 {
 	gchar **args = g_strsplit(line, ":", 4);
@@ -1246,6 +1119,96 @@ void ipccb(const gchar *line)
 	default:
 		D(extension gets unknown command %s, line)
 	}
+}
+
+
+//@page cbs
+static gint pagereq = 0;
+static bool redirected = false;
+static gboolean reqcb(
+		WebKitWebPage *p,
+		WebKitURIRequest *req,
+		WebKitURIResponse *res,
+		Page *page)
+{
+	const gchar *reqstr =  webkit_uri_request_get_uri(req);
+
+	int check = checkwb(reqstr);
+	if (check == 0)
+	{
+		addwhite(page, reqstr);
+		return true;
+	}
+
+	pagereq++;
+
+	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
+	if (!head) return false; //scheme hasn't header
+	const gchar *ref = soup_message_headers_get_list(head, "Referer");
+	if (!ref) return false; //open page request
+
+	if (res && pagereq == 2) //redirect of page
+	{
+		//in redirection we can't get current uri for reldomain check
+		pagereq = 1;
+		redirected = true;
+		return false;
+	}
+
+	if (check == 1 || !page->relonly)
+	{
+		addblack(page, reqstr);
+		return false;
+	}
+
+
+	//reldomain check
+	bool ret = false;
+	const gchar *uristr = webkit_web_page_get_uri(page->kit);
+
+	SoupURI *puri = soup_uri_new(uristr);
+	SoupURI *ruri = soup_uri_new(reqstr);
+
+	const gchar *phost = soup_uri_get_host(puri);
+
+	if (phost)
+	{
+		gchar **cuts = g_strsplit(page->cutheads, ";", -1);
+		for (gchar **cut = cuts; *cut; cut++)
+			if (g_str_has_prefix(phost, *cut))
+			{
+				phost += strlen(*cut);
+				break;
+			}
+		g_strfreev(cuts);
+
+		const gchar *rhost = soup_uri_get_host(ruri);
+		if (!g_str_has_suffix(rhost, phost))
+		{
+			addwhite(page, reqstr);
+			ret = true;
+		}
+	}
+	else
+		ret = false;
+
+	addblack(page, reqstr);
+
+	soup_uri_free(puri);
+	soup_uri_free(ruri);
+	return ret;
+}
+//static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
+//static void loadcb(WebKitWebPage *wp, gpointer p) {}
+static void uricb(Page* page)
+{
+	//workaround: when in redirect change uri delays
+	if (redirected)
+		pagereq = 1;
+	else
+		pagereq = 0;
+
+	redirected = false;
 }
 
 static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
