@@ -1044,6 +1044,8 @@ static void pagestart(Page *page)
 	page->black = NULL;
 	page->white = NULL;
 
+	if (tlpage == page)
+		tlpage = NULL;
 }
 static void pageon(Page *page)
 {
