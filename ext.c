@@ -382,7 +382,7 @@ static void textlinkon(Page *page)
 	g_free(tag);
 	if (!ist)
 	{
-		send(page, "showmsg", "Not textare");
+		send(page, "showmsg", "Not a textare");
 		return;
 	}
 
