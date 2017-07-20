@@ -28,7 +28,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define DSET "set;"
 #define DIST 4
 
-#define LASTWIN ((Win *)*wins->pdata)
+#define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit))
 
 static gchar *fullname = APPNAME; //+suffix
@@ -322,19 +322,14 @@ static void quitif(bool force)
 
 static void alert(gchar *msg)
 {
-	if (LASTWIN)
-	{
-		GtkWidget *dialog = gtk_message_dialog_new(
-				LASTWIN->win,
-				GTK_DIALOG_DESTROY_WITH_PARENT,
-				GTK_MESSAGE_ERROR,
-				GTK_BUTTONS_CLOSE,
-				"%s", msg);
-		gtk_dialog_run(GTK_DIALOG(dialog));
-		gtk_widget_destroy(dialog);
-	} else {
-		g_error("alert: %s\n", msg);
-	}
+	GtkWidget *dialog = gtk_message_dialog_new(
+			LASTWIN ? LASTWIN->win : NULL,
+			GTK_DIALOG_DESTROY_WITH_PARENT,
+			GTK_MESSAGE_ERROR,
+			GTK_BUTTONS_CLOSE,
+			"%s", msg);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
 }
 
 static void append(gchar *path, const gchar *str)
@@ -918,16 +913,24 @@ void checkconf(bool frommonitor)
 		{
 			alert(err->message);
 			g_error_free(err);
+
+			if (!conf)
+			{
+				conf = g_key_file_new();
+				getdconf(conf, true);
+			}
 		}
 		else
+		{
 			getdconf(new, false);
 
-		if (conf) g_key_file_free(conf);
-		conf = new;
+			if (conf) g_key_file_free(conf);
+			conf = new;
 
-		if (wins)
-			for (int i = 0; i < wins->len; i++)
-				resetconf(wins->pdata[i], true);
+			if (wins)
+				for (int i = 0; i < wins->len; i++)
+					resetconf(wins->pdata[i], true);
+		}
 	}
 
 	//css
