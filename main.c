@@ -969,6 +969,7 @@ static void preparemd()
 	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkconf);
 }
 
+
 //@context
 static void settitle(Win *win, const gchar *pstr)
 {

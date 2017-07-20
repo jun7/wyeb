@@ -39,7 +39,7 @@ typedef struct {
 	WebKitDOMNode *apnode;
 	gchar         *apkeys;
 
-	gchar          lasttype;
+	Coms           lasttype;
 	gchar         *lasthintkeys;
 	bool           showblocked;
 	bool           relonly;
@@ -693,7 +693,7 @@ static void rmhint(Page *page)
 
 
 static GSList *_makelist(WebKitDOMDocument *doc,
-		gchar type, gint *tnum, GSList *elms, Elm *prect)
+		Coms type, gint *tnum, GSList *elms, Elm *prect)
 {
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
 
@@ -850,7 +850,7 @@ static Elm winrect(WebKitDOMDocument *doc)
 	g_object_unref(win);
 	return rect;
 }
-static GSList *makelist(Page *page, gchar type, gint *tnum)
+static GSList *makelist(Page *page, Coms type, gint *tnum)
 {
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 
@@ -887,8 +887,57 @@ static GSList *makelist(Page *page, gchar type, gint *tnum)
 	return elms;
 }
 
+static void hintret(Page *page, Coms type, WebKitDOMElement *te)
+{
+	gchar uritype = 'n';
+	gchar *uri = NULL;
+	if (type == Curi || type == Cspawn)
+	{
+		uri = webkit_dom_element_get_attribute(te, "SRC");
+		if (type == Cspawn)
+		{
+			gchar *tag = webkit_dom_element_get_tag_name(te);
+			if (strcmp(tag, "IMG") == 0)
+				uritype = 'i';
+			else
+				uritype = 'm';
 
-static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
+			g_free(tag);
+		}
+	}
+
+	if (!uri)
+		uri = webkit_dom_element_get_attribute(te, "HREF");
+
+	if (!uri)
+		uri = g_strdup("about:blank");
+	else if (type == Cspawn)
+		uritype = 'l';
+
+	gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
+	SoupURI *base = soup_uri_new(bases);
+	SoupURI *last = soup_uri_new_with_base(base, uri);
+	gchar *retstr = soup_uri_to_string(last, false);
+
+D(retstr %s, retstr)
+
+	if (type == Cspawn)
+	{
+		gchar *tmp = retstr;
+		retstr = g_strdup_printf("%c%s", uritype, retstr);
+		g_free(tmp);
+	}
+
+	send(page, "hintret", retstr);
+
+	soup_uri_free(base);
+	soup_uri_free(last);
+	g_free(uri);
+	g_free(bases);
+	g_free(retstr);
+}
+
+static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 {
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 	page->lasttype = type;
@@ -924,7 +973,7 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 
 		if (last)
 		{
-			if (!ret && strcmp(key, ipkeys) == 0)
+			if (last && !ret && strcmp(key, ipkeys) == 0)
 			{
 				webkit_dom_element_focus(te);
 
@@ -940,76 +989,12 @@ static bool makehint(Page *page, gchar type, gchar *hintkeys, gchar *ipkeys)
 
 					webkit_dom_event_init_event(ce, "click", true, true);
 
-//					webkit_dom_mouse_event_init_mouse_event(
-//							(WebKitDOMMouseEvent *)ce,
-//							"click", //const gchar *type,
-//							true,    //gboolean canBubble,
-//							true,    //gboolean cancelable,
-//							win,     //WebKitDOMDOMWindow *view,
-//							0,       //glong detail,
-//							0,       //glong screenX,
-//							0,       //glong screenY,
-//							//glong clientX,
-//							webkit_dom_element_get_client_left(elm->elm) + 1,
-//							//glong clientY,
-//							webkit_dom_element_get_client_top(elm->elm) + 1,
-//							false,   //gboolean ctrlKey,
-//							false,   //gboolean altKey,
-//							false,   //gboolean shiftKey,
-//							false,   //gboolean metaKey,
-//							1,       //gushort button,
-//							(WebKitDOMEventTarget *)elm->elm);
-
 					webkit_dom_event_target_dispatch_event(
 						(WebKitDOMEventTarget *)te, ce, NULL);
 
 					g_object_unref(ce);
-				} else {
-					gchar uritype = 'n';
-					gchar *uri = NULL;
-					if (type == Curi || type == Cspawn)
-					{
-						uri = webkit_dom_element_get_attribute(te, "SRC");
-						if (type == Cspawn)
-						{
-							gchar *tag = webkit_dom_element_get_tag_name(te);
-							if (strcmp(tag, "IMG") == 0)
-								uritype = 'i';
-							else
-								uritype = 'm';
-
-							g_free(tag);
-						}
-					}
-
-					if (!uri)
-						uri = webkit_dom_element_get_attribute(te, "HREF");
-
-					if (!uri)
-						uri = g_strdup("about:blank");
-					else if (type == Cspawn)
-						uritype = 'l';
-
-					gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
-					SoupURI *base = soup_uri_new(bases);
-					SoupURI *last = soup_uri_new_with_base(base, uri);
-					gchar *retstr = soup_uri_to_string(last, false);
-
-					if (type == Cspawn)
-					{
-						gchar *tmp = retstr;
-						retstr = g_strdup_printf("%c%s", uritype, retstr);
-						g_free(tmp);
-					}
-
-					send(page, "hintret", retstr);
-
-					soup_uri_free(base);
-					soup_uri_free(last);
-					g_free(uri);
-					g_free(bases);
-					g_free(retstr);
-				}
+				} else
+					hintret(page, type, te);
 
 				ret = true;
 			}
@@ -1189,7 +1174,7 @@ void ipccb(const gchar *line)
 	page = *pages->pdata;
 #endif
 
-	gchar type = *args[1];
+	Coms type = *args[1];
 	gchar *arg = args[2];
 
 	gchar *ipkeys = NULL;
