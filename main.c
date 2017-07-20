@@ -1859,6 +1859,8 @@ static gchar *ke2name(GdkEventKey *ke)
 static Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back);
 static bool run(Win *win, gchar* action, const gchar *arg)
 {
+	gchar **retv = NULL; //hintret
+
 #define Z(str, func) if (strcmp(action, str) == 0) {func; goto out;}
 	if (action == NULL) return false;
 	//nokey nowin
@@ -1883,8 +1885,12 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("openeditor" , openeditor(win, arg, NULL))
 	Z("reloadlast" , reloadlast())
 
+	gchar *bookmarkthisarg = NULL;
 	if (strcmp(action, "hintret") == 0)
 	{
+		retv = g_strsplit(arg, " ", 2);
+		arg = *retv + 1;
+
 		switch (win->mode) {
 		case Mhintnew:
 			action = "opennew"     ; break;
@@ -1894,6 +1900,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		case Mhintdl:
 			action = "download"    ; break;
 		case Mhintbkmrk:
+			bookmarkthisarg = retv[1];
 			action = "bookmarkthis"; break;
 		case Mhintopen:
 			action = "open"        ; break;
@@ -1904,13 +1911,13 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			g_free(win->media);
 			win->link = win->image = win->media = NULL;
 
-			switch (*arg) {
+			switch (**retv) {
 			case 'l':
-				win->link  = g_strdup(arg + 1); break;
+				win->link  = g_strdup(arg); break;
 			case 'i':
-				win->image = g_strdup(arg + 1); break;
+				win->image = g_strdup(arg); break;
 			case 'm':
-				win->media = g_strdup(arg + 1); break;
+				win->media = g_strdup(arg); break;
 			}
 			action = "spawn";
 			break;
@@ -1918,6 +1925,7 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		case Mhint:
 			break;
 		}
+
 		win->mode = Mnormal;
 	}
 	Z("spawn"      , spawnwithenv(win, win->spawn, false))
@@ -1959,7 +1967,8 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
 		showmsg(win, "URI is yanked to clipboard")
 	)
-	Z("bookmarkthis", addlink(win, NULL, arg))
+	Z("bookmarkthis", addlink(win, bookmarkthisarg, arg);
+	)
 	Z("bookmark"    , addlink(win, webkit_web_view_get_title(win->kit), URI(win)))
 	Z("bookmarkbreak", addlink(win, NULL, NULL))
 	Z("bookmarklinkor",
@@ -2109,6 +2118,8 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 #undef Z
 out:
 	update(win);
+	if (retv)
+		g_strfreev(retv);
 	return true;
 }
 
@@ -2454,8 +2465,11 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 //@uri scheme
 gchar *schemedata(WebKitWebView *kit, const gchar *path)
 {
-	Win *win = g_object_get_data(G_OBJECT(kit), "win");
-	win->scheme = true;
+	if (kit)
+	{
+		Win *win = g_object_get_data(G_OBJECT(kit), "win");
+		win->scheme = true;
+	}
 
 	gchar *data = NULL;
 

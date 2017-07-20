@@ -891,6 +891,7 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 {
 	gchar uritype = 'n';
 	gchar *uri = NULL;
+	gchar *title = NULL;
 	if (type == Curi || type == Cspawn)
 	{
 		uri = webkit_dom_element_get_attribute(te, "SRC");
@@ -905,7 +906,6 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 			g_free(tag);
 		}
 	}
-
 	if (!uri)
 		uri = webkit_dom_element_get_attribute(te, "HREF");
 
@@ -914,26 +914,25 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 	else if (type == Cspawn)
 		uritype = 'l';
 
+	title =
+		webkit_dom_html_element_get_inner_text((WebKitDOMHTMLElement *)te) ?:
+		webkit_dom_element_get_attribute(te, "ALT") ?:
+		webkit_dom_element_get_attribute(te, "TITLE");
+
 	gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
 	SoupURI *base = soup_uri_new(bases);
 	SoupURI *last = soup_uri_new_with_base(base, uri);
-	gchar *retstr = soup_uri_to_string(last, false);
+	gchar *suri = soup_uri_to_string(last, false);
 
-D(retstr %s, retstr)
-
-	if (type == Cspawn)
-	{
-		gchar *tmp = retstr;
-		retstr = g_strdup_printf("%c%s", uritype, retstr);
-		g_free(tmp);
-	}
-
+	gchar *retstr = g_strdup_printf("%c%s %s", uritype, suri, title);
 	send(page, "hintret", retstr);
 
 	soup_uri_free(base);
 	soup_uri_free(last);
 	g_free(uri);
+	g_free(title);
 	g_free(bases);
+	g_free(suri);
 	g_free(retstr);
 }
 
