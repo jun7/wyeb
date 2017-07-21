@@ -2227,7 +2227,7 @@ static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	{
 		gdouble x, y, size;
 		if (win->mode == Mpointer)
-			x = win->px, y = win->py, size = csize / 4;
+			x = win->px, y = win->py, size = csize / 3;
 		else
 			x = win->lastx, y = win->lasty, size = csize / 6;
 
@@ -2238,8 +2238,8 @@ static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 
 		if (win->mode == Mpointer)
 		{
-			cairo_set_line_width(cr, 4);
-			cairo_set_source_rgba(cr, .0, .0, .9, .9);
+			cairo_set_line_width(cr, 6);
+			cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.6);
 			cairo_stroke_preserve(cr);
 			cairo_set_source_rgba(cr, .9, .0, .0, .9);
 		} else
