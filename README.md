@@ -73,7 +73,7 @@ key:
 4 - bracketleft: tonormal               : 
 0 - i          : toinsert               : 
 0 - I          : toinsertinput          : To Insert Mode with focus of first input
-0 - z          : topointer              : 
+0 - p          : topointer              : 
 0 - f          : tohint                 : 
 0 - F          : tohintnew              : 
 0 - t          : tohintback             : 
@@ -102,7 +102,9 @@ key:
 0 - equal      : zoomreset              : 
 0 - J          : nextwin                : 
 0 - K          : prevwin                : 
-0 - x          : winlist                : 
+0 - x          : quitnext               : 
+0 - X          : quitprev               : 
+0 - z          : winlist                : 
 0 - H          : back                   : 
 0 - L          : forward                : 
 0 - s          : stop                   : 

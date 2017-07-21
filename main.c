@@ -1536,6 +1536,24 @@ static gint inwins(Win *win, GSList **list, bool onlylen)
 	}
 	return len;
 }
+static bool run(Win *win, gchar* action, const gchar *arg); //declaration
+static bool quitnext(Win *win, bool next)
+{
+	if (inwins(win, NULL, true) < 1)
+	{
+		if (strcmp(APP":main", URI(win)) == 0)
+			return run(win, "quit", NULL);
+
+		run(win, "showmainpage", NULL);
+		showmsg(win, "Last Window");
+		return false;
+	}
+	if (next)
+		run(win, "nextwin", NULL);
+	else
+		run(win, "prevwin", NULL);
+	return run(win, "quit", NULL);
+}
 bool winlist(Win *win, guint type, cairo_t *cr)
 //type: 0: none 1:present 2:setcursor, and GDK_KEY_Down ... GDK_KEY_Right
 {
@@ -1778,10 +1796,10 @@ static Keybind dkeys[]= {
 	{"tonormal"      , GDK_KEY_Escape, 0, "To Normal Mode"},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
-//normal /'pv' are left
+//normal /'v' are left
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
-	{"topointer"     , 'z', 0},
+	{"topointer"     , 'p', 0},
 
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
@@ -1821,7 +1839,9 @@ static Keybind dkeys[]= {
 	//tab
 	{"nextwin"       , 'J', 0},
 	{"prevwin"       , 'K', 0},
-	{"winlist"       , 'x', 0},
+	{"quitnext"      , 'x', 0},
+	{"quitprev"      , 'X', 0},
+	{"winlist"       , 'z', 0},
 
 	{"back"          , 'H', 0},
 	{"forward"       , 'L', 0},
@@ -1918,7 +1938,7 @@ static gchar *ke2name(GdkEventKey *ke)
 }
 //declaration
 static Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back);
-static bool run(Win *win, gchar* action, const gchar *arg)
+bool run(Win *win, gchar* action, const gchar *arg)
 {
 	gchar **retv = NULL; //hintret
 
@@ -2090,6 +2110,9 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 			else
 				showmsg(win, "No other window");
 	)
+
+	Z("quitnext"    , return quitnext(win, true))
+	Z("quitprev"    , return quitnext(win, false))
 
 	Z("back"        ,
 			if (webkit_web_view_can_go_back(win->kit))
@@ -2959,24 +2982,11 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				else //right
 					run(win, "forward", NULL);
 			} else {
-				if (inwins(win, NULL, true) < 1)
+				if (deltay < 0) //up
 				{
-					if (strcmp(APP":main", URI(win)) == 0)
-						return run(win, "quit", NULL);
-					else {
-						run(win, "showmainpage", NULL);
-						showmsg(win, "Last Window");
-					}
-				}
-				else if (deltay < 0) //up
-				{
-					run(win, "prevwin", NULL);
-					return run(win, "quit", NULL);
-				}
-				else //down
-				{
-					run(win, "nextwin", NULL);
-					return run(win, "quit", NULL);
+					if (run(win, "quitprev", NULL)) return true;
+				} else { //down
+					if (run(win, "quitnext", NULL)) return true;
 				}
 			}
 			cancelcontext = true;
