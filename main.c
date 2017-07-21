@@ -200,6 +200,7 @@ Conf dconf[] = {
 	{"all"   , "msgmsec"      , "400"},
 
 	{"boot"  , "enablefavicon", "false"},
+	{"boot"  , "ignoretlserrs", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
@@ -998,7 +999,7 @@ static void settitle(Win *win, const gchar *pstr)
 	const gchar *wtitle = webkit_web_view_get_title(win->kit) ?: "";
 
 	gchar *title = g_strdup_printf("%s%s%s%s%s%s - %s",
-		win->tlserr ? "!TLS has problems! " : "",
+		win->tlserr ? "!TLS has errors! " : "",
 		suffix,
 		*suffix ? "| " : "",
 		win->overset ?: "",
@@ -3176,7 +3177,11 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 		send(win, Con, NULL);
 
-		if (!webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
+		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
+		{
+			if (win->tlserr) showmsg(win, "TLS Error");
+		}
+		else
 			win->tlserr = 0;
 
 		break;
@@ -3575,6 +3580,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 				webkit_web_context_set_favicon_database_directory(ctx, favdir);
 				g_free(favdir);
 			}
+
+			if (g_key_file_get_boolean(conf, "boot", "ignoretlserrs", NULL))
+				webkit_web_context_set_tls_errors_policy(ctx,
+						WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 		}
 
 		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
