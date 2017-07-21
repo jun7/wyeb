@@ -198,9 +198,9 @@ Conf dconf[] = {
 	{"all"   , "dlwinback"    , "false"},
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "400"},
+	{"all"   , "ignoretlserr" , "false"},
 
 	{"boot"  , "enablefavicon", "false"},
-	{"boot"  , "ignoretlserrs", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
@@ -934,6 +934,12 @@ void checkconf(bool frommonitor)
 
 			if (conf) g_key_file_free(conf);
 			conf = new;
+
+			if (ctx)
+				webkit_web_context_set_tls_errors_policy(ctx,
+						confbool("ignoretlserr") ?
+						WEBKIT_TLS_ERRORS_POLICY_IGNORE :
+						WEBKIT_TLS_ERRORS_POLICY_FAIL);
 
 			if (wins)
 				for (int i = 0; i < wins->len; i++)
@@ -3581,7 +3587,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 				g_free(favdir);
 			}
 
-			if (g_key_file_get_boolean(conf, "boot", "ignoretlserrs", NULL))
+			if (confbool("ignoretlserr"))
 				webkit_web_context_set_tls_errors_policy(ctx,
 						WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 		}
