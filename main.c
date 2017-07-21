@@ -2876,8 +2876,6 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		return true;
 	}
 
-	if (win->mode == Mpointer) return false;
-
 	//workaround
 	//for lacking of target change event when btn event happens with focus in;
 	senddelay(win, Cmode, NULL);
