@@ -24,7 +24,7 @@ For example, context-menu items we added are just shell scripts.
 - [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
 - No tab. But keys J/K/x or button actions.
 - Focused history. Instead of loaded history.
-- Pointer Mode. Make a pure click event for javascript pages.
+- Pointer Mode. Makes pure click event for javascript pages.
 - Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time a lot.
 
