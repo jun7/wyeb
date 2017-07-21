@@ -46,11 +46,12 @@ typedef enum {
 	Mhintbkmrk = 2 + 64,
 	Mhintspawn = 2 + 128,
 
-	Mselect    = 256,
+	Mopen      = 256,
+	Mopennew   = 512,
+	Mfind      = 1024,
 
-	Mopen      = 512,
-	Mopennew   = 1024,
-	Mfind      = 2048,
+	Mselect    = 2048,
+	Mpointer   = 4096,
 } Modes;
 
 typedef struct {
@@ -106,6 +107,12 @@ typedef struct {
 	gchar  *image;
 	gchar  *media;
 	bool    oneditable;
+
+	//cursor
+	gdouble lastdelta;
+	guint   lastkey;
+	gdouble px;
+	gdouble py;
 
 	//misc
 	gint    cursorx;
@@ -1002,6 +1009,7 @@ static void settitle(Win *win, const gchar *pstr)
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
+static void pmove(Win *win, guint key); //declaration
 static bool winlist(Win *win, guint type, cairo_t *cr); //declaration
 static void _modechanged(Win *win)
 {
@@ -1025,6 +1033,11 @@ static void _modechanged(Win *win)
 		gdk_window_set_cursor(gtk_widget_get_window(win->winw), NULL);
 //		gtk_widget_set_sensitive(win->kitw, true);
 		break;
+
+	case Mpointer:
+		gtk_widget_queue_draw(win->winw);
+		break;
+
 	case Minsert: break;
 
 	case Mhintspawn:
@@ -1064,6 +1077,10 @@ static void _modechanged(Win *win)
 		gtk_widget_queue_draw(win->winw);
 		break;
 
+	case Mpointer:
+		pmove(win, 0);
+		break;
+
 	case Mhint:
 		com = Cclick;
 	case Mhintopen:
@@ -1096,7 +1113,10 @@ static void update(Win *win)
 
 	case Mselect:
 		settitle(win, "-- LIST MODE --");
+		break;
 
+	case Mpointer:
+		settitle(win, "-- POINTER MODE --");
 		break;
 
 	case Mhint:
@@ -1323,6 +1343,42 @@ static void scroll(Win *win, gint x, gint y)
 
 	gdk_event_put(e);
 	gdk_event_free(e);
+}
+void pmove(Win *win, guint key)
+{
+	//GDK_KEY_Down
+	GdkWindow *gwin = gtk_widget_get_window(win->kitw);
+	gdouble ww = gtk_widget_get_allocated_width(win->kitw);
+	gdouble wh = gtk_widget_get_allocated_height(win->kitw);
+	if (!win->px && !win->py)
+	{
+		win->px = ww * 3 / 7;
+		win->py = wh * 1 / 3;
+	}
+	if (key == 0)
+		win->lastdelta = MIN(ww, wh) / 7;
+
+	guint lkey = win->lastkey;
+	if (
+		(key  == GDK_KEY_Up   && lkey == GDK_KEY_Down) ||
+		(lkey == GDK_KEY_Up   && key  == GDK_KEY_Down) ||
+		(key  == GDK_KEY_Left && lkey == GDK_KEY_Right) ||
+		(lkey == GDK_KEY_Left && key  == GDK_KEY_Right) )
+		win->lastdelta /= 2;
+
+	if (win->lastdelta < 2) win->lastdelta = 2;
+	gdouble d = win->lastdelta;
+	if (key == GDK_KEY_Up   ) win->py -= d;
+	if (key == GDK_KEY_Down ) win->py += d;
+	if (key == GDK_KEY_Left ) win->px -= d;
+	if (key == GDK_KEY_Right) win->px += d;
+
+	win->px = CLAMP(win->px, 0, ww);
+	win->py = CLAMP(win->py, 0, wh);
+
+	win->lastdelta *= .9;
+	win->lastkey = key;
+	gtk_widget_queue_draw(win->winw);
 }
 static void sendkey(Win *win, guint key)
 {
@@ -1722,9 +1778,10 @@ static Keybind dkeys[]= {
 	{"tonormal"      , GDK_KEY_Escape, 0, "To Normal Mode"},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
-//normal /'pvz' are left
+//normal /'pv' are left
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
+	{"topointer"     , 'z', 0},
 
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
@@ -1746,6 +1803,7 @@ static Keybind dkeys[]= {
 	{"scrollup"      , 'k', 0},
 	{"scrollleft"    , 'h', 0},
 	{"scrollright"   , 'l', 0},
+
 	{"arrowdown"     , 'j', GDK_CONTROL_MASK},
 	{"arrowup"       , 'k', GDK_CONTROL_MASK},
 	{"arrowleft"     , 'h', GDK_CONTROL_MASK},
@@ -1954,6 +2012,13 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("toinsert"    , win->mode = Minsert)
 	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, NULL))
 
+	Z("topointer"   ,
+			if (win->mode == Mpointer)
+				tonormal(win);
+			else
+				win->mode = Mpointer
+	)
+
 	Z("tohint"      , win->mode = Mhint)
 	Z("tohintopen"  , win->mode = Mhintopen)
 	Z("tohintnew"   , win->mode = Mhintnew)
@@ -1986,6 +2051,13 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 	Z("quit"        , gtk_widget_destroy(win->winw); return false)
 	Z("quitall"     , quitif(true))
 
+	if (win->mode == Mpointer)
+	{
+		Z("scrolldown" , pmove(win, GDK_KEY_Down))
+		Z("scrollup"   , pmove(win, GDK_KEY_Up))
+		Z("scrollleft" , pmove(win, GDK_KEY_Left))
+		Z("scrollright", pmove(win, GDK_KEY_Right))
+	}
 	bool arrow = getsetbool(win, "hjkl2allowkeys");
 	Z(arrow ? "scrolldown"  : "arrowdown" , sendkey(win, GDK_KEY_Down))
 	Z(arrow ? "scrollup"    : "arrowup"   , sendkey(win, GDK_KEY_Up))
@@ -1998,7 +2070,6 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 	Z("pagedown"    , sendkey(win, GDK_KEY_Page_Down))
 	Z("pageup"      , sendkey(win, GDK_KEY_Page_Up))
-
 
 	Z("top"         , sendkey(win, GDK_KEY_Home))
 	Z("bottom"      , sendkey(win, GDK_KEY_End))
@@ -2152,15 +2223,30 @@ static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	if (!csize) csize = gdk_display_get_default_cursor_size(
 					gtk_widget_get_display(win->winw));
 
-	if (win->lastx || win->lastx)
+	if (win->lastx || win->lastx || win->mode == Mpointer)
 	{
-		gdouble x = win->lastx, y = win->lasty, size = csize / 6;
-		cairo_set_source_rgba(cr, .9, .0, .0, .3);
-		cairo_set_line_width(cr, 2);
+		gdouble x, y, size;
+		if (win->mode == Mpointer)
+			x = win->px, y = win->py, size = csize / 4;
+		else
+			x = win->lastx, y = win->lasty, size = csize / 6;
+
 		cairo_move_to(cr, x - size, y - size);
 		cairo_line_to(cr, x + size, y + size);
 		cairo_move_to(cr, x - size, y + size);
 		cairo_line_to(cr, x + size, y - size);
+
+		if (win->mode == Mpointer)
+		{
+			cairo_set_line_width(cr, 4);
+			cairo_set_source_rgba(cr, .0, .0, .9, .9);
+			cairo_stroke_preserve(cr);
+			cairo_set_source_rgba(cr, .9, .0, .0, .9);
+		} else
+			cairo_set_source_rgba(cr, .9, .0, .0, .3);
+
+		cairo_set_line_width(cr, 2);
+
 		cairo_stroke(cr);
 	}
 	if (win->msg)
@@ -2628,14 +2714,44 @@ static void favcb(Win *win)
 		gtk_window_set_icon(win->win, NULL);
 }
 
+static void putbtne(Win* win, GdkEventType type)
+{
+	GdkEvent *e = gdk_event_new(type);
+	GdkEventButton *eb = (GdkEventButton *)e;
+
+	eb->window = gtk_widget_get_window(win->kitw);
+	g_object_ref(eb->window);
+	eb->send_event = true;
+
+	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
+	gdk_event_set_device(e, gdk_seat_get_pointer(seat));
+
+	eb->x = win->px;
+	eb->y = win->py;
+	eb->button = 1;
+	eb->type = type;
+	gdk_event_put(e);
+	gdk_event_free(e);
+}
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
+	if (win->mode == Mpointer && ek->keyval == GDK_KEY_space)
+	{
+		putbtne(win, GDK_BUTTON_PRESS);
+		putbtne(win, GDK_BUTTON_RELEASE);
+		tonormal(win);
+		return true;
+	}
+
 	if (ek->is_modifier) return false;
 
 	gchar *action = ke2name(ek);
 
 	if (action && strcmp(action, "tonormal") == 0)
 	{
+		if (win->mode == Mpointer)
+			win->px = win->py = 0;
+
 		if (win->mode == Mnormal)
 		{
 			send(win, Cblur, NULL);
@@ -2758,6 +2874,8 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		tonormal(win);
 		return true;
 	}
+
+	if (win->mode == Mpointer) return false;
 
 	//workaround
 	//for lacking of target change event when btn event happens with focus in;

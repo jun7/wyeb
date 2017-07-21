@@ -73,6 +73,7 @@ key:
 4 - bracketleft: tonormal               : 
 0 - i          : toinsert               : 
 0 - I          : toinsertinput          : To Insert Mode with focus of first input
+0 - z          : topointer              : 
 0 - f          : tohint                 : 
 0 - F          : tohintnew              : 
 0 - t          : tohintback             : 
