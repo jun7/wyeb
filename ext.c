@@ -446,7 +446,7 @@ static WebKitDOMElement *_makehintelm(
 		"position: relative;"
 		"z-index: 2147483647;"
 		"font-size: medium !important;"
-		"font-family: monospace;"
+		"font-family: monospace !important;"
 		"background: linear-gradient(#649, #203);"
 		"color: white;"
 //		"border: 1px solid red;"
