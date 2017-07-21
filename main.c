@@ -2735,7 +2735,8 @@ static void putbtne(Win* win, GdkEventType type)
 }
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
-	if (win->mode == Mpointer && ek->keyval == GDK_KEY_space)
+	if (win->mode == Mpointer &&
+			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
 		putbtne(win, GDK_BUTTON_PRESS);
 		putbtne(win, GDK_BUTTON_RELEASE);
