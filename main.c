@@ -1924,8 +1924,8 @@ static bool run(Win *win, gchar* action, const gchar *arg)
 
 #define Z(str, func) if (strcmp(action, str) == 0) {func; goto out;}
 	if (action == NULL) return false;
-	//nokey nowin
 
+	//nokey nowin
 	Z("new"         , win = newwin(arg, NULL, NULL, false))
 #define CLIP(clip) \
 		gchar *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
@@ -2735,6 +2735,8 @@ static void putbtne(Win* win, GdkEventType type)
 }
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
+	if (ek->is_modifier) return false;
+
 	if (win->mode == Mpointer &&
 			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
@@ -2743,8 +2745,6 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		tonormal(win);
 		return true;
 	}
-
-	if (ek->is_modifier) return false;
 
 	gchar *action = ke2name(ek);
 
@@ -2761,6 +2761,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		}
 
 		tonormal(win);
+		return true;
 	}
 
 	if (win->mode == Minsert)
@@ -2822,6 +2823,15 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	run(win, action, NULL);
 
 	return true;
+}
+static bool keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
+{
+	if (ek->is_modifier) return false;
+	if (win->mode == Minsert) return false;
+	if (win->mode & Mhint) return true;
+	if (win->mode == Mselect) return true;
+	if (ke2name(ek)) return true;
+	return false;
 }
 static void setresult(Win *win, WebKitHitTestResult *htr)
 {
@@ -3132,6 +3142,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
 		//D(WEBKIT_LOAD_STARTED %s, URI(win))
+		win->px = win->py = 0;
 		win->scheme = false;
 		setresult(win, NULL);
 		tonormal(win);
@@ -3578,6 +3589,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 		SIGW(o, "notify::favicon"      , favcb     , win);
 
 	SIG( o, "key-press-event"      , keycb     , win);
+	SIG( o, "key-release-event"    , keyrcb    , win);
 	SIG( o, "mouse-target-changed" , targetcb  , win);
 	SIG( o, "button-press-event"   , btncb     , win);
 	SIG( o, "button-release-event" , btnrcb    , win);
