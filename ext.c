@@ -1057,7 +1057,7 @@ void ipccb(const gchar *line)
 		page->relonly     = arg[0] == 'y';
 		page->showblocked = arg[1] == 'y';
 		g_free(page->cutheads);
-		page->cutheads = g_strdup(arg + 3);
+		page->cutheads = g_strdup(arg + 2);
 		pagestart(page);
 		break;
 	case Con:
