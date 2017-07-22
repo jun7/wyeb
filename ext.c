@@ -1189,10 +1189,9 @@ static gboolean reqcb(
 			ret = true;
 		}
 	}
-	else
-		ret = false;
 
-	addblack(page, reqstr);
+	if (!ret)
+		addblack(page, reqstr);
 
 	soup_uri_free(puri);
 	soup_uri_free(ruri);
