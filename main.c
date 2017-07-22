@@ -268,7 +268,7 @@ static gchar *usage =
 static gchar *mainmdstr =
 "<!-- this is text/markdown -->\n"
 "<meta charset=utf8>\n"
-"Key:\n"
+"Keys:\n"
 "**e**: Edit this page;\n"
 "**E**: Edit main config file;\n"
 "**c**: Open config directory;\n"
