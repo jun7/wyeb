@@ -917,12 +917,13 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 				if (type == Cclick)
 				{
-					if (isinput(te))
+					bool isi = isinput(te);
+					if (isi)
 						send(page, "toinsert", NULL);
 					else
 						send(page, "tonormal", NULL);
 
-					if (page->script)
+					if (page->script && !isi)
 					{
 #if NEWV
 						WebKitDOMClientRect *rect =

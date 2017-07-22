@@ -2808,11 +2808,11 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		{
 			send(win, Cblur, NULL);
 			webkit_find_controller_search_finish(win->findct);
-			return false;
 		}
+		else
+			tonormal(win);
 
-		tonormal(win);
-		return true;
+		return false;
 	}
 
 	if (win->mode == Minsert)
