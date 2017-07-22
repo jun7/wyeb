@@ -281,7 +281,7 @@ static gchar *mainmdstr =
 "\n"
 "For other keys, see [help](wyeb:help) assigned '**:**'.\n"
 "Since this application is inspired by dwb and luakit,\n"
-"usage is similar to those,\n"
+"usage is similar to them,\n"
 "\n"
 "<form style=display:inline method=get "
 	"action=http://google.com/search>\n"
