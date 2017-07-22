@@ -41,8 +41,9 @@ typedef struct {
 
 	Coms           lasttype;
 	gchar         *lasthintkeys;
-	bool           showblocked;
 	bool           relonly;
+	bool           showblocked;
+	bool           script;
 	gchar         *cutheads;
 	GSList        *black;
 	GSList        *white;
@@ -578,13 +579,160 @@ static void rmhint(Page *page)
 	page->apkeys = NULL;
 }
 
+static bool checkelm(WebKitDOMDOMWindow *win, WebKitDOMElement *te,
+		Coms type, gint *tnum, GSList **elms, Elm *prect)
+{
+	//elms visibility hidden have size also opacity
+	WebKitDOMCSSStyleDeclaration *dec =
+		webkit_dom_dom_window_get_computed_style(win, te, NULL);
 
-static GSList *_makelist(WebKitDOMDocument *doc,
+	static gchar *check[][2] = {
+		{"visibility", "hidden"},
+		{"opacity"   , "0"},
+	};
+	bool checkb = false;
+	for (int k = 0; k < sizeof(check) / sizeof(*check); k++)
+	{
+		if (styleis(dec, check[k][0], check[k][1]))
+			checkb = true;
+
+		if (checkb) break;
+	}
+	if (checkb)
+	{
+		g_object_unref(dec);
+		return false;
+	}
+
+	Elm rect = getrect(te);
+	//no size no operation //not works, see google's page nav
+	//if (height == 0 || width == 0) continue;
+
+	glong bottom = rect.y + rect.h;
+	glong right  = rect.x + rect.w;
+
+#if !NEWV
+	if (styleis(dec, "display", "inline"))
+	{
+		WebKitDOMElement *le = te;
+		while (le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le))
+		{
+			WebKitDOMCSSStyleDeclaration *decp =
+				webkit_dom_dom_window_get_computed_style(win, le, NULL);
+			if (!styleis(decp, "display", "inline"))
+			{
+				Elm rectp = getrect(le);
+				glong nr = MIN(right, rectp.x + rectp.w);
+				rect.w += nr - right;
+				right = nr;
+				break;
+			}
+			g_object_unref(decp);
+		}
+	}
+#endif
+
+	if (
+		(rect.y <= 0         && bottom <= 0       ) ||
+		(rect.y >= prect->h  && bottom >= prect->h) ||
+		(rect.x <= 0         && right  <= 0       ) ||
+		(rect.x >= prect->w  && right  >= prect->w)
+		)
+	{
+#if NEWV
+		g_object_unref(rect.rects);
+#endif
+		g_object_unref(dec);
+		return false;
+	}
+
+
+	//now the element is in sight
+
+	if (type == Ctext)
+	{
+#if NEWV
+		g_object_unref(rect.rects);
+#endif
+		g_object_unref(dec);
+
+		if (!isinput(te)) return false;
+
+		webkit_dom_element_focus(te);
+		return true;
+	}
+
+	rect.py = prect->y;
+	rect.px = prect->x;
+
+	++*tnum;
+	Elm *elm = g_new(Elm, 1);
+	*elm = rect;
+	elm->elm = te;
+	elm->zi = -1;
+
+	gchar *zc = webkit_dom_css_style_declaration_get_property_value(dec, "z-index");
+	elm->zi = atoi(zc);
+	g_free(zc);
+
+	if (*elms)
+	{
+		for (GSList *next = *elms; next; next = next->next) {
+			if (elm->zi >= ((Elm *)next->data)->zi)
+			{
+				*elms = g_slist_insert_before(*elms, next, elm);
+				break;
+			}
+
+			if (!next->next)
+			{
+				*elms = g_slist_append(*elms, elm);
+				break;
+			}
+		}
+	} else
+		*elms = g_slist_append(*elms, elm);
+
+	g_object_unref(dec);
+
+	return false;
+}
+static void eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
+		Coms type, gint *tnum, GSList **elms, Elm *prect)
+{
+	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl) ; j++)
+	{
+		WebKitDOMElement *te =
+			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, j);
+
+		static gchar *tag = NULL;
+		g_free(tag);
+		tag = webkit_dom_element_get_tag_name(te);
+		if (isin(clicktags , tag)) continue;
+
+		WebKitDOMCSSStyleDeclaration *dec =
+			webkit_dom_dom_window_get_computed_style(win, te, NULL);
+
+		if (styleis(dec, "cursor", "pointer"))
+		{
+			checkelm( win, te, type, tnum, elms, prect);
+		}
+		else
+		{
+			WebKitDOMHTMLCollection *ccl = webkit_dom_element_get_children(te);
+			eachclick(win, ccl, type, tnum, elms, prect);
+			g_object_unref(ccl);
+		}
+
+		g_object_unref(dec);
+	}
+}
+static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 		Coms type, gint *tnum, GSList *elms, Elm *prect)
 {
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
 
-	const gchar **taglist = clicktags;
+	const gchar **taglist = clicktags; //Cclick
 	if (type == Clink ) taglist = linktags;
 	if (type == Curi  ) taglist = uritags;
 	if (type == Cspawn) taglist = uritags;
@@ -597,123 +745,22 @@ static GSList *_makelist(WebKitDOMDocument *doc,
 
 		for (gint j = 0; j < webkit_dom_html_collection_get_length(cl) ; j++)
 		{
-			WebKitDOMNode *tn = webkit_dom_html_collection_item(cl, j);
-			WebKitDOMElement *te = (WebKitDOMElement *)tn;
-
-			//elms visibility hidden have size also opacity
-			WebKitDOMCSSStyleDeclaration *dec =
-				webkit_dom_dom_window_get_computed_style(win, te, NULL);
-
-			static gchar *check[][2] = {
-				{"visibility", "hidden"},
-				{"opacity"   , "0"},
-			};
-			bool checkb = false;
-			for (int k = 0; k < sizeof(check) / sizeof(*check); k++)
+			if (checkelm(
+						win,
+						(WebKitDOMElement *)webkit_dom_html_collection_item(cl, j),
+						type, tnum, &elms, prect))
 			{
-				if (styleis(dec, check[k][0], check[k][1]))
-					checkb = true;
-
-				if (checkb) break;
-			}
-			if (checkb)
-			{
-				g_object_unref(dec);
-				continue;
-			}
-
-			Elm rect = getrect(te);
-			//no size no operation //not works, see google's page nav
-			//if (height == 0 || width == 0) continue;
-
-			glong bottom = rect.y + rect.h;
-			glong right  = rect.x + rect.w;
-
-#if !NEWV
-			if (styleis(dec, "display", "inline"))
-			{
-				WebKitDOMElement *le = te;
-				while (le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le))
-				{
-					WebKitDOMCSSStyleDeclaration *decp =
-						webkit_dom_dom_window_get_computed_style(win, le, NULL);
-					if (!styleis(decp, "display", "inline"))
-					{
-						Elm rectp = getrect(le);
-						glong nr = MIN(right, rectp.x + rectp.w);
-						rect.w += nr - right;
-						right = nr;
-						break;
-					}
-					g_object_unref(decp);
-				}
-			}
-#endif
-
-			if (
-				(rect.y <= 0         && bottom <= 0       ) ||
-				(rect.y >= prect->h  && bottom >= prect->h) ||
-				(rect.x <= 0         && right  <= 0       ) ||
-				(rect.x >= prect->w  && right  >= prect->w)
-				)
-			{
-#if NEWV
-				g_object_unref(rect.rects);
-#endif
-				g_object_unref(dec);
-				continue;
-			}
-
-
-			//now the element is in sight
-
-			if (type == Ctext)
-			{
-#if NEWV
-				g_object_unref(rect.rects);
-#endif
-				g_object_unref(dec);
-
-				if (!isinput(te)) continue;
-
-				webkit_dom_element_focus(te);
 				g_object_unref(win);
 				return NULL;
 			}
-
-			rect.py = prect->y;
-			rect.px = prect->x;
-
-			++*tnum;
-			Elm *elm = g_new(Elm, 1);
-			*elm = rect;
-			elm->elm = te;
-			elm->zi = -1;
-
-			gchar *zc = webkit_dom_css_style_declaration_get_property_value(dec, "z-index");
-			elm->zi = atoi(zc);
-			g_free(zc);
-
-			if (elms)
-			{
-				for (GSList *next = elms; next; next = next->next) {
-					if (elm->zi >= ((Elm *)next->data)->zi)
-					{
-						elms = g_slist_insert_before(elms, next, elm);
-						break;
-					}
-
-					if (!next->next)
-					{
-						elms = g_slist_append(elms, elm);
-						break;
-					}
-				}
-			} else
-				elms = g_slist_append(elms, elm);
-
-			g_object_unref(dec);
 		}
+		g_object_unref(cl);
+	}
+
+	if (type == Cclick && page->script)
+	{
+		WebKitDOMHTMLCollection *cl = webkit_dom_document_get_children(doc);
+		eachclick(win, cl, type, tnum, &elms, prect);
 		g_object_unref(cl);
 	}
 
@@ -743,7 +790,7 @@ static GSList *makelist(Page *page, Coms type, gint *tnum)
 
 	Elm rect = winrect(doc);
 	//D(rect %d %d %d %d, rect.y, rect.x, rect.h, rect.w)
-	GSList *elms = _makelist(doc, type, tnum, NULL, &rect);
+	GSList *elms = _makelist(page, doc, type, tnum, NULL, &rect);
 
 	WebKitDOMHTMLCollection *cl =
 		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
@@ -766,7 +813,7 @@ static GSList *makelist(Page *page, Coms type, gint *tnum)
 		g_object_unref(erect.rects);
 #endif
 
-		elms = _makelist(fdoc, type, tnum, elms, &frect);
+		elms = _makelist(page, fdoc, type, tnum, elms, &frect);
 	}
 
 	g_object_unref(cl);
@@ -828,8 +875,13 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 	page->lasttype = type;
 
-	g_free(page->lasthintkeys);
-	page->lasthintkeys = g_strdup(hintkeys);
+	if (hintkeys)
+	{
+		g_free(page->lasthintkeys);
+		page->lasthintkeys = g_strdup(hintkeys);
+	}
+	else
+		hintkeys = page->lasthintkeys;
 
 	if (strlen(hintkeys) < 3) hintkeys = HINTKEYS;
 	rmhint(page);
@@ -870,15 +922,34 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					else
 						send(page, "tonormal", NULL);
 
-					WebKitDOMEvent *ce =
-						webkit_dom_document_create_event(doc, "MouseEvent", NULL);
+					if (page->script)
+					{
+#if NEWV
+						WebKitDOMClientRect *rect =
+							webkit_dom_client_rect_list_item(elm->rects, 0);
 
-					webkit_dom_event_init_event(ce, "click", true, true);
+						gchar *arg = g_strdup_printf("%f:%f",
+								webkit_dom_client_rect_get_left(rect) + 2.0,
+								webkit_dom_client_rect_get_top(rect) + 2.0 + elm->gap
+								);
+#else
+						gchar *arg = g_strdup_printf("%d:%d", elm->x + 1, elm->y + 1);
+#endif
+						send(page, "clickhere", arg);
+						g_free(arg);
+					}
+					else
+					{
+						WebKitDOMEvent *ce =
+							webkit_dom_document_create_event(doc, "MouseEvent", NULL);
 
-					webkit_dom_event_target_dispatch_event(
-						(WebKitDOMEventTarget *)te, ce, NULL);
+						webkit_dom_event_init_event(ce, "click", true, true);
 
-					g_object_unref(ce);
+						webkit_dom_event_target_dispatch_event(
+							(WebKitDOMEventTarget *)te, ce, NULL);
+
+						g_object_unref(ce);
+					}
 				} else
 					hintret(page, type, te);
 
@@ -919,9 +990,7 @@ static void hintcb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
 {
 	if (page->apnode)
 	{
-		gchar *k = g_strdup(page->lasthintkeys);
-		makehint(page, page->lasttype, k, NULL);
-		g_free(k);
+		makehint(page, page->lasttype, NULL, NULL);
 	}
 }
 
@@ -1068,7 +1137,7 @@ void ipccb(const gchar *line)
 		{
 			gchar key[2] = {0};
 			key[0] = toupper(arg[0]);
-			arg++;
+			arg = NULL;
 
 			ipkeys = page->apkeys ?
 				g_strconcat(page->apkeys, key, NULL) : g_strdup(key);
@@ -1080,6 +1149,11 @@ void ipccb(const gchar *line)
 	case Clink:
 	case Curi:
 	case Cspawn:
+		if (arg)
+		{
+			page->script = *arg == 'y';
+			arg++;
+		}
 		if (!makehint(page, type, arg, ipkeys)) send(page, "tonormal", NULL);
 		break;
 

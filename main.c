@@ -226,6 +226,7 @@ Conf dconf[] = {
 			"hjkl's default are scrolls, not allow keys"},
 	{DSET    , "linkformat"       , "[%.40s](%s)"},
 	{DSET    , "scriptdialog"     , "true"},
+	{DSET    , "hackedhint4js"    , "true"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -537,6 +538,26 @@ static void reloadlast()
 	if (reloadfunc) return;
 	if (LASTWIN) webkit_web_view_reload(LASTWIN->kit);
 	reloadfunc = g_timeout_add(300, (GSourceFunc)reloadlastcb, NULL);
+}
+
+static void putbtne(Win* win, GdkEventType type)
+{
+	GdkEvent *e = gdk_event_new(type);
+	GdkEventButton *eb = (GdkEventButton *)e;
+
+	eb->window = gtk_widget_get_window(win->kitw);
+	g_object_ref(eb->window);
+	eb->send_event = true;
+
+	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
+	gdk_event_set_device(e, gdk_seat_get_pointer(seat));
+
+	eb->x = win->px;
+	eb->y = win->py;
+	eb->button = 1;
+	eb->type = type;
+	gdk_event_put(e);
+	gdk_event_free(e);
 }
 
 
@@ -1103,7 +1124,16 @@ static void _modechanged(Win *win)
 		if (win->crashed)
 			win->mode = Mnormal;
 		else
-			send(win, com, confcstr("hintkeys"));
+		{
+			gboolean script = false; //dont use bool
+			if (getsetbool(win, "hackedhint4js"))
+				g_object_get(win->seto, "enable-javascript", &script, NULL);
+			gchar *arg =
+				g_strdup_printf("%c%s", script ? 'y' : 'n', confcstr("hintkeys"));
+
+			send(win, com, arg);
+			g_free(arg);
+		}
 
 		break;
 	}
@@ -1967,6 +1997,16 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	if (win == NULL) return false;
 
 	//internal
+	Z("clickhere",
+		gchar **xy = g_strsplit(arg, ":", 2);
+		gdouble z = webkit_web_view_get_zoom_level(win->kit);
+		win->px = atof(*xy) * z;
+		win->py = atof(*(xy + 1)) * z;
+		putbtne(win, GDK_BUTTON_PRESS);
+		putbtne(win, GDK_BUTTON_RELEASE);
+		g_strfreev(xy);
+	)
+
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
 			return true;)
@@ -2744,25 +2784,6 @@ static void favcb(Win *win)
 		gtk_window_set_icon(win->win, NULL);
 }
 
-static void putbtne(Win* win, GdkEventType type)
-{
-	GdkEvent *e = gdk_event_new(type);
-	GdkEventButton *eb = (GdkEventButton *)e;
-
-	eb->window = gtk_widget_get_window(win->kitw);
-	g_object_ref(eb->window);
-	eb->send_event = true;
-
-	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
-	gdk_event_set_device(e, gdk_seat_get_pointer(seat));
-
-	eb->x = win->px;
-	eb->y = win->py;
-	eb->button = 1;
-	eb->type = type;
-	gdk_event_put(e);
-	gdk_event_free(e);
-}
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
@@ -2814,9 +2835,9 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	if (win->mode & Mhint)
 	{
-		gchar *arg = g_strdup_printf("%c%s", ek->keyval, confcstr("hintkeys"));
-		send(win, Ckey, arg);
-		g_free(arg);
+		gchar key[2] = {0};
+		*key = ek->keyval;
+		send(win, Ckey, key);
 		return true;
 	}
 
