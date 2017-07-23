@@ -226,7 +226,7 @@ Conf dconf[] = {
 			"hjkl's default are scrolls, not allow keys"},
 	{DSET    , "linkformat"       , "[%.40s](%s)"},
 	{DSET    , "scriptdialog"     , "true"},
-	{DSET    , "hackedhint4js"    , "false"},
+	{DSET    , "hackedhint4js"    , "true"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
