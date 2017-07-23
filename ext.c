@@ -715,7 +715,7 @@ static void eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 
 		if (styleis(dec, "cursor", "pointer"))
 		{
-			checkelm( win, te, type, tnum, elms, prect);
+			checkelm(win, te, type, tnum, elms, prect);
 		}
 		else
 		{
