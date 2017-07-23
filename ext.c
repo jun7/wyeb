@@ -697,13 +697,33 @@ static bool checkelm(WebKitDOMDOMWindow *win, WebKitDOMElement *te,
 
 	return false;
 }
+static bool hasstructure(WebKitDOMElement *te, GSList *elms)
+{
+	WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(te);
+	for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
+	{
+		WebKitDOMElement *le =
+			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i);
+
+		for (GSList *next = elms; next; next = next->next)
+			if (((Elm *)next->data)->elm == le) goto has;
+
+		if (hasstructure(le, elms)) goto has;
+	}
+
+	g_object_unref(cl);
+	return false;
+has:
+	g_object_unref(cl);
+	return true;
+}
 static void eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 		Coms type, gint *tnum, GSList **elms, Elm *prect)
 {
-	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl) ; j++)
+	for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
 	{
 		WebKitDOMElement *te =
-			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, j);
+			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i);
 
 		static gchar *tag = NULL;
 		g_free(tag);
@@ -715,7 +735,8 @@ static void eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 
 		if (styleis(dec, "cursor", "pointer"))
 		{
-			checkelm(win, te, type, tnum, elms, prect);
+			if (!hasstructure(te, *elms))
+				checkelm(win, te, type, tnum, elms, prect);
 		}
 		else
 		{
@@ -743,7 +764,7 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 		WebKitDOMHTMLCollection *cl =
 			webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, *tag);
 
-		for (gint j = 0; j < webkit_dom_html_collection_get_length(cl) ; j++)
+		for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
 		{
 			if (checkelm(
 						win,
@@ -795,7 +816,7 @@ static GSList *makelist(Page *page, Coms type, gint *tnum)
 	WebKitDOMHTMLCollection *cl =
 		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
 
-	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl) ; j++)
+	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
 	{
 		void *tn = webkit_dom_html_collection_item(cl, j);
 		WebKitDOMHTMLIFrameElement *tfe = tn;
