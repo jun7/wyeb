@@ -209,8 +209,9 @@ Conf dconf[] = {
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
-	{"set:script", "enable-javascript", "true"},
-	{"set:image" , "auto-load-images" , "true"},
+	{"set:v"     , "enable-caret-browsing", "true"},
+	{"set:script", "enable-javascript"    , "true"},
+	{"set:image" , "auto-load-images"     , "true"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s"},
 	{DSET    , "usercss"          , "user.css"},
@@ -222,8 +223,8 @@ Conf dconf[] = {
 	{DSET    , "mdlbtn2winlist"   , "false"},
 	{DSET    , "newwinhandle"     , "normal",
 			"newwinhandle=notnew | ignore | back | normal"},
-	{DSET    , "hjkl2allowkeys"   , "false",
-			"hjkl's default are scrolls, not allow keys"},
+	{DSET    , "hjkl2arrowkeys"   , "false",
+			"hjkl's default are scrolls, not arrow keys"},
 	{DSET    , "linkformat"       , "[%.40s](%s)"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
@@ -1425,9 +1426,9 @@ static void sendkey(Win *win, guint key)
 	ek->window = gtk_widget_get_window(win->kitw);
 	g_object_ref(ek->window);
 	ek->send_event = true;
-	//ek->time   = GDK_CURRENT_TIME;
+//	ek->time   = GDK_CURRENT_TIME;
 	ek->keyval = key;
-	//k->state = ke->state & ~GDK_MODIFIER_MASK;
+//	ek->state  = ek->state & ~GDK_MODIFIER_MASK;
 
 	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
 	gdk_event_set_device(e, gdk_seat_get_keyboard(seat));
@@ -1833,7 +1834,7 @@ static Keybind dkeys[]= {
 	{"tonormal"      , GDK_KEY_Escape, 0, "To Normal Mode"},
 	{"tonormal"      , '[', GDK_CONTROL_MASK},
 
-//normal /'v' are left
+//normal
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 	{"topointer"     , 'p', 0},
@@ -1906,6 +1907,7 @@ static Keybind dkeys[]= {
 	{"editconf"      , 'E', 0},
 	{"openconfigdir" , 'c', 0},
 
+	{"setv"          , 'v', 0, "Use the 'set:v' section"},
 	{"setscript"     , 's', GDK_CONTROL_MASK, "Use the 'set:script' section"},
 	{"setimage"      , 'i', GDK_CONTROL_MASK, "set:image"},
 	{"unset"         , 'u', 0},
@@ -2125,7 +2127,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 		Z("scrollleft" , pmove(win, GDK_KEY_Left))
 		Z("scrollright", pmove(win, GDK_KEY_Right))
 	}
-	bool arrow = getsetbool(win, "hjkl2allowkeys");
+	bool arrow = getsetbool(win, "hjkl2arrowkeys");
 	Z(arrow ? "scrolldown"  : "arrowdown" , sendkey(win, GDK_KEY_Down))
 	Z(arrow ? "scrollup"    : "arrowup"   , sendkey(win, GDK_KEY_Up))
 	Z(arrow ? "scrollleft"  : "arrowleft" , sendkey(win, GDK_KEY_Left))
@@ -2228,6 +2230,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 			g_free(dir);
 	)
 
+	Z("setv"        , return run(win, "set", "v"))
 	Z("setscript"   , return run(win, "set", "script"))
 	Z("setimage"    , return run(win, "set", "image"))
 	Z("unset"       , return run(win, "set", NULL))
