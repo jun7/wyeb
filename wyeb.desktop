@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=WithYourEditorBrowser
-Exec=wyeb %U
+Exec=wyeb %u
 Icon=wyeb
 Terminal=false
 Type=Application
