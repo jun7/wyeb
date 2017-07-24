@@ -489,7 +489,7 @@ static WebKitDOMElement *_makehintelm(
 	const gchar *opacity = head ? "9" : "6";
 
 	if (center)
-		stylestr = g_strdup_printf(hintstyle, opacity, ".", 4, "em");
+		stylestr = g_strdup_printf(hintstyle, opacity, ".", 6, "em");
 	else
 		stylestr = g_strdup_printf(hintstyle, opacity, "-.", y > 6 ? 6 : y, "em");
 
