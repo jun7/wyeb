@@ -2115,7 +2115,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 			return run(win, "bookmark", NULL);
 	)
 
-	Z("quit"        , gtk_widget_destroy(win->winw); return false)
+	Z("quit"        , gtk_widget_destroy(win->winw); return true)
 	Z("quitall"     , quitif(true))
 
 	if (win->mode == Mpointer)
