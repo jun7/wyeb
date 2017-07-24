@@ -358,6 +358,7 @@ static Elm getrect(WebKitDOMElement *te)
 {
 	Elm elm = {0};
 
+#if ! NEWV
 	elm.h = webkit_dom_element_get_offset_height(te);
 	elm.w = webkit_dom_element_get_offset_width(te);
 
@@ -371,8 +372,7 @@ static Elm getrect(WebKitDOMElement *te)
 			webkit_dom_element_get_offset_left(le) -
 			webkit_dom_element_get_scroll_left(le);
 	}
-
-#if NEWV
+#else
 	elm.rects =
 		webkit_dom_element_get_client_rects(te);
 
@@ -645,32 +645,30 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	glong bottom = ret.y + ret.h;
 	glong right  = ret.x + ret.w;
 
+#if NEWV
 	if (prect)
 	{
 		trim(&ret, prect);
 		bottom = ret.y + ret.h;
 		right  = ret.x + ret.w;
 	}
-#if !NEWV
-	else
+#else
+	if (styleis(dec, "display", "inline"))
 	{
-		if (styleis(dec, "display", "inline"))
+		WebKitDOMElement *le = te;
+		while (le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le))
 		{
-			WebKitDOMElement *le = te;
-			while (le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le))
+			WebKitDOMCSSStyleDeclaration *decp =
+				webkit_dom_dom_window_get_computed_style(win, le, NULL);
+			if (!styleis(decp, "display", "inline"))
 			{
-				WebKitDOMCSSStyleDeclaration *decp =
-					webkit_dom_dom_window_get_computed_style(win, le, NULL);
-				if (!styleis(decp, "display", "inline"))
-				{
-					Elm rectp = getrect(le);
-					glong nr = MIN(right, rectp.x + rectp.w);
-					ret.w += nr - right;
-					right = nr;
-					break;
-				}
-				g_object_unref(decp);
+				Elm rectp = getrect(le);
+				glong nr = MIN(right, rectp.x + rectp.w);
+				ret.w += nr - right;
+				right = nr;
+				break;
 			}
+			g_object_unref(decp);
 		}
 	}
 #endif
