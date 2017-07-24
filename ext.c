@@ -810,7 +810,8 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 
 	if (type == Cclick && page->script)
 	{
-		WebKitDOMHTMLCollection *cl = webkit_dom_document_get_children(doc);
+		WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(
+				(WebKitDOMElement *)webkit_dom_document_get_body(doc));
 		eachclick(win, cl, type, &elms, frect, NULL);
 		g_object_unref(cl);
 	}
