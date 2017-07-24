@@ -489,7 +489,7 @@ static WebKitDOMElement *_makehintelm(
 	const gchar *opacity = head ? "9" : "6";
 
 	if (center)
-		stylestr = g_strdup_printf(hintstyle, opacity, "", h * 3 / 7, "px");
+		stylestr = g_strdup_printf(hintstyle, opacity, ".", 4, "em");
 	else
 		stylestr = g_strdup_printf(hintstyle, opacity, "-.", y > 6 ? 6 : y, "em");
 
@@ -683,7 +683,6 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 		)
 		goto retfalse;
 
-
 	if (js && (ret.h < 1 || ret.w < 1))
 		goto retfalse;
 
@@ -825,7 +824,9 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 			WebKitDOMElement *te =
 				(WebKitDOMElement *)webkit_dom_html_collection_item(cl, j);
 
-			Elm elm = checkelm(win, frect, NULL, te, false, false);
+			Elm prect = *frect;
+			prect.x =prect.y = 0;
+			Elm elm = checkelm(win, frect, &prect, te, false, false);
 			if (elm.ok)
 			{
 				if (type == Ctext)
