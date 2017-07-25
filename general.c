@@ -220,8 +220,9 @@ static gboolean ipcgencb(GIOChannel *ch, GIOCondition c, gpointer p)
 	g_strchomp(line);
 
 	//D(receive %s, line)
-	ipccb(line);
-
+	gchar *unesc = g_strcompress(line);
+	ipccb(unesc);
+	g_free(unesc);
 	g_free(line);
 	return true;
 }
@@ -237,9 +238,11 @@ static bool ipcsend(gchar *name, gchar *str) {
 		//D(send start %s %s, name, str)
 
 		ret = true;
-		gchar *send = g_strconcat(str, "\n", NULL);
+		char *esc = g_strescape(str, "");
+		gchar *send = g_strconcat(esc, "\n", NULL);
 		ret = write(cpipe, send, strlen(send)) != -1;
 		g_free(send);
+		g_free(esc);
 		close(cpipe);
 
 		//D(send -end- %s %s, name, str)
