@@ -3521,7 +3521,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	gtk_window_set_default_size(win->win, w, h);
 
 	gtk_widget_show_all(win->winw);
-	gdk_flush();
 
 	//delayed init
 	if (!accelg) makemenu(NULL);
