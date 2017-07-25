@@ -3698,12 +3698,11 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	gtk_container_add(GTK_CONTAINER(ol), boxw);
 	gtk_container_add(GTK_CONTAINER(win->win), olw);
 
-
-	gtk_widget_grab_focus(win->kitw);
-
 	gtk_widget_show_all(win->winw);
 	gtk_widget_hide(win->entw);
 	gtk_widget_hide(win->progw);
+
+	gtk_widget_grab_focus(win->kitw);
 
 	gtk_window_present(
 			back && LASTWIN ? LASTWIN->win : win->win);
