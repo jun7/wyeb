@@ -862,14 +862,14 @@ static Elm winrect(WebKitDOMDOMWindow *win, WebKitDOMDocument *doc)
 
 	return rect;
 }
-static GSList *makelist(Page *page, Coms type)
+static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
+		Elm *prect, GSList *elms)
 {
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
 
-	Elm rect = winrect(win, doc);
+	Elm rect = prect ? *prect : winrect(win, doc);
 	//D(rect %d %d %d %d, rect.y, rect.x, rect.h, rect.w)
-	GSList *elms = _makelist(page, doc, type, NULL, &rect);
+	elms = _makelist(page, doc, type, elms, &rect);
 
 	WebKitDOMHTMLCollection *cl =
 		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
@@ -892,7 +892,7 @@ static GSList *makelist(Page *page, Coms type)
 		{
 			frect.y += erect.y + rect.y;
 			frect.x += erect.x + rect.x;
-			elms = _makelist(page, fdoc, type, elms, &frect);
+			elms = makelist(page, fdoc, type, &frect, elms);
 		}
 		clearelm(&erect);
 	}
@@ -970,8 +970,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 	page->apkeys = ipkeys;
 
-
-	GSList *elms = makelist(page, type);
+	GSList *elms = makelist(page, doc, type, NULL, NULL);
 	guint tnum = g_slist_length(elms);
 
 	page->apnode = (WebKitDOMNode *)webkit_dom_document_get_document_element(doc);
@@ -1245,9 +1244,11 @@ void ipccb(const gchar *line)
 		break;
 
 	case Ctext:
-		makelist(page, Ctext);
+	{
+		WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
+		makelist(page, doc, Ctext, NULL, NULL);
 		break;
-
+	}
 	case Cmode:
 		mode(page);
 		break;
