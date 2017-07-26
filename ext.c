@@ -654,11 +654,7 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	)
 		goto retfalse;
 
-
-#if NEWV
-	if (prect)
-		trim(&ret, prect);
-#else
+#if ! NEWV
 	if (styleis(dec, "display", "inline"))
 	{
 		WebKitDOMElement *le = te;
@@ -678,6 +674,9 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 		}
 	}
 #endif
+
+	if (prect)
+		trim(&ret, prect);
 
 	if (js && (ret.h < 1 || ret.w < 1))
 		goto retfalse;
@@ -874,8 +873,16 @@ static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
 
 		if (cfrect.ok)
 		{
-			cfrect.x += cfrect.fx;
-			cfrect.y += cfrect.fy;
+			gdouble cx = webkit_dom_element_get_client_left(te);
+			gdouble cy = webkit_dom_element_get_client_top(te);
+			gdouble cw = webkit_dom_element_get_client_width(te);
+			gdouble ch = webkit_dom_element_get_client_height(te);
+
+			cfrect.w = MIN(cfrect.w - cx, cw);
+			cfrect.h = MIN(cfrect.h - cy, ch);
+
+			cfrect.x += cfrect.fx + cx;
+			cfrect.y += cfrect.fy + cy;
 			elms = makelist(page, fdoc, type, &cfrect, elms);
 		}
 
