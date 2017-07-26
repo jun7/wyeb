@@ -77,12 +77,12 @@ typedef struct {
 	WebKitDOMClientRectList *rects;
 //	glong gap; //workaround
 #endif
-	glong fy;
 	glong fx;
-	glong y;
+	glong fy;
 	glong x;
-	glong h;
+	glong y;
 	glong w;
+	glong h;
 	glong zi;
 } Elm;
 
@@ -504,7 +504,8 @@ static WebKitDOMElement *_makehintelm(
 	return ret;
 }
 static WebKitDOMElement *makehintelm(
-		WebKitDOMDocument *doc, Elm *elm, const gchar* text, gint len)
+		WebKitDOMDocument *doc, Elm *elm, const gchar* text, gint len,
+		glong pagex, glong pagey)
 {
 	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
 	bool center = isin(uritags, tag) && !isin(linktags, tag);
@@ -540,10 +541,10 @@ static WebKitDOMElement *makehintelm(
 		_trim(&y, &h, &elm->y, &elm->h);
 
 		WebKitDOMElement *hint = _makehintelm(doc, center,
-				y + elm->fy,
+				y + elm->fy + pagey,
 //				y + elm->fy + elm->gap,
 				//gap is workaround. so x is left.
-				x + elm->fx,
+				x + elm->fx + pagex,
 				h,
 				w,
 				text, len, i == 0);
@@ -557,7 +558,8 @@ static WebKitDOMElement *makehintelm(
 #else
 
 	return _makehintelm(doc, center,
-			elm->y + elm->fy, elm->x + elm->fx, elm->h, elm->w, text, len, true);
+			elm->y + elm->fy + pagey,
+			elm->x + elm->fx + pagex, elm->h, elm->w, text, len, true);
 #endif
 }
 
@@ -644,14 +646,18 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 
 	glong bottom = ret.y + ret.h;
 	glong right  = ret.x + ret.w;
+	if (
+		(ret.y <= 0         && bottom <= 0       ) ||
+		(ret.y >= frect->h  && bottom >= frect->h) ||
+		(ret.x <= 0         && right  <= 0       ) ||
+		(ret.x >= frect->w  && right  >= frect->w)
+	)
+		goto retfalse;
+
 
 #if NEWV
 	if (prect)
-	{
 		trim(&ret, prect);
-		bottom = ret.y + ret.h;
-		right  = ret.x + ret.w;
-	}
 #else
 	if (styleis(dec, "display", "inline"))
 	{
@@ -673,14 +679,6 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	}
 #endif
 
-	if (
-		(ret.y <= 0         && bottom <= 0       ) ||
-		(ret.y >= frect->h  && bottom >= frect->h) ||
-		(ret.x <= 0         && right  <= 0       ) ||
-		(ret.x >= frect->w  && right  >= frect->w)
-		)
-		goto retfalse;
-
 	if (js && (ret.h < 1 || ret.w < 1))
 		goto retfalse;
 
@@ -694,8 +692,8 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	g_object_unref(dec);
 
 	ret.elm = te;
-	ret.fy = frect->y;
 	ret.fx = frect->x;
+	ret.fy = frect->y;
 	ret.ok = true;
 
 	return ret;
@@ -733,15 +731,9 @@ static bool addelm(Elm *pelm, GSList **elms)
 }
 
 static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
-		Coms type, GSList **elms, Elm *frect, Elm *pprect)
+		Coms type, GSList **elms, Elm *frect, Elm *prect)
 {
 	bool ret = false;
-	Elm prect = pprect ? *pprect : *frect;
-	if (!pprect)
-	{
-		prect.x = 0;
-		prect.y = 0;
-	}
 
 	for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
 	{
@@ -751,7 +743,7 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 		gchar *tag = webkit_dom_element_get_tag_name(te);
 		if (isin(clicktags, tag))
 		{
-			Elm elm = checkelm(win, frect, &prect, te, true, false);
+			Elm elm = checkelm(win, frect, prect, te, true, false);
 			if (elm.ok)
 				addelm(&elm, elms);
 
@@ -760,11 +752,11 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 		}
 		g_free(tag);
 
-		Elm elm = checkelm(win, frect, &prect, te, true, true);
+		Elm elm = checkelm(win, frect, prect, te, true, true);
 		if (!elm.insight) continue;
 
 		WebKitDOMHTMLCollection *ccl = webkit_dom_element_get_children(te);
-		Elm *crect = &prect;
+		Elm *crect = prect;
 		WebKitDOMCSSStyleDeclaration *dec =
 			webkit_dom_dom_window_get_computed_style(win, te, NULL);
 		if (
@@ -795,7 +787,7 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 	return ret;
 }
 static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
-		Coms type, GSList *elms, Elm *frect)
+		Coms type, GSList *elms, Elm *frect, Elm *prect)
 {
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
 
@@ -809,7 +801,7 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 	{
 		WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(
 				(WebKitDOMElement *)webkit_dom_document_get_body(doc));
-		eachclick(win, cl, type, &elms, frect, NULL);
+		eachclick(win, cl, type, &elms, frect, prect);
 		g_object_unref(cl);
 	}
 	else for (const gchar **tag = taglist; *tag; tag++)
@@ -822,9 +814,7 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 			WebKitDOMElement *te =
 				(WebKitDOMElement *)webkit_dom_html_collection_item(cl, j);
 
-			Elm prect = *frect;
-			prect.x =prect.y = 0;
-			Elm elm = checkelm(win, frect, &prect, te, false, false);
+			Elm elm = checkelm(win, frect, prect, te, false, false);
 			if (elm.ok)
 			{
 				if (type == Ctext)
@@ -847,29 +837,24 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 	g_object_unref(win);
 	return elms;
 }
-static Elm winrect(WebKitDOMDOMWindow *win, WebKitDOMDocument *doc)
-{
-	Elm rect = {0};
-	//D(outer %d, webkit_dom_dom_window_get_outer_height(win));
-	rect.h = webkit_dom_dom_window_get_inner_height(win);
-	rect.w = webkit_dom_dom_window_get_inner_width(win);
-	//D(offy %d, webkit_dom_dom_window_get_page_y_offset(win));
-	//D(scry %d, webkit_dom_dom_window_get_scroll_y(win));
-	rect.y = webkit_dom_dom_window_get_scroll_y(win);
-	rect.x = webkit_dom_dom_window_get_scroll_x(win);
 
-	//D(ratio %f, webkit_dom_dom_window_get_device_pixel_ratio(win));
-
-	return rect;
-}
 static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
-		Elm *prect, GSList *elms)
+		Elm *frect, GSList *elms)
 {
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+	Elm frectr = {0};
+	if (!frect)
+	{
+		WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+		frectr.w = webkit_dom_dom_window_get_inner_width(win);
+		frectr.h = webkit_dom_dom_window_get_inner_height(win);
+		frect = &frectr;
+		g_object_unref(win);
+	}
+	Elm prect = *frect;
+	prect.x = prect.y = 0;
 
-	Elm rect = prect ? *prect : winrect(win, doc);
 	//D(rect %d %d %d %d, rect.y, rect.x, rect.h, rect.w)
-	elms = _makelist(page, doc, type, elms, &rect);
+	elms = _makelist(page, doc, type, elms, frect, &prect);
 
 	WebKitDOMHTMLCollection *cl =
 		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
@@ -884,21 +869,20 @@ static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
 			webkit_dom_html_iframe_element_get_content_document(tfe);
 
 		WebKitDOMDOMWindow *fwin = webkit_dom_document_get_default_view(fdoc);
-		Elm erect = checkelm(fwin, &rect, NULL, te, false, false);
-		Elm frect = winrect(fwin, fdoc);
+		Elm cfrect = checkelm(fwin, frect, &prect, te, false, false);
 		g_object_unref(fwin);
 
-		if (erect.ok)
+		if (cfrect.ok)
 		{
-			frect.y += erect.y + rect.y;
-			frect.x += erect.x + rect.x;
-			elms = makelist(page, fdoc, type, &frect, elms);
+			cfrect.x += cfrect.fx;
+			cfrect.y += cfrect.fy;
+			elms = makelist(page, fdoc, type, &cfrect, elms);
 		}
-		clearelm(&erect);
+
+		clearelm(&cfrect);
 	}
 
 	g_object_unref(cl);
-	g_object_unref(win);
 
 	return elms;
 }
@@ -970,6 +954,11 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 	page->apkeys = ipkeys;
 
+	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+	glong pagex = webkit_dom_dom_window_get_scroll_x(win);
+	glong pagey = webkit_dom_dom_window_get_scroll_y(win);
+	g_object_unref(win);
+
 	GSList *elms = makelist(page, doc, type, NULL, NULL);
 	guint tnum = g_slist_length(elms);
 
@@ -1010,18 +999,19 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 						WebKitDOMClientRect *rect =
 							webkit_dom_client_rect_list_item(elm->rects, 0);
 
-						gdouble h = webkit_dom_client_rect_get_height(rect);
+						gdouble x = webkit_dom_client_rect_get_left(rect);
+						gdouble y = webkit_dom_client_rect_get_top(rect);
 						gdouble w = webkit_dom_client_rect_get_width(rect);
+						gdouble h = webkit_dom_client_rect_get_height(rect);
 
 						gchar *arg = g_strdup_printf("%f:%f",
-								webkit_dom_client_rect_get_left(rect) + w / 2,
-//								webkit_dom_client_rect_get_top(rect) + elm->gap + h / 2
-								webkit_dom_client_rect_get_top(rect) + h / 2
-								);
+							x + elm->fx + w / 2.0 + 1.0,
+							y + elm->fy + h / 2.0 + 1.0
+						);
 #else
-
 						gchar *arg = g_strdup_printf("%d:%d",
-								elm->x + elm->w / 2, elm->y + 1);
+								elm->x + elm->fx + elm->w / 2,
+								elm->y + elm->fy + 1);
 #endif
 						send(page, "clickhere", arg);
 						g_free(arg);
@@ -1047,7 +1037,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 		else if (!ipkeys ||  g_str_has_prefix(key, ipkeys))
 		{
 			ret = true;
-			WebKitDOMElement *ne = makehintelm(doc, elm, key, iplen);
+			WebKitDOMElement *ne = makehintelm(doc, elm, key, iplen, pagex, pagey);
 			webkit_dom_node_append_child(page->apnode, (WebKitDOMNode *)ne, NULL);
 			page->aplist = g_slist_prepend(page->aplist, ne);
 		}
