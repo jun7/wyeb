@@ -1804,10 +1804,12 @@ void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 			(WebKitWebResource *)srco, res, &len, NULL);
 
 	gchar *esc = g_strescape(data, "");
-	gchar *cmd = g_strdup_printf(p, esc);
+	gchar *esc2 = g_strescape(esc, "");
+	gchar *cmd = g_strdup_printf(p, esc2);
 	g_spawn_command_line_async(cmd, NULL);
 
 	g_free(cmd);
+	g_free(esc2);
 	g_free(esc);
 	g_free(data);
 	g_free(p);
