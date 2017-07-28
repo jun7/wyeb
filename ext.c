@@ -1000,9 +1000,9 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					else
 						send(page, "tonormal", NULL);
 
+#if NEWV
 					if (page->script && !isi)
 					{
-#if NEWV
 						WebKitDOMClientRect *rect =
 							webkit_dom_client_rect_list_item(elm->rects, 0);
 
@@ -1016,6 +1016,12 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 							y + elm->fy + h / 2.0 + 1.0
 						);
 #else
+					gchar *tag = webkit_dom_element_get_tag_name(te);
+					bool isa = strcmp(tag, "A") == 0;
+					g_free(tag);
+
+					if (page->script && !isi && !isa)
+					{
 						gchar *arg = g_strdup_printf("%d:%d",
 								elm->x + elm->fx + elm->w / 2,
 								elm->y + elm->fy + 1);
