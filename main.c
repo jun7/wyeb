@@ -1261,7 +1261,7 @@ out:
 	g_free(uri);
 }
 
-static void spawnwithenv(Win *win, gchar* path, bool ispath)
+static void spawnwithenv(Win *win, gchar* path, bool ispath, gchar *piped)
 {
 	gchar **argv;
 	if (ispath)
@@ -1333,9 +1333,22 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath)
 		envp = g_environ_setenv(envp, "MEDIA_IMAGE_LINK",
 				win->media ?: win->image ?: win->link, true);
 
+	gint input;
 	GPid child_pid;
 	GError *err = NULL;
-	if (!g_spawn_async(
+	if (piped ?
+			!g_spawn_async_with_pipes(
+				dir, argv, envp,
+				G_SPAWN_SEARCH_PATH,
+				NULL,
+				NULL,
+				&child_pid,
+				&input,
+				NULL,
+				NULL,
+				&err)
+			:
+			!g_spawn_async(
 				dir, argv, envp,
 				ispath ? G_SPAWN_DEFAULT : G_SPAWN_SEARCH_PATH,
 				NULL, NULL, &child_pid, &err))
@@ -1343,6 +1356,20 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath)
 		alert(err->message);
 		g_error_free(err);
 	}
+	else if (piped)
+	{
+		GIOChannel *io = g_io_channel_unix_new(input);
+
+		if (G_IO_STATUS_NORMAL !=
+				g_io_channel_write_chars(
+					io, piped, -1, NULL, &err))
+		{
+			alert(err->message);
+			g_error_free(err);
+		}
+		g_io_channel_unref(io);
+	}
+
 	g_spawn_close_pid(child_pid);
 
 	g_strfreev(envp);
@@ -1799,18 +1826,15 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 
 void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 {
+	if (!LASTWIN) return;
+	Win *win = LASTWIN;
+
 	gsize len;
 	guchar *data = webkit_web_resource_get_data_finish(
 			(WebKitWebResource *)srco, res, &len, NULL);
 
-	gchar *esc = g_strescape(data, "");
-	gchar *esc2 = g_strescape(esc, "");
-	gchar *cmd = g_strdup_printf(p, esc2);
-	g_spawn_command_line_async(cmd, NULL);
+	spawnwithenv(win, p, false, data);
 
-	g_free(cmd);
-	g_free(esc2);
-	g_free(esc);
 	g_free(data);
 	g_free(p);
 }
@@ -2052,7 +2076,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 		win->mode = Mnormal;
 	}
-	Z("spawn"      , spawnwithenv(win, win->spawn, false))
+	Z("spawn"      , spawnwithenv(win, win->spawn, false, NULL))
 
 	if (arg != NULL) {
 		Z("find"  ,
@@ -3239,7 +3263,7 @@ static void clearai(gpointer p)
 }
 static void actioncb(GtkAction *action, AItem *ai)
 {
-	spawnwithenv(LASTWIN, ai->path, true);
+	spawnwithenv(LASTWIN, ai->path, true, NULL);
 }
 static guint menuhash = 0;
 static GSList *dirmenu(
@@ -3365,8 +3389,7 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "9---"             , "");
 
 		gchar *tmp = g_strdup_printf(APP" \"$SUFFIX\" sourcecallback "
-				"\"bash -c \\\"echo -e \\\\\\\"%%%%s\\\\\\\" >> \\\"%s/"
-				APP"-source\\\"\\\"\"",
+				"\"tee -a \\\"%s/"APP"-source\\\"\"",
 				dldir());
 		addscript(dir, "9saveHTMLSource2DLdir", tmp);
 		g_free(tmp);
