@@ -476,7 +476,10 @@ static bool historycb(Win *win)
 static void addhistory(Win *win)
 {
 	const gchar *uri = URI(win);
-	if (!uri || g_str_has_prefix(uri, APP":")) return;
+	if (!uri ||
+			g_str_has_prefix(uri, APP":") ||
+			g_str_has_prefix(uri, "about:")
+			) return;
 
 	g_timeout_add(100, (GSourceFunc)historycb, win);
 }
