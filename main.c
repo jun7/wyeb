@@ -359,7 +359,8 @@ static bool historycb(Win *win)
 	if (win && (
 		!isin(wins, win) ||
 		!URI(win) ||
-		g_str_has_prefix(URI(win), APP":")
+		g_str_has_prefix(URI(win), APP":") ||
+		webkit_web_view_is_loading(win->kit)
 	)) return false;
 
 #define MAXSIZE 22222
