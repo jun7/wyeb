@@ -1312,7 +1312,7 @@ out:
 	g_free(uri);
 }
 
-static void spawnwithenv(Win *win, gchar* path, bool ispath, gchar *piped)
+static void spawnwithenv(Win *win, gchar* path, bool ispath, gchar *piped, gsize len)
 {
 	gchar **argv;
 	if (ispath)
@@ -1413,7 +1413,7 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath, gchar *piped)
 
 		if (G_IO_STATUS_NORMAL !=
 				g_io_channel_write_chars(
-					io, piped, -1, NULL, &err))
+					io, piped, len, NULL, &err))
 		{
 			alert(err->message);
 			g_error_free(err);
@@ -1884,7 +1884,7 @@ void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 	guchar *data = webkit_web_resource_get_data_finish(
 			(WebKitWebResource *)srco, res, &len, NULL);
 
-	spawnwithenv(win, p, false, data);
+	spawnwithenv(win, p, false, data, len);
 
 	g_free(data);
 	g_free(p);
@@ -2127,7 +2127,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 		win->mode = Mnormal;
 	}
-	Z("spawn"      , spawnwithenv(win, win->spawn, false, NULL))
+	Z("spawn"      , spawnwithenv(win, win->spawn, false, NULL, 0))
 
 	if (arg != NULL) {
 		Z("find"  ,
@@ -3355,7 +3355,7 @@ static void clearai(gpointer p)
 }
 static void actioncb(GtkAction *action, AItem *ai)
 {
-	spawnwithenv(LASTWIN, ai->path, true, NULL);
+	spawnwithenv(LASTWIN, ai->path, true, NULL, 0);
 }
 static guint menuhash = 0;
 static GSList *dirmenu(
