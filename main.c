@@ -151,6 +151,11 @@ typedef struct {
 static gchar     *suffix = "";
 static GPtrArray *wins = NULL;
 static GPtrArray *dlwins = NULL;
+static GQueue    *histimgs = NULL;
+typedef struct {
+	gchar *buf;
+	gsize  size;
+} Img;
 
 static GKeyFile *conf = NULL;
 static gchar    *confpath = NULL;
@@ -199,6 +204,8 @@ Conf dconf[] = {
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "400"},
 	{"all"   , "ignoretlserr" , "false"},
+	{"all"   , "histimgs"     , "66"},
+	{"all"   , "histimgsize"  , "222"},
 
 	{"boot"  , "enablefavicon", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
@@ -349,7 +356,11 @@ static void append(gchar *path, const gchar *str)
 }
 static bool historycb(Win *win)
 {
-	if (win && !isin(wins, win)) return false;
+	if (win && (
+		!isin(wins, win) ||
+		!URI(win) ||
+		g_str_has_prefix(URI(win), APP":")
+	)) return false;
 
 #define MAXSIZE 22222
 	static gchar *current = NULL;
@@ -402,6 +413,45 @@ static bool historycb(Win *win)
 
 
 	append(current, str);
+	if (confint("histimgs"))
+	{
+		while (histimgs->length >= confint("histimgs"))
+		{
+			Img *img = g_queue_pop_tail(histimgs);
+			g_free(img->buf);
+			g_free(img);
+		}
+
+		gdouble ww = gtk_widget_get_allocated_width(win->kitw);
+		gdouble wh = gtk_widget_get_allocated_height(win->kitw);
+		gdouble scale = confint("histimgsize") / MAX(1, MAX(ww, wh));
+
+		if (
+			gtk_widget_get_visible(win->kitw) &&
+			gtk_widget_is_drawable(win->kitw) &&
+			scale > 0.0 && ww > 0.0 && wh > 0.0
+			)
+		{
+
+			GdkPixbuf *pix = gdk_pixbuf_get_from_window(
+				gtk_widget_get_window(win->kitw), 0, 0, ww, wh);
+
+			GdkPixbuf *scaled = gdk_pixbuf_scale_simple(
+					pix, ww * scale, wh * scale, GDK_INTERP_BILINEAR);
+
+			Img *img = g_new(Img, 1);
+			gdk_pixbuf_save_to_buffer(scaled,
+					&img->buf, &img->size,
+					"jpeg", NULL, "quality", "77", NULL);
+
+			g_queue_push_head(histimgs, img);
+
+			g_object_unref(pix);
+			g_object_unref(scaled);
+		}
+		else
+			g_queue_push_head(histimgs, NULL);
+	}
 
 	logsize += strlen(str) + 1;
 
@@ -427,7 +477,7 @@ static void addhistory(Win *win)
 	const gchar *uri = URI(win);
 	if (!uri || g_str_has_prefix(uri, APP":")) return;
 
-	g_idle_add((GSourceFunc)historycb, win);
+	g_timeout_add(100, (GSourceFunc)historycb, win);
 }
 static void removehistory()
 {
@@ -2571,12 +2621,6 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 //@uri scheme
 gchar *schemedata(WebKitWebView *kit, const gchar *path)
 {
-	if (kit)
-	{
-		Win *win = g_object_get_data(G_OBJECT(kit), "win");
-		win->scheme = true;
-	}
-
 	gchar *data = NULL;
 
 	if (g_str_has_prefix(path, "main")) {
@@ -2612,6 +2656,9 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 		gint start = 0;
 		gint num = 0;
 		__time_t mtime = 0;
+
+		bool imgs = confint("histimgs");
+
 		for (int j = 2; j > 0; j--) for (int i = 0; i < logfnum ;i++)
 		{
 			gchar *path = g_build_filename(logdir, logs[i], NULL);
@@ -2639,17 +2686,9 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
 					== G_IO_STATUS_NORMAL)
 			{
-				gchar **stra = g_strsplit(line, " ", 3);
-				gchar *escpd = g_markup_escape_text(stra[2] ?: stra[1], -1);
-
-				hist = g_slist_prepend(hist, g_strdup_printf(
-							"<tr><th>%.11s</th>"
-							"<td><a href=%s>%s<br><span>%s</span></a>\n",
-							stra[0], stra[1], escpd, stra[1]));
+				hist = g_slist_prepend(hist, g_strsplit(line, " ", 3));
 				num++;
 
-				g_free(escpd);
-				g_strfreev(stra);
 				g_free(line);
 			}
 			g_io_channel_unref(io);
@@ -2661,12 +2700,37 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			gchar *sv[num + 1];
 			sv[num] = NULL;
 			int i = 0;
+			static int unique = 0;
 			for (GSList *next = hist; next; next = next->next)
-				sv[i++] = next->data;
+			{
+				gchar **stra = next->data;
+				gchar *escpd = g_markup_escape_text(stra[2] ?: stra[1], -1);
+
+				if (imgs)
+				{
+					gchar *itag = i < histimgs->length ?
+						g_strdup_printf("<img src=wyeb:histimg/%d/%d></img>", i, unique++)
+						: g_strdup("");
+
+					sv[i++] = g_strdup_printf(
+							"<tr><th><a href=%s>%s</a></th>"
+							"<td><a href=%s>%s<br><span>%s</span><br>%.11s</a>\n",
+							stra[1], itag, stra[1], escpd, stra[1], stra[0]);
+					g_free(itag);
+				} else
+					sv[i++] = g_strdup_printf(
+							"<tr><th>%.11s</th>"
+							"<td><a href=%s>%s<br><span>%s</span></a>\n",
+							stra[0], stra[1], escpd, stra[1]);
+
+				g_free(escpd);
+				g_strfreev(stra);
+			}
+			g_slist_free(hist);
 
 			gchar *allhist = g_strjoinv("", sv);
-
-			g_slist_free_full(hist, g_free);
+			for (int j = 0; j < num; j++)
+				g_free(sv[j]);
 
 			last = data;
 			data = g_strconcat(data, allhist, NULL);
@@ -2739,13 +2803,40 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 {
 	const gchar *path = webkit_uri_scheme_request_get_path(req);
 	WebKitWebView *kit = webkit_uri_scheme_request_get_web_view(req);
+	if (kit)
+	{
+		Win *win = g_object_get_data(G_OBJECT(kit), "win");
+		win->scheme = true;
+	}
 
-	gchar *data = schemedata(kit, path);
+	gchar *type = NULL;
+	gchar *data = NULL;
+	gsize len = 0;
+	if (g_str_has_prefix(path, "histimg/"))
+	{
+		gchar **args = g_strsplit(path, "/", 3);
+		if (*(args + 1))
+		{
+			long i = atoi(args[1]);
+			Img *img = g_queue_peek_nth(histimgs, i);
+			if (img)
+			{
+				type = "image/jpeg";
+				len = img->size;
+				data = g_memdup(img->buf, len);
+			}
+		}
+		g_strfreev(args);
+	}
+	if (!type)
+	{
+		type = "text/html";
+		data = schemedata(kit, path);
+		len = strlen(data);
+	}
 
-	gsize len = strlen(data);
 	GInputStream *st = g_memory_input_stream_new_from_data(data, len, g_free);
-
-	webkit_uri_scheme_request_finish(req, st, len, "text/html");
+	webkit_uri_scheme_request_finish(req, st, len, type);
 	g_object_unref(st);
 }
 
@@ -3809,6 +3900,7 @@ int main(int argc, char **argv)
 
 	wins = g_ptr_array_new();
 	dlwins = g_ptr_array_new();
+	histimgs = g_queue_new();
 
 	if (run(NULL, action, uri))
 		gtk_main();
