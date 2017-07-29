@@ -1,7 +1,8 @@
 # WithYourEditorBrowser / wyeb
 
 [Screenshot](https://github.com/jun7/wyeb/wiki/img/screenshot.png)
-[Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
+/ [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
+/ [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
 ### Todo
 - Waiting for Webkit2gtk version 2.18 to get correct rects of elements
