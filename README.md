@@ -23,7 +23,7 @@ wyeb is inspired by dwb and luakit, so basically usage is similar to those.
 - Open actions. Most of actions assigned to keys are also can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
-- [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.
+- [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
 - [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
 - No tab. But keys J/K/x or button actions.
 - Focused history. Instead of loaded history.
