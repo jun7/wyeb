@@ -3489,8 +3489,9 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "9saveHTMLSource2DLdir", tmp);
 		g_free(tmp);
 
-		addscript(dir, "z---"             , "");
-		addscript(dir, "zchromium"        , "chromium $LINK_OR_URI");
+		addscript(dir, "v---"             , "");
+		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
+		addscript(dir, "xnoSuffixProcess" , "wyeb \"\" new $LINK_OR_URI");
 	}
 
 	if (firsttime)
