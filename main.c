@@ -3789,7 +3789,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	GtkStyleContext *sctx = gtk_widget_get_style_context(win->progw);
 	GtkCssProvider *cssp = gtk_css_provider_new();
 	gtk_css_provider_load_from_data(cssp,
-		"progressbar *{min-height: 0.6em;}", -1, NULL); //bigger
+		"progressbar *{min-height: 0.9em;}", -1, NULL); //bigger
 	gtk_style_context_add_provider(sctx, (GtkStyleProvider *)cssp,
 			GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 	g_object_unref(cssp);
