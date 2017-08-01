@@ -2007,6 +2007,7 @@ static Keybind dkeys[]= {
 	{"bookmarkthis"  , 0, 0},
 	{"bookmarklinkor", 0, 0},
 	{"showmsg"       , 0, 0},
+	{"click"         , 0, 0, "x:y"},
 	{"tohintcallback", 0, 0,
 		"arg is called with environment variables selected by hint."},
 	{"sourcecallback", 0, 0},
@@ -2071,16 +2072,6 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	if (win == NULL) return false;
 
 	//internal
-	Z("clickhere",
-		gchar **xy = g_strsplit(arg, ":", 2);
-		gdouble z = webkit_web_view_get_zoom_level(win->kit);
-		win->px = atof(*xy) * z;
-		win->py = atof(*(xy + 1)) * z;
-		putbtne(win, GDK_BUTTON_PRESS);
-		putbtne(win, GDK_BUTTON_RELEASE);
-		g_strfreev(xy);
-	)
-
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
 			return true;)
@@ -2323,6 +2314,15 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("addblacklist", send(win, Cwhite, "black"))
 
 	Z("showmsg"     , showmsg(win, arg))
+	Z("click",
+		gchar **xy = g_strsplit(arg ?: "100:100", ":", 2);
+		gdouble z = webkit_web_view_get_zoom_level(win->kit);
+		win->px = atof(*xy) * z;
+		win->py = atof(*(xy + 1)) * z;
+		putbtne(win, GDK_BUTTON_PRESS);
+		putbtne(win, GDK_BUTTON_RELEASE);
+		g_strfreev(xy);
+	)
 	Z("sourcecallback",
 		WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
 		webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));

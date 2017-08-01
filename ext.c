@@ -1026,7 +1026,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 								elm->x + elm->fx + elm->w / 2,
 								elm->y + elm->fy + 1);
 #endif
-						send(page, "clickhere", arg);
+						send(page, "click", arg);
 						g_free(arg);
 					}
 					else
