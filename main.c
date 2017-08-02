@@ -235,6 +235,7 @@ Conf dconf[] = {
 	{DSET    , "linkformat"       , "[%.40s](%s)"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
+	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -3249,7 +3250,26 @@ static bool policycb(
 {
 	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
 
-	if (webkit_response_policy_decision_is_mime_type_supported(
+	bool dl = false;
+	gchar *msr = getset(win, "dlmimetypes");
+	if (msr && *msr != '\0')
+	{
+		WebKitURIResponse *res =
+			webkit_response_policy_decision_get_response(
+				(WebKitResponsePolicyDecision *)dec);
+
+		const gchar *mime = webkit_uri_response_get_mime_type(res);
+		gchar **ms = g_strsplit(msr, ";", -1);
+		for (gchar **m = ms; *m; m++)
+			if (**m != '\0' && g_str_has_prefix(mime, *m))
+			{
+				dl = true;
+				break;
+			}
+		g_strfreev(ms);
+	}
+
+	if (!dl && webkit_response_policy_decision_is_mime_type_supported(
 				(WebKitResponsePolicyDecision *)dec))
 		webkit_policy_decision_use(dec);
 	else
