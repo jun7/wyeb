@@ -267,7 +267,7 @@ static void showwhite(Page *page, bool white)
 	gchar   pre  = white ? 'w' : 'b';
 	guint   len  = g_slist_length(list);
 
-	fprintf(f, "\n# Following list are %s in %s\n",
+	fprintf(f, "\n# %s in %s\n",
 			white ? "blocked" : "loaded",
 			webkit_web_page_get_uri(page->kit));
 
