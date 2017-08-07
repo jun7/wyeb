@@ -1098,8 +1098,6 @@ static void _modechanged(Win *win)
 		win->lastfind = g_strdup(gtk_entry_get_text(win->ent));
 	case Mopen:
 	case Mopennew:
-		gtk_entry_set_text(win->ent, "");
-
 		gtk_widget_hide(win->entw);
 		gtk_widget_grab_focus(win->kitw);
 		break;
