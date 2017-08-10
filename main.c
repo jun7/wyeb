@@ -29,7 +29,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define DIST 4
 
 #define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
-#define URI(win) (webkit_web_view_get_uri(win->kit))
+#define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
 
 static gchar *fullname = APPNAME; //+suffix
 #include "general.c"
@@ -359,7 +359,7 @@ static bool historycb(Win *win)
 {
 	if (win && (
 		!isin(wins, win) ||
-		!URI(win) ||
+		!webkit_web_view_get_uri(win->kit) ||
 		g_str_has_prefix(URI(win), APP":") ||
 		webkit_web_view_is_loading(win->kit)
 	)) return false;
@@ -477,7 +477,7 @@ static bool historycb(Win *win)
 static void addhistory(Win *win)
 {
 	const gchar *uri = URI(win);
-	if (!uri ||
+	if (*uri == '\0' ||
 			g_str_has_prefix(uri, APP":") ||
 			g_str_has_prefix(uri, "about:")
 			) return;
@@ -802,8 +802,6 @@ static void getkitprops(GObject *obj, GKeyFile *kf, gchar *group)
 }
 static bool _seturiconf(Win *win, const gchar* uri)
 {
-	if (uri == NULL || strlen(uri) == 0) return false;
-	
 	bool ret = false;
 
 	gchar **groups = g_key_file_get_groups(conf, NULL);
@@ -935,15 +933,12 @@ void checkconf(bool frommonitor)
 	if (mdpath && wins->len && g_file_test(mdpath, G_FILE_TEST_EXISTS))
 	{
 		if (getctime(mdpath, &mdtime))
-		{
 			for (int i = 0; i < wins->len; i++)
 			{
 				Win *win = wins->pdata[i];
-				const gchar *str = URI(win);
-				if (g_str_has_prefix(str, APP":main"))
+				if (g_str_has_prefix(URI(win), APP":main"))
 					webkit_web_view_reload(win->kit);
 			}
-		}
 	}
 
 	//accels
