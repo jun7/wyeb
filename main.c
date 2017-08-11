@@ -26,7 +26,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define MIMEOPEN "mimeopen -n %s"
 
 #define DSET "set;"
-#define DIST 4
+#define DIST 6
 
 #define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
@@ -186,7 +186,7 @@ typedef struct {
 Conf dconf[] = {
 	{"all"   , "editor"       , MIMEOPEN,
 		"editor=xterm -e nano %s\n"
-		"editor=gvim --servername wyeb --remote-silent \"%s\""
+		"editor=gvim --servername "APP" --remote-silent \"%s\""
 	},
 	{"all"   , "mdeditor"     , ""},
 	{"all"   , "diropener"    , MIMEOPEN},
@@ -194,7 +194,7 @@ Conf dconf[] = {
 
 	{"all"   , "hintkeys"     , HINTKEYS},
 	{"all"   , "keybindswaps" , "",
-			"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
+		"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
 
 	{"all"   , "winwidth"     , "1000"},
 	{"all"   , "winheight"    , "1000"},
@@ -229,10 +229,13 @@ Conf dconf[] = {
 	{DSET    , "mdlbtnlinkaction" , "openback"},
 	{DSET    , "mdlbtn2winlist"   , "false"},
 	{DSET    , "newwinhandle"     , "normal",
-			"newwinhandle=notnew | ignore | back | normal"},
+		"newwinhandle=notnew | ignore | back | normal"},
 	{DSET    , "hjkl2arrowkeys"   , "false",
-			"hjkl's default are scrolls, not arrow keys"},
-	{DSET    , "linkformat"       , "[%.40s](%s)"},
+		"hjkl's default are scrolls, not arrow keys"},
+	{DSET    , "linkformat"       , "[%.40s](%s)",
+		"linkformat=![](%s)[%.40s](%s)"},
+	{DSET    , "linkdata"         , "tu",
+		"linkdata=ftu\n" "t: title, u: uri, f: favicon"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/"},
@@ -283,14 +286,14 @@ static gchar *mainmdstr =
 "**E**: Edit main config file;\n"
 "**c**: Open config directory;\n"
 "**m**: Show this page;\n"
-"**M**: Show [history](wyeb:history);\n"
+"**M**: Show [history]("APP":history);\n"
 "**b**: Add title and URI of a page opened to this page;\n"
 "\n"
 "If **e**,**E**,**c** don't work, open 'main.conf' in\n"
 "config directory/'"APPNAME"' and edit '"MIMEOPEN"' values.\n"
 "If you haven't any gui editor or filer, set them like 'xterm -e nano %s'.\n"
 "\n"
-"For other keys, see [help](wyeb:help) assigned '**:**'.\n"
+"For other keys, see [help]("APP":help) assigned '**:**'.\n"
 "Since this application is inspired by dwb and luakit,\n"
 "usage is similar to them,\n"
 "\n"
@@ -300,11 +303,12 @@ static gchar *mainmdstr =
 "  color: #109; padding: 0 .3em; border-radius: .2em;\n"
 "  text-decoration: none;\n"
 " }\n"
+" .links img{height: 1em;}\n"
 "</style>\n"
 "<div class=links style=line-height:1.4;>\n"
 "\n"
-"[WYEBrowser](https://github.com/jun7/wyeb)\n"
-"[WYEBAdblock](https://github.com/jun7/wyebadblock)\n"
+"["APPNAME"](https://github.com/jun7/"APP")\n"
+"["APP"adblock](https://github.com/jun7/"APP"adblock)\n"
 "[Arch Linux](https://www.archlinux.org/)\n"
 "[dwb - ArchWiki](https://wiki.archlinux.org/index.php/dwb)\n"
 ;
@@ -1857,12 +1861,30 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	if (uri)
 	{
 		gchar *escttl = title ? g_markup_escape_text(title, -1) : NULL;
-		gchar *str = g_strdup_printf(getset(win, "linkformat"),
-				escttl && *escttl ? escttl : uri, uri);
+		if (!escttl || !*escttl) escttl = g_strdup(uri);
+		gchar *fav = g_strdup_printf(APP":favicon/%s", uri);
+
+		gchar *str;
+
+		gchar *items = getset(win, "linkdata");
+		gint len = strlen(items);
+		const gchar *as[9];
+		for (int i = 0; i < 9; i++)
+		{
+			gchar d = i < len ? items[i] : '\0';
+			as[i] =
+				d == 't' ? escttl:
+				d == 'u' ? uri:
+				d == 'f' ? fav:
+				"";
+		}
+		str = g_strdup_printf(getset(win, "linkformat"),
+				as[0], as[1], as[2], as[3], as[4], as[5], as[6], as[7], as[8]);
 
 		append(mdpath, str);
 
 		g_free(str);
+		g_free(fav);
 		g_free(escttl);
 	}
 	else
@@ -2707,7 +2729,7 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 				if (imgs)
 				{
 					gchar *itag = i < histimgs->length ?
-						g_strdup_printf("<img src=wyeb:histimg/%d/%d></img>", i, unique++)
+						g_strdup_printf("<img src="APP":histimg/%d/%d></img>", i, unique++)
 						: g_strdup("");
 
 					sv[i++] = g_strdup_printf(
@@ -2797,6 +2819,32 @@ gchar *schemedata(WebKitWebView *kit, const gchar *path)
 
 	return data;
 }
+static cairo_status_t faviconcairocb(void *p,
+		const unsigned char *data, unsigned int len)
+{
+	g_memory_input_stream_add_data((GMemoryInputStream *)p,
+			g_memdup(data, len), len, g_free);
+	return CAIRO_STATUS_SUCCESS;
+}
+static void faviconcb(GObject *src, GAsyncResult *res, gpointer p)
+{
+	WebKitURISchemeRequest *req = p;
+	cairo_surface_t * suf = webkit_favicon_database_get_favicon_finish(
+			webkit_web_context_get_favicon_database(ctx), res, NULL);
+
+	GInputStream *st = g_memory_input_stream_new();
+
+	if (!suf)
+		suf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+
+	cairo_surface_write_to_png_stream(suf, faviconcairocb, st);
+
+	webkit_uri_scheme_request_finish(req, st, -1, "image/png");
+
+	cairo_surface_destroy(suf);
+	g_object_unref(st);
+	g_object_unref(req);
+}
 static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 {
 	const gchar *path = webkit_uri_scheme_request_get_path(req);
@@ -2805,6 +2853,19 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 	{
 		Win *win = g_object_get_data(G_OBJECT(kit), "win");
 		win->scheme = true;
+	}
+
+	if (g_str_has_prefix(path, "favicon/"))
+	{
+//		gchar *fav = webkit_favicon_database_get_favicon_uri(
+//				webkit_web_context_get_favicon_database(ctx), "https://github.com/");
+//		g_free(fav);
+
+		webkit_favicon_database_get_favicon(
+				webkit_web_context_get_favicon_database(ctx),
+				path + 8, NULL, faviconcb, req);
+		g_object_ref(req);
+		return;
 	}
 
 	gchar *type = NULL;
@@ -3504,7 +3565,7 @@ void makemenu(WebKitContextMenu *menu)
 
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
-		addscript(dir, "xnoSuffixProcess" , "wyeb \"\" new $LINK_OR_URI");
+		addscript(dir, "xnoSuffixProcess" , APP" \"\" new $LINK_OR_URI");
 	}
 
 	if (firsttime)
