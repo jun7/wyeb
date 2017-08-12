@@ -1,6 +1,6 @@
 # WithYourEditorBrowser / wyeb
 
-[Screenshot](https://github.com/jun7/wyeb/wiki/img/screenshot.png)
+[Screenshot](https://github.com/jun7/wyeb/wiki/img/favicon.png)
 / [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
