@@ -1862,7 +1862,7 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	{
 		gchar *escttl = title ? g_markup_escape_text(title, -1) : NULL;
 		if (!escttl || !*escttl) escttl = g_strdup(uri);
-		gchar *fav = g_strdup_printf(APP":fi/%s", uri);
+		gchar *fav = g_strdup_printf(APP":f/%s", uri);
 
 		gchar *str;
 
@@ -2857,7 +2857,7 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 		win->scheme = true;
 	}
 
-	if (g_str_has_prefix(path, "fi/"))
+	if (g_str_has_prefix(path, "f/"))
 	{
 //		gchar *fav = webkit_favicon_database_get_favicon_uri(
 //				webkit_web_context_get_favicon_database(ctx), "https://github.com/");
@@ -2865,7 +2865,7 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 
 		webkit_favicon_database_get_favicon(
 				webkit_web_context_get_favicon_database(ctx),
-				path + 3, NULL, faviconcb, req);
+				path + 2, NULL, faviconcb, req);
 		g_object_ref(req);
 		return;
 	}
