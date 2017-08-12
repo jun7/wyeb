@@ -233,7 +233,7 @@ Conf dconf[] = {
 	{DSET    , "hjkl2arrowkeys"   , "false",
 		"hjkl's default are scrolls, not arrow keys"},
 	{DSET    , "linkformat"       , "[%.40s](%s)",
-		"linkformat=![](%s)[%.40s](%s)"},
+		"linkformat=[![](%s) %.40s](%s)"},
 	{DSET    , "linkdata"         , "tu",
 		"linkdata=ftu\n" "t: title, u: uri, f: favicon"},
 	{DSET    , "scriptdialog"     , "true"},
