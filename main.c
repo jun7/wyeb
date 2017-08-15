@@ -3544,7 +3544,7 @@ void makemenu(WebKitContextMenu *menu)
 	{
 		addscript(dir, ".openNewSrcURI"      ,
 				APP" \"$SUFFIX\" tohintcallback "
-				"'bash -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
+				"'sh -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, "0addMenu"         , "mimeopen -n %s");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmarklinkor \"\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
