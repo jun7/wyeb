@@ -1936,6 +1936,7 @@ static Keybind dkeys[]= {
 	{"showdldir"     , 'D', 0},
 
 	{"yankuri"       , 'y', 0, "Clipboard"},
+	{"yanktitle"     , 'Y', 0, "Clipboard"},
 	{"bookmark"      , 'b', 0},
 	{"bookmarkbreak" , 'B', 0, "Add line break to the main page"},
 
@@ -2182,6 +2183,11 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("yankuri"     ,
 		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
 		showmsg(win, "URI is yanked to clipboard")
+	)
+	Z("yanktitle"   ,
+		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD),
+			webkit_web_view_get_title(win->kit) ?: "", -1);
+		showmsg(win, "Title is yanked to clipboard")
 	)
 	Z("bookmarkthis", addlink(win, bookmarkthisarg, arg);
 	)
