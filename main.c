@@ -50,7 +50,7 @@ typedef enum {
 	Mopennew   = 512,
 	Mfind      = 1024,
 
-	Mselect    = 2048,
+	Mlist      = 2048,
 	Mpointer   = 4096,
 } Modes;
 
@@ -1101,7 +1101,7 @@ static void _modechanged(Win *win)
 		gtk_widget_grab_focus(win->kitw);
 		break;
 
-	case Mselect:
+	case Mlist:
 		gtk_widget_queue_draw(win->winw);
 		gdk_window_set_cursor(gtk_widget_get_window(win->winw), NULL);
 //		gtk_widget_set_sensitive(win->kitw, true);
@@ -1144,7 +1144,7 @@ static void _modechanged(Win *win)
 		gtk_widget_grab_focus(win->entw);
 		break;
 
-	case Mselect:
+	case Mlist:
 //		gtk_widget_set_sensitive(win->kitw, false);
 		winlist(win, 2, NULL);
 		gtk_widget_queue_draw(win->winw);
@@ -1193,7 +1193,7 @@ static void update(Win *win)
 		settitle(win, "-- INSERT MODE --");
 		break;
 
-	case Mselect:
+	case Mlist:
 		settitle(win, "-- LIST MODE --");
 		break;
 
@@ -1664,10 +1664,10 @@ static bool quitnext(Win *win, bool next)
 	return run(win, "quit", NULL);
 }
 bool winlist(Win *win, guint type, cairo_t *cr)
-//type: 0: none 1:present 2:setcursor, and GDK_KEY_Down ... GDK_KEY_Right
+//type: 0: none 1:present 2:setcursor 3:close, and GDK_KEY_Down ... GDK_KEY_Right
 {
 	//for window select mode
-	if (win->mode != Mselect) return false;
+	if (win->mode != Mlist) return false;
 	GSList *actvs = NULL;
 	guint len = inwins(win, &actvs, false);
 	if (len < 1)
@@ -1797,6 +1797,15 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			{
 				if (type == 1) //present
 					gtk_window_present(lw->win);
+				else if (type == 3) //close
+				{
+					run(lw, "quit", NULL);
+					if (len > 1)
+						gtk_widget_queue_draw(win->winw);
+					else
+						tonormal(win);
+				}
+				crnt = NULL;
 				break;
 			}
 
@@ -2240,7 +2249,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("prevwin"     , nextwin(win, false))
 	Z("winlist"     ,
 			if (inwins(win, NULL, true) > 0)
-				win->mode = Mselect;
+				win->mode = Mlist;
 			else
 				showmsg(win, "No other window");
 	)
@@ -2382,7 +2391,7 @@ static bool focuscb(Win *win)
 }
 static bool focusoutcb(Win *win)
 {
-	if (win->mode == Mselect)
+	if (win->mode == Mlist)
 		tonormal(win);
 	return false;
 }
@@ -3022,7 +3031,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		return true;
 	}
 
-	if (win->mode == Mselect)
+	if (win->mode == Mlist)
 	{
 #define Z(str, func) if (action && strcmp(action, str) == 0) {func;}
 		Z("scrolldown"  , winlist(win, GDK_KEY_Down , NULL))
@@ -3041,6 +3050,11 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		case GDK_KEY_Return:
 		case GDK_KEY_space:
 			winlist(win, 1, NULL);
+			return true;
+
+		case GDK_KEY_BackSpace:
+		case GDK_KEY_Delete:
+			winlist(win, 3, NULL);
 			return true;
 		}
 		gtk_widget_queue_draw(win->winw);
@@ -3061,7 +3075,7 @@ static bool keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (ek->is_modifier) return false;
 	if (win->mode == Minsert) return false;
 	if (win->mode & Mhint) return true;
-	if (win->mode == Mselect) return true;
+	if (win->mode == Mlist) return true;
 	if (ke2name(ek)) return true;
 	return false;
 }
@@ -3108,11 +3122,12 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	if (e->type != GDK_BUTTON_PRESS) return false;
 
-	if (win->mode == Mselect)
+	if (win->mode == Mlist)
 	{
 		win->cursorx = win->cursory = 0;
-		if (e->button == 1 && winlist(win, 0, NULL))
-			return winlist(win, 1, NULL);
+		if ((e->button == 1 || e->button == 3) &&
+				winlist(win, e->button, NULL))
+			return true;
 
 		tonormal(win);
 		return true;
@@ -3141,7 +3156,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	{
 		//workaround
 		//for lacking of target change event when btn event happens with focus in;
-		//now this is also for back from mselect mode may be
+		//now this is also for back from mlist mode may be
 		if (e->send_event)
 		{
 			win->lastx = win->lasty = 0;
@@ -3290,7 +3305,7 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 }
 static bool motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
-	if (win->mode == Mselect)
+	if (win->mode == Mlist)
 	{
 		win->cursorx = win->cursory = 0;
 		gtk_widget_queue_draw(win->winw);
