@@ -1690,7 +1690,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		; //do nothing
 	else if ((yunit + 1) * xunit >= len && (xunit + 1) * yunit >= len)
 	{
-		if (w > h)
+		if (yunit > xunit)
 			xunit++;
 		else
 			yunit++;
