@@ -675,12 +675,12 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 					gchar *str = g_key_file_get_string(kf, group, key, NULL);
 
 					WebKitHardwareAccelerationPolicy v;
-					if (strcmp(str, "ON_DEMAND") == 0)
-						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND;
-					else if (strcmp(str, "ALWAYS") == 0)
+					if (strcmp(str, "ALWAYS") == 0)
 						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS;
 					else if (strcmp(str, "NEVER") == 0)
 						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
+					else //ON_DEMAND
+						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND;
 
 					g_free(str);
 					if (v == g_value_get_enum(&gv)) continue;

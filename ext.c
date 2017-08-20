@@ -55,7 +55,8 @@ static void freepage(Page *page)
 {
 	page->removed = true;
 
-	g_slist_free(page->aplist);
+	if (page->aplist)
+		g_slist_free(page->aplist);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
 	g_free(page->cutheads);
@@ -1195,7 +1196,7 @@ void ipccb(const gchar *line)
 {
 	gchar **args = g_strsplit(line, ":", 4);
 
-	Page *page;
+	Page *page = NULL;
 #if SHARED
 	long lid = atol(args[0]);
 	for (int i = 0; i < pages->len; i++)
@@ -1204,6 +1205,8 @@ void ipccb(const gchar *line)
 #else
 	page = *pages->pdata;
 #endif
+
+	if (!page) return;
 
 	Coms type = *args[1];
 	gchar *arg = args[2];
