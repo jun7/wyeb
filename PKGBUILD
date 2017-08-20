@@ -1,7 +1,7 @@
 # Maintainer: jun7 <jun7@hush.com>
 pkgname=wyeb-git
-pkgver=0
-pkgrel=1
+pkgver=1.1
+pkgrel=2
 pkgdesc="A vim-like webkit2gtk browser"
 arch=('x86_64')
 url="https://github.com/jun7/wyeb"
