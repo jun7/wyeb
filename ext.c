@@ -108,12 +108,14 @@ static const gchar *inputtags[] = {
 	"INPUT", "TEXTAREA", "SELECT", NULL};
 
 // input types
+/*
 static const gchar *itext[] = { //no name is too
 	"search", "text", "url", "email",  "password", "tel", NULL
 };
 static const gchar *ilimitedtext[] = {
 	"month",  "number", "time", "week", "date", "datetime-local", NULL
 };
+*/
 static const gchar *inottext[] = {
 	"color", "file", "radio", "range", "checkbox", "button", "reset", "submit",
 
@@ -127,7 +129,7 @@ static const gchar *inottext[] = {
 //@misc
 static void send(Page *page, gchar *action, const gchar *arg)
 {
-	gchar *ss = g_strdup_printf("%d:%s:%s", page->id, action, arg);
+	gchar *ss = g_strdup_printf("%lu:%s:%s", page->id, action, arg);
 	//D(send to main %s, ss)
 	ipcsend("main", ss);
 	g_free(ss);
@@ -264,7 +266,6 @@ static void showwhite(Page *page, bool white)
 	if (!f) return;
 
 	gchar   pre  = white ? 'w' : 'b';
-	guint   len  = g_slist_length(list);
 
 	fprintf(f, "\n# %s in %s\n",
 			white ? "blocked" : "loaded",
@@ -1021,7 +1022,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 					if (page->script && !isi && !isa)
 					{
-						gchar *arg = g_strdup_printf("%d:%d",
+						gchar *arg = g_strdup_printf("%ld:%ld",
 								elm->x + elm->fx + elm->w / 2,
 								elm->y + elm->fy + 1);
 #endif
@@ -1103,7 +1104,6 @@ static void pageon(Page *page)
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	if (page->emitter) g_object_unref(page->emitter);
 	page->emitter = webkit_dom_document_get_default_view(doc);
-	WebKitDOMElement   *elm = webkit_dom_document_get_document_element(doc);
 
 //	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
 //			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);

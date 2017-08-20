@@ -611,6 +611,13 @@ static void putbtne(Win* win, GdkEventType type)
 	gdk_event_free(e);
 }
 
+static void addhash(gchar *str, guint *hash)
+{
+	if (*hash == 0) *hash = 5381;
+	while (*str++)
+		*hash = *hash * 33 + *str;
+}
+
 
 //@conf
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
@@ -1301,7 +1308,7 @@ static void openuri(Win *win, const gchar *str)
 	gchar *dsearch;
 	if (regexec(url, str, 0, NULL, 0) == 0) {
 		uri = g_strdup_printf("http://%s", str);
-	} else if ((dsearch = getset(win, "search")) != NULL) {
+	} else if (dsearch = getset(win, "search")) {
 		char *esc = g_uri_escape_string(str, NULL, true);
 		uri = g_strdup_printf(dsearch, esc);
 		g_free(esc);
@@ -3475,7 +3482,7 @@ static GSList *dirmenu(
 	GSList *names = NULL;
 
 	const gchar *dn;
-	while ((dn = g_dir_read_name(gd)) != NULL)
+	while (dn = g_dir_read_name(gd))
 	{
 		names = g_slist_insert_sorted(names, g_strdup(dn), (GCompareFunc)strcmp);
 	}

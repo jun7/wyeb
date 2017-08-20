@@ -1,4 +1,4 @@
-CFLAGS += -Wall -Wno-deprecated-declarations
+CFLAGS += -Wall -Wno-deprecated-declarations -Wno-parentheses
 #LDFLAGS=
 EXTENSION_DIR=$(DESTDIR)/usr/lib/wyebrowser
 ifndef DEBUG

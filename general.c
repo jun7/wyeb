@@ -157,13 +157,6 @@ static void prepareif(
 	if (ctime) getctime(*path, ctime);
 }
 
-static void addhash(gchar *str, guint *hash)
-{
-	if (*hash == 0) *hash = 5381;
-	while (*str++)
-		*hash = *hash * 33 + *str;
-}
-
 static gchar *escape(const gchar *str)
 {
 	gulong len = 0;
