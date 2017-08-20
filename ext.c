@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <math.h>
 #include <ctype.h>
 #include <webkit2/webkit-web-extension.h>
 

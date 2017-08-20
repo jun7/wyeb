@@ -19,7 +19,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <webkit2/webkit2.h>
 #include <gdk/gdkx.h>
-#include <math.h>
 
 #define APPNAME  "wyebrowser"
 #define APP      "wyeb"
@@ -786,7 +785,7 @@ static void setprops(Win *win, GKeyFile *kf, gchar *group)
 	//non webkit settings
 	int len = sizeof(dconf) / sizeof(*dconf);
 	for (int i = 0; i < len; i++) {
-		if (dconf[i].group != DSET) continue;
+		if (strcmp(dconf[i].group, DSET) != 0) continue;
 		gchar *key = dconf[i].key;
 		if (!g_key_file_has_key(kf, group, key, NULL)) continue;
 
@@ -1092,6 +1091,10 @@ static void _modechanged(Win *win)
 	win->lastmode = win->mode;
 
 	switch (last) {
+	case Mnormal:
+	case Minsert:
+		break;
+
 	case Mfind:
 		g_free(win->lastfind);
 		win->lastfind = g_strdup(gtk_entry_get_text(win->ent));
@@ -1111,8 +1114,6 @@ static void _modechanged(Win *win)
 		gtk_widget_queue_draw(win->winw);
 		break;
 
-	case Minsert: break;
-
 	case Mhintspawn:
 		g_free(win->spawn);
 		win->spawn = NULL;
@@ -1129,6 +1130,10 @@ static void _modechanged(Win *win)
 	//into
 	Coms com = 0;
 	switch (win->mode) {
+	case Mnormal:
+	case Minsert:
+		break;
+
 	case Mfind:
 		if (win->crashed)
 		{
@@ -1296,7 +1301,7 @@ static void openuri(Win *win, const gchar *str)
 	gchar *dsearch;
 	if (regexec(url, str, 0, NULL, 0) == 0) {
 		uri = g_strdup_printf("http://%s", str);
-	} else if (dsearch = getset(win, "search")) {
+	} else if ((dsearch = getset(win, "search")) != NULL) {
 		char *esc = g_uri_escape_string(str, NULL, true);
 		uri = g_strdup_printf(dsearch, esc);
 		g_free(esc);
@@ -1313,7 +1318,8 @@ out:
 	g_free(uri);
 }
 
-static void spawnwithenv(Win *win, gchar* path, bool ispath, gchar *piped, gsize len)
+static void spawnwithenv(Win *win, gchar* path, bool ispath,
+		gchar *piped, gsize len)
 {
 	gchar **argv;
 	if (ispath)
@@ -1456,7 +1462,6 @@ static void scroll(Win *win, gint x, gint y)
 void pmove(Win *win, guint key)
 {
 	//GDK_KEY_Down
-	GdkWindow *gwin = gtk_widget_get_window(win->kitw);
 	gdouble ww = gtk_widget_get_allocated_width(win->kitw);
 	gdouble wh = gtk_widget_get_allocated_height(win->kitw);
 	if (!win->px && !win->py)
@@ -1750,7 +1755,6 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 					gdk_display_get_default())),
 			&px, &py, NULL);
 
-	Win *titlew = NULL;
 	bool ret = false;
 	GSList *crnt = actvs;
 	for (int yi = 0; yi < yunit; yi++) for (int xi = 0; xi < xunit; xi++)
@@ -1903,7 +1907,7 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	checkconf(false);
 }
 
-void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
+static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 {
 	if (!LASTWIN) return;
 	Win *win = LASTWIN;
@@ -1912,7 +1916,7 @@ void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 	guchar *data = webkit_web_resource_get_data_finish(
 			(WebKitWebResource *)srco, res, &len, NULL);
 
-	spawnwithenv(win, p, false, data, len);
+	spawnwithenv(win, p, false, (gchar *)data, len);
 
 	g_free(data);
 	g_free(p);
@@ -2142,6 +2146,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 			break;
 
 		case Mhint:
+		default:
 			break;
 		}
 
@@ -2505,7 +2510,7 @@ static void dlfailcb(DLWin *win)
 	win->finished = true;
 
 	gchar *title;
-	title = g_strdup_printf("DL: Failed: %d%%", win->dispname);
+	title = g_strdup_printf("DL: Failed: %s", win->dispname);
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
@@ -2656,7 +2661,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 
 //@uri scheme
-gchar *schemedata(WebKitWebView *kit, const gchar *path)
+static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 {
 	gchar *data = NULL;
 
@@ -3117,7 +3122,6 @@ static bool cancelbtn1r = false;
 static GdkEvent *pendingmiddlee = NULL;
 static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
-	static bool block = false;
 	win->userreq = true;
 
 	if (e->type != GDK_BUTTON_PRESS) return false;
@@ -3302,6 +3306,8 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		gtk_widget_queue_draw(win->winw);
 	}
 	update(win);
+
+	return false;
 }
 static bool motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
@@ -3469,7 +3475,7 @@ static GSList *dirmenu(
 	GSList *names = NULL;
 
 	const gchar *dn;
-	while (dn = g_dir_read_name(gd))
+	while ((dn = g_dir_read_name(gd)) != NULL)
 	{
 		names = g_slist_insert_sorted(names, g_strdup(dn), (GCompareFunc)strcmp);
 	}
