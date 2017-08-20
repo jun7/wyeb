@@ -190,6 +190,13 @@ static gchar *escape(const gchar *str)
 	return g_strdup(ret);
 }
 
+static bool isin(GPtrArray *ary, void *v)
+{
+	for (int i = 0; i < ary->len; i++)
+		if (v == ary->pdata[i]) return true;
+	return false;
+}
+
 
 //ipc
 static gchar *ipcpath(gchar *name)

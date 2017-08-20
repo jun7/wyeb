@@ -319,12 +319,6 @@ static const gchar *dldir()
 	return g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
 		g_get_home_dir();
 }
-static bool isin(GPtrArray *ary, void *v)
-{
-	for (int i = 0; i < ary->len; i++)
-		if (v == ary->pdata[i]) return true;
-	return false;
-}
 
 static void quitif(bool force)
 {

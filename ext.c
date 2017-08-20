@@ -30,7 +30,6 @@ static gchar *fullname = "";
 #endif
 
 typedef struct {
-	bool           removed;
 	WebKitWebPage *kit;
 	guint64        id;
 
@@ -53,10 +52,7 @@ static GPtrArray *pages = NULL;
 
 static void freepage(Page *page)
 {
-	page->removed = true;
-
-	if (page->aplist)
-		g_slist_free(page->aplist);
+	g_slist_free(page->aplist);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
 	g_free(page->cutheads);
@@ -135,7 +131,7 @@ static void send(Page *page, gchar *action, const gchar *arg)
 	ipcsend("main", ss);
 	g_free(ss);
 }
-static bool isin(const gchar **ary, gchar *val)
+static bool isins(const gchar **ary, gchar *val)
 {
 	if (!val) return false;
 	for (;*ary; ary++)
@@ -146,12 +142,12 @@ static bool isinput(WebKitDOMElement *te)
 {
 	gchar *tag = webkit_dom_element_get_tag_name(te);
 	bool ret = false;
-	if (isin(inputtags, tag))
+	if (isins(inputtags, tag))
 	{
 		if (strcmp(tag, "INPUT") != 0) return true;
 
 		gchar *type = webkit_dom_element_get_attribute(te, "type");
-		if (!type || !isin(inottext, type))
+		if (!type || !isins(inottext, type))
 			ret = true;
 	}
 	g_free(tag);
@@ -300,7 +296,7 @@ static WebKitDOMElement *tldoc;
 static WebKitDOMHTMLTextAreaElement *tlelm;
 static void textlinkcheck(bool monitor)
 {
-	if (!tlpage || tlpage->removed) return;
+	if (!tlpage || !isin(pages, tlpage)) return;
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(tlpage->kit);
 	if (tldoc != webkit_dom_document_get_document_element(doc)) return;
 
@@ -509,7 +505,7 @@ static WebKitDOMElement *makehintelm(
 		glong pagex, glong pagey)
 {
 	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
-	bool center = isin(uritags, tag) && !isin(linktags, tag);
+	bool center = isins(uritags, tag) && !isins(linktags, tag);
 	g_free(tag);
 
 #if NEWV
@@ -741,7 +737,7 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i);
 
 		gchar *tag = webkit_dom_element_get_tag_name(te);
-		if (isin(clicktags, tag))
+		if (isins(clicktags, tag))
 		{
 			Elm elm = checkelm(win, frect, prect, te, true, false);
 			if (elm.ok)
@@ -1159,7 +1155,7 @@ static void focus(Page *page)
 			if (!elm) continue;
 			gchar *tag = webkit_dom_element_get_tag_name(elm);
 
-			if (isin(clicktags , tag))
+			if (isins(clicktags , tag))
 			{
 				webkit_dom_element_focus(elm);
 				g_free(tag);
@@ -1383,7 +1379,6 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 	page->kit = wp;
 	page->id = webkit_web_page_get_id(wp);
 	g_ptr_array_add(pages, page);
-
 
 	setwblist(false);
 #if ! SHARED
