@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=WithYourEditorBrowser
+Name=WYEBrowser
 Exec=wyeb %u
 Icon=wyeb
 Terminal=false
