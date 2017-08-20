@@ -2089,13 +2089,13 @@ static gchar *ke2name(GdkEventKey *ke)
 static Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back);
 bool run(Win *win, gchar* action, const gchar *arg)
 {
+	if (action == NULL) return false;
 	gchar **retv = NULL; //hintret
 
 #define Z(str, func) if (strcmp(action, str) == 0) {func; goto out;}
-	if (action == NULL) return false;
-
 	//nokey nowin
 	Z("new"         , win = newwin(arg, NULL, NULL, false))
+
 #define CLIP(clip) \
 		gchar *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
 			gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
@@ -3993,6 +3993,8 @@ int main(int argc, char **argv)
 
 	if (*action == '\0') action = "new";
 	if (uri && *uri == '\0') uri = NULL;
+	if (argc == 2 && uri && g_str_has_prefix(uri, "/"))
+		uri = g_strconcat("file://", uri, NULL);
 
 	gchar *sendstr = g_strconcat("0:", action, ":", uri, NULL);
 	if (ipcsend("main", sendstr)) exit(0);
