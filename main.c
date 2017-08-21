@@ -612,6 +612,32 @@ static void addhash(gchar *str, guint *hash)
 		*hash = *hash * 33 + *str;
 }
 
+static void setresult(Win *win, WebKitHitTestResult *htr)
+{
+	g_free(win->image);
+	g_free(win->media);
+	g_free(win->link);
+	g_free(win->linklabel);
+
+	win->image = win->media = win->link = win->linklabel = NULL;
+
+	if (!htr) return;
+
+	win->image = webkit_hit_test_result_context_is_image(htr) ?
+		g_strdup(webkit_hit_test_result_get_image_uri(htr)) : NULL;
+	win->media = webkit_hit_test_result_context_is_media(htr) ?
+		g_strdup(webkit_hit_test_result_get_media_uri(htr)) : NULL;
+	win->link = webkit_hit_test_result_context_is_link(htr) ?
+		g_strdup(webkit_hit_test_result_get_link_uri(htr)) : NULL;
+
+	const gchar *label = webkit_hit_test_result_get_link_label(htr);
+	if (!label)
+		label = webkit_hit_test_result_get_link_title(htr);
+	win->linklabel = label ? g_strdup(label): NULL;
+
+	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
+}
+
 
 //@conf
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
@@ -1354,6 +1380,28 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath,
 	const gchar *title = webkit_web_view_get_title(win->kit);
 	if (!title) title = URI(win);
 	envp = g_environ_setenv(envp, "TITLE" , title, true);
+	envp = g_environ_setenv(envp, "LABEL_OR_TITLE" , title, true);
+
+	if (win->link)
+	{
+		envp = g_environ_setenv(envp, "LINK", win->link, true);
+		envp = g_environ_setenv(envp, "LINK_OR_URI", win->link, true);
+		envp = g_environ_setenv(envp, "LABEL_OR_TITLE" , win->link, true);
+	}
+	if (win->linklabel)
+	{
+		envp = g_environ_setenv(envp, "LINKLABEL", win->linklabel, true);
+		envp = g_environ_setenv(envp, "LABEL_OR_TITLE" , win->linklabel, true);
+	}
+
+	if (win->media)
+		envp = g_environ_setenv(envp, "MEDIA", win->media, true);
+	if (win->image)
+		envp = g_environ_setenv(envp, "IMAGE", win->image, true);
+
+	if (win->media || win->image || win->link)
+		envp = g_environ_setenv(envp, "MEDIA_IMAGE_LINK",
+				win->media ?: win->image ?: win->link, true);
 
 	gchar *cbtext;
 	cbtext = gtk_clipboard_wait_for_text(
@@ -1372,25 +1420,6 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath,
 			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
 	if (cbtext)
 		envp = g_environ_setenv(envp, "CLIPBOARD", cbtext, true);
-
-	if (win->link)
-	{
-		envp = g_environ_setenv(envp, "LINK", win->link, true);
-		envp = g_environ_setenv(envp, "LINK_OR_URI", win->link, true);
-	}
-	if (win->linklabel)
-	{
-		envp = g_environ_setenv(envp, "LINKLABEL", win->linklabel, true);
-	}
-
-	if (win->media)
-		envp = g_environ_setenv(envp, "MEDIA", win->media, true);
-	if (win->image)
-		envp = g_environ_setenv(envp, "IMAGE", win->image, true);
-
-	if (win->media || win->image || win->link)
-		envp = g_environ_setenv(envp, "MEDIA_IMAGE_LINK",
-				win->media ?: win->image ?: win->link, true);
 
 	gint input;
 	GPid child_pid;
@@ -1951,7 +1980,7 @@ static Keybind dkeys[]= {
 
 	{"yankuri"       , 'y', 0, "Clipboard"},
 	{"yanktitle"     , 'Y', 0, "Clipboard"},
-	{"bookmark"      , 'b', 0},
+	{"bookmark"      , 'b', 0, "arg: \"\" or \"uri + ' ' + label\""},
 	{"bookmarkbreak" , 'B', 0, "Add line break to the main page"},
 
 	{"quit"          , 'q', 0},
@@ -2035,8 +2064,6 @@ static Keybind dkeys[]= {
 	{"openback"      , 0, 0},
 
 	{"download"      , 0, 0},
-	{"bookmarkthis"  , 0, 0},
-	{"bookmarklinkor", 0, 0},
 	{"showmsg"       , 0, 0},
 	{"click"         , 0, 0, "x:y"},
 	{"tohintcallback", 0, 0,
@@ -2109,9 +2136,9 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("openeditor" , openeditor(win, arg, NULL))
 	Z("reloadlast" , reloadlast())
 
-	gchar *bookmarkthisarg = NULL;
 	if (strcmp(action, "hintret") == 0)
 	{
+		const gchar *orgarg = arg;
 		retv = g_strsplit(arg, " ", 2);
 		arg = *retv + 1;
 
@@ -2124,18 +2151,16 @@ bool run(Win *win, gchar* action, const gchar *arg)
 		case Mhintdl:
 			action = "download"    ; break;
 		case Mhintbkmrk:
-			bookmarkthisarg = retv[1];
-			action = "bookmarkthis"; break;
+			arg = orgarg + 1;
+			action = "bookmark"; break;
 		case Mhintopen:
 			action = "open"        ; break;
 
 		case Mhintspawn:
-			g_free(win->link);
-			g_free(win->image);
-			g_free(win->media);
-			win->link = win->image = win->media = NULL;
+			setresult(win, NULL);
+			win->linklabel = g_strdup(retv[1]);
 
-			switch (**retv) {
+			switch (*orgarg) {
 			case 'l':
 				win->link  = g_strdup(arg); break;
 			case 'i':
@@ -2166,9 +2191,21 @@ bool run(Win *win, gchar* action, const gchar *arg)
 		Z("open"   , openuri(win, arg))
 		Z("opennew", newwin(arg, NULL, win, false))
 
+		Z("bookmark",
+			gchar **args = g_strsplit(arg, " ", 2);
+			addlink(win, args[1], args[0]);
+			g_strfreev(args);
+		)
+
 		//nokey
 		Z("openback", newwin(arg, NULL, win, true))
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
+
+		Z("tohintcallback", win->mode = Mhintspawn; win->spawn = g_strdup(arg))
+		Z("sourcecallback",
+			WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
+			webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));
+		)
 	}
 
 	Z("tonormal"    , win->mode = Mnormal)
@@ -2189,7 +2226,6 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("tohintback"  , win->mode = Mhintback)
 	Z("tohintdl"    , win->mode = Mhintdl)
 	Z("tohintbookmark", win->mode = Mhintbkmrk)
-	Z("tohintcallback", win->mode = Mhintspawn; win->spawn = g_strdup(arg))
 
 	Z("showdldir"   ,
 		command(win, confcstr("diropener"), dldir());
@@ -2204,18 +2240,8 @@ bool run(Win *win, gchar* action, const gchar *arg)
 			webkit_web_view_get_title(win->kit) ?: "", -1);
 		showmsg(win, "Title is yanked to clipboard")
 	)
-	Z("bookmarkthis", addlink(win, bookmarkthisarg, arg);
-	)
 	Z("bookmark"    , addlink(win, webkit_web_view_get_title(win->kit), URI(win)))
 	Z("bookmarkbreak", addlink(win, NULL, NULL))
-	Z("bookmarklinkor",
-		if (win->link)
-			addlink(win, win->linklabel, win->link);
-		else if (arg)
-			addlink(win, NULL, arg);
-		else
-			return run(win, "bookmark", NULL);
-	)
 
 	Z("quit"        , gtk_widget_destroy(win->winw); return true)
 	Z("quitall"     , quitif(true))
@@ -2353,6 +2379,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("addblacklist", send(win, Cwhite, "black"))
 
 	Z("showmsg"     , showmsg(win, arg))
+
 	Z("click",
 		gchar **xy = g_strsplit(arg ?: "100:100", ":", 2);
 		gdouble z = webkit_web_view_get_zoom_level(win->kit);
@@ -2362,15 +2389,14 @@ bool run(Win *win, gchar* action, const gchar *arg)
 		putbtne(win, GDK_BUTTON_RELEASE);
 		g_strfreev(xy);
 	)
-	Z("sourcecallback",
-		WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
-		webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));
-	)
 //	Z("headercallback",)
 
 	Z("textlink", send(win, Ctlon, NULL));
 
-	D(Not Yet! %s, action)
+	gchar *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
+	showmsg(win, msg);
+	puts(msg);
+	g_free(msg);
 	return false;
 
 #undef Z
@@ -2808,8 +2834,9 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"  You can add your own script to context-menu. See 'menu' dir in\n"
 			"  the config dir, or click 'addMenu' in the context-menu. SUFFIX,\n"
 			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
-			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, MEDIA, IMAGE,\n"
-			"  and MEDIA_IMAGE_LINK are set as environment variables. Available\n"
+			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
+			"  MEDIA, IMAGE and MEDIA_IMAGE_LINK\n"
+			"  are set as environment variables. Available\n"
 			"  actions are in 'key:' section below. Of course it supports dir\n"
 			"  and '.'. '.' hides it from menu but still available in the accels.\n"
 			"accels:\n"
@@ -2938,10 +2965,9 @@ static void destroycb(Win *win)
 	g_free(win->lasturiconf);
 	g_free(win->overset);
 	g_free(win->msg);
-	g_free(win->link);
-	g_free(win->linklabel);
-	g_free(win->image);
-	g_free(win->media);
+
+	setresult(win, NULL);
+
 	g_free(win->spawn);
 	g_free(win->lastfind);
 	g_free(win);
@@ -3084,30 +3110,6 @@ static bool keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (win->mode == Mlist) return true;
 	if (ke2name(ek)) return true;
 	return false;
-}
-static void setresult(Win *win, WebKitHitTestResult *htr)
-{
-	g_free(win->image);
-	g_free(win->media);
-	g_free(win->link);
-	g_free(win->linklabel);
-
-	win->image = win->media = win->link = win->linklabel = NULL;
-	if (!htr) return;
-
-	win->image = webkit_hit_test_result_context_is_image(htr) ?
-		g_strdup(webkit_hit_test_result_get_image_uri(htr)) : NULL;
-	win->media = webkit_hit_test_result_context_is_media(htr) ?
-		g_strdup(webkit_hit_test_result_get_media_uri(htr)) : NULL;
-	win->link = webkit_hit_test_result_context_is_link(htr) ?
-		g_strdup(webkit_hit_test_result_get_link_uri(htr)) : NULL;
-
-	const gchar *label = webkit_hit_test_result_get_link_label(htr);
-	if (!label)
-		label = webkit_hit_test_result_get_link_title(htr);
-	win->linklabel = label ? g_strdup(label): NULL;
-
-	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
 }
 static void targetcb(
 		WebKitWebView *w,
@@ -3573,11 +3575,11 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
-		addscript(dir, ".openNewSrcURI"      ,
-				APP" \"$SUFFIX\" tohintcallback "
+		addscript(dir, ".openNewSrcURI"   , APP" \"$SUFFIX\" tohintcallback "
 				"'sh -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, "0addMenu"         , "mimeopen -n %s");
-		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmarklinkor \"\"");
+		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmark "
+				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
 		addscript(dir, "0history"         , APP" \"$SUFFIX\" showhistory \"\"");
 		addscript(dir, "0windowList"      , APP" \"$SUFFIX\" winlist \"\"");

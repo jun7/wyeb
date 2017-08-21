@@ -59,8 +59,9 @@ context-menu:
   You can add your own script to context-menu. See 'menu' dir in
   the config dir, or click 'addMenu' in the context-menu. SUFFIX,
   ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,
-  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, MEDIA, IMAGE,
-  and MEDIA_IMAGE_LINK are set as environment variables. Available
+  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,
+  MEDIA, IMAGE and MEDIA_IMAGE_LINK
+  are set as environment variables. Available
   actions are in 'key:' section below. Of course it supports dir
   and '.'. '.' hides it from menu but still available in the accels.
 accels:
@@ -85,7 +86,8 @@ key:
 0 - d          : tohintdl               : dl is Download
 0 - D          : showdldir              : 
 0 - y          : yankuri                : Clipboard
-0 - b          : bookmark               : 
+0 - Y          : yanktitle              : Clipboard
+0 - b          : bookmark               : arg: "" or "uri + ' ' + label"
 0 - B          : bookmarkbreak          : Add line break to the main page
 0 - q          : quit                   : 
 0 - Q          : quitall                : 
@@ -129,6 +131,7 @@ key:
 0 - e          : edit                   : 
 0 - E          : editconf               : 
 0 - c          : openconfigdir          : 
+0 - v          : setv                   : Use the 'set:v' section
 4 - s          : setscript              : Use the 'set:script' section
 4 - i          : setimage               : set:image
 0 - u          : unset                  : 
@@ -147,9 +150,8 @@ key:
 0 - (null)     : tohintopen             : 
 0 - (null)     : openback               : 
 0 - (null)     : download               : 
-0 - (null)     : bookmarkthis           : 
-0 - (null)     : bookmarklinkor         : 
 0 - (null)     : showmsg                : 
+0 - (null)     : click                  : x:y
 0 - (null)     : tohintcallback         : arg is called with environment variables
                                           selected by hint.
 0 - (null)     : sourcecallback         : 
