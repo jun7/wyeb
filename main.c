@@ -3221,6 +3221,9 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			cancelcontext = true;
 			cancelbtn1r = true;
 		}
+		else if (win->crashed && e->button == 3)
+			run(win, "reload", NULL);
+
 		break;
 	}
 
