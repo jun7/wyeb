@@ -237,7 +237,7 @@ Conf dconf[] = {
 		"linkdata=ftu\n" "t: title, u: uri, f: favicon"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
-	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/"},
+	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/;audio/;application/"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
