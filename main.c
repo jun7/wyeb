@@ -201,7 +201,7 @@ Conf dconf[] = {
 
 	{"all"   , "dlwinback"    , "false"},
 	{"all"   , "dlwinclosemsec","3000"},
-	{"all"   , "msgmsec"      , "400"},
+	{"all"   , "msgmsec"      , "600"},
 	{"all"   , "ignoretlserr" , "false"},
 	{"all"   , "histimgs"     , "66"},
 	{"all"   , "histimgsize"  , "222"},
