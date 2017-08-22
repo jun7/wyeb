@@ -3992,7 +3992,7 @@ int main(int argc, char **argv)
 
 	if (*action == '\0') action = "new";
 	if (uri && *uri == '\0') uri = NULL;
-	if (argc == 2 && uri && g_str_has_prefix(uri, "/"))
+	if (argc == 2 && uri && g_file_test(uri, G_FILE_TEST_EXISTS))
 		uri = g_strconcat("file://", uri, NULL);
 
 	gchar *sendstr = g_strconcat("0:", action, ":", uri, NULL);
