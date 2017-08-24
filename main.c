@@ -2413,7 +2413,8 @@ static bool focuscb(Win *win)
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
 	checkconf(false);
-	if (!webkit_web_view_is_loading(win->kit))
+	if (!webkit_web_view_is_loading(win->kit) &&
+			webkit_web_view_get_uri(win->kit))
 	{
 		addhistory(win);
 		send(win, Ctlcheck, NULL);
