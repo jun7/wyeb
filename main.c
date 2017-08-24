@@ -2144,17 +2144,16 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 		switch (win->mode) {
 		case Mhintnew:
-			action = "opennew"     ; break;
+			action = "opennew" ; break;
 		case Mhintback:
-			showmsg(win, "Opened");
-			action = "openback"    ; break;
+			action = "openback"; break;
 		case Mhintdl:
-			action = "download"    ; break;
+			action = "download"; break;
 		case Mhintbkmrk:
 			arg = orgarg + 1;
 			action = "bookmark"; break;
 		case Mhintopen:
-			action = "open"        ; break;
+			action = "open"    ; break;
 
 		case Mhintspawn:
 			setresult(win, NULL);
@@ -2198,7 +2197,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 		)
 
 		//nokey
-		Z("openback", newwin(arg, NULL, win, true))
+		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, true))
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
 
 		Z("tohintcallback", win->mode = Mhintspawn; win->spawn = g_strdup(arg))
