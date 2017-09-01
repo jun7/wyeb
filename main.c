@@ -107,7 +107,7 @@ typedef struct {
 	gchar  *media;
 	bool    oneditable;
 
-	//cursor
+	//pointer
 	gdouble lastdelta;
 	guint   lastkey;
 	gdouble px;
