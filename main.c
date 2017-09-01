@@ -3843,7 +3843,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
 			"web-context", ctx, "user-content-manager", cmgr, NULL);
 	}
-	g_object_set_data(win->kito, "win", win); //for context event
+	g_object_set_data(win->kito, "win", win); //for schemecb
 
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
