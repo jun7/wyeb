@@ -3410,6 +3410,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		win->px = win->py = 0;
 		win->scheme = false;
 		setresult(win, NULL);
+		if (win->mode == Minsert) send(win, Cblur, NULL); //clear im
 		tonormal(win);
 		if (win->userreq) {
 			win->userreq = false; //currently not used
