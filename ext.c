@@ -291,6 +291,7 @@ static void showwhite(Page *page, bool white)
 
 //@textlink
 static gchar *tlpath = NULL;
+static __time_t  tltime = 0;
 static Page  *tlpage = NULL;
 static WebKitDOMElement *tldoc;
 static WebKitDOMHTMLTextAreaElement *tlelm;
@@ -299,6 +300,8 @@ static void textlinkcheck(bool monitor)
 	if (!tlpage || !isin(pages, tlpage)) return;
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(tlpage->kit);
 	if (tldoc != webkit_dom_document_get_document_element(doc)) return;
+
+	if (!getctime(tlpath, &tltime)) return;
 
 	GIOChannel *io = g_io_channel_new_file(tlpath, "r", NULL);
 	gchar *text;
@@ -333,9 +336,11 @@ static void textlinkon(Page *page)
 
 	gchar *text = webkit_dom_html_text_area_element_get_value(tlelm);
 	GIOChannel *io = g_io_channel_new_file(tlpath, "w", NULL);
-	g_io_channel_write_chars(io, text, -1, NULL, NULL);
+	g_io_channel_write_chars(io, text ?: "", -1, NULL, NULL);
 	g_io_channel_unref(io);
 	g_free(text);
+
+	getctime(tlpath, &tltime);
 
 	send(page, "openeditor", tlpath);
 }
