@@ -948,7 +948,7 @@ static void getdconf(GKeyFile *kf, bool isnew)
 			"include other sets." , NULL);
 
 	//fill vals not set
-	if (wins && LASTWIN)
+	if (LASTWIN)
 		getkitprops(LASTWIN->seto, kf, DSET);
 	else {
 		WebKitSettings *set = webkit_settings_new();
