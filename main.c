@@ -117,7 +117,7 @@ typedef struct {
 	gint    cursorx;
 	gint    cursory;
 	gchar  *spawn;
-	bool    lastfind;
+	gchar  *lastfind;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
 //	gint    backwinnum;
@@ -1123,6 +1123,8 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mfind:
+		g_free(win->lastfind);
+		win->lastfind = g_strdup(gtk_entry_get_text(win->ent));
 	case Mopen:
 	case Mopennew:
 		gtk_widget_hide(win->entw);
@@ -1165,7 +1167,9 @@ static void _modechanged(Win *win)
 			win->mode = Mnormal;
 			break;
 		}
-		win->lastfind = false;
+		gtk_entry_set_text(win->ent, win->lastfind ?: "");
+		g_free(win->lastfind);
+		win->lastfind = NULL;
 	case Mopen:
 	case Mopennew:
 		gtk_widget_show(win->entw);
@@ -1303,7 +1307,8 @@ static void openuri(Win *win, const gchar *str)
 					esc);
 				g_free(esc);
 
-				gtk_entry_set_text(win->ent, stra[1]);
+				g_free(win->lastfind);
+				win->lastfind = g_strdup(stra[1]);
 
 				g_strfreev(kv);
 				goto out;
@@ -1328,7 +1333,8 @@ static void openuri(Win *win, const gchar *str)
 		uri = g_strdup_printf(dsearch, esc);
 		g_free(esc);
 
-		gtk_entry_set_text(win->ent, str);
+		g_free(win->lastfind);
+		win->lastfind = g_strdup(str);
 	}
 
 	if (!uri) uri = g_strdup(str);
@@ -2175,7 +2181,8 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 	if (arg != NULL) {
 		Z("find"  ,
-				win->lastfind = true;
+				g_free(win->lastfind);
+				win->lastfind = g_strdup(arg);
 				webkit_find_controller_search(win->findct, arg,
 					WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
 					WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT))
@@ -2962,6 +2969,7 @@ static void destroycb(Win *win)
 	setresult(win, NULL);
 
 	g_free(win->spawn);
+	g_free(win->lastfind);
 	g_free(win);
 }
 static void crashcb(Win *win)
@@ -3680,7 +3688,7 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 			gchar *action = NULL;
 			switch (win->mode) {
 			case Mfind:
-				if (!win->lastfind)
+				if (!win->lastfind || strcmp(win->lastfind, text) != 0)
 					run(win, "find", text);
 
 				senddelay(win, Cfocus, NULL);
