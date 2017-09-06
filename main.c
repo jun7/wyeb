@@ -1273,6 +1273,8 @@ static void tonormal(Win *win)
 static void openuri(Win *win, const gchar *str)
 {
 	win->userreq = true;
+	gtk_entry_set_text(win->ent, str ?: "");
+
 	if (!str || strlen(str) == 0)
 		str = APP":main";
 
