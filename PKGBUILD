@@ -20,6 +20,7 @@ pkgver(){
 prepare() {
 	cd "$srcdir/wyeb"
 	git pull --rebase origin $_branch
+	make clean
 }
 
 build() {
