@@ -1274,9 +1274,6 @@ static void openuri(Win *win, const gchar *str)
 {
 	win->userreq = true;
 
-	if (str != gtk_entry_get_text(win->ent))
-		gtk_entry_set_text(win->ent, str ?: "");
-
 	if (!str || strlen(str) == 0)
 		str = APP":main";
 
@@ -1290,6 +1287,10 @@ static void openuri(Win *win, const gchar *str)
 		webkit_web_view_load_uri(win->kit, str);
 		return;
 	}
+
+	if (str != gtk_entry_get_text(win->ent))
+		gtk_entry_set_text(win->ent, str ?: "");
+
 	if (g_str_has_prefix(str, "javascript:")) {
 		webkit_web_view_run_javascript(win->kit, str + 11, NULL, NULL, NULL);
 		return;
