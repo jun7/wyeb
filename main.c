@@ -3075,6 +3075,10 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		Z("scrollup"    , winlist(win, GDK_KEY_Up   , NULL))
 		Z("scrollleft"  , winlist(win, GDK_KEY_Left , NULL))
 		Z("scrollright" , winlist(win, GDK_KEY_Right, NULL))
+
+		Z("quit"     , winlist(win, 3, NULL))
+		Z("quitnext" , winlist(win, 3, NULL))
+		Z("quitprev" , winlist(win, 3, NULL))
 #undef Z
 		switch (ek->keyval) {
 		case GDK_KEY_Down:
