@@ -302,7 +302,7 @@ static gchar *mainmdstr =
 "  color: #109; padding: 0 .3em; border-radius: .2em;\n"
 "  text-decoration: none;\n"
 " }\n"
-" .links img{max-height: 1em; margin-bottom: -.1em;}\n"
+" .links img{height: 1em; width: 1em; margin-bottom: -.1em;}\n"
 "</style>\n"
 "<div class=links style=line-height:1.4;>\n"
 "\n"
