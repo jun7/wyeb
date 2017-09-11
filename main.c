@@ -532,7 +532,7 @@ static void send(Win *win, Coms type, gchar *args)
 				win->pageid,
 #endif
 				arg) &&
-			!win->crashed && !alerted)
+			!win->crashed && !alerted && type == Cstart)
 	{
 		alert("Failed to communicate with the Web Extension.\n"
 				"Make sure ext.so is in "EXTENSION_DIR".");
