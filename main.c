@@ -301,6 +301,7 @@ static gchar *mainmdstr =
 "  background: linear-gradient(to right top, #ddf, white, white);\n"
 "  color: #109; padding: 0 .3em; border-radius: .2em;\n"
 "  text-decoration: none;\n"
+"  white-space: nowrap;\n"
 " }\n"
 " .links img{height: 1em; width: 1em; margin-bottom: -.1em;}\n"
 "</style>\n"
