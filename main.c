@@ -3027,7 +3027,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	if (action && strcmp(action, "tonormal") == 0)
 	{
-		bool ret = win->mode & Mhint;
+		bool ret = win->mode & Mhint || win->mode == Mpointer;
 
 		if (win->mode == Mpointer)
 			win->px = win->py = 0;
