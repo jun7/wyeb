@@ -2217,13 +2217,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 	Z("toinsert"    , win->mode = Minsert)
 	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, NULL))
-
-	Z("topointer"   ,
-			if (win->mode == Mpointer)
-				tonormal(win);
-			else
-				win->mode = Mpointer
-	)
+	Z("topointer"   , win->mode = win->mode == Mpointer ? Mnormal : Mpointer)
 
 	Z("tohint"      , win->mode = Mhint)
 	Z("tohintopen"  , win->mode = Mhintopen)
