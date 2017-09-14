@@ -35,7 +35,7 @@ For example, context-menu items we added are just shell scripts.
 <pre>
 command: wyeb [[[suffix] action|""] uri|arg|""]
   suffix: Process ID.
-    It added to all directories conf, cache and etc.
+    It is added to all directories conf, cache and etc.
   action: Such as new(default), open, opennew ...
     Except 'new' and some, actions are sent to a window last focused.
 

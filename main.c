@@ -272,7 +272,7 @@ static bool getsetbool(Win *win, gchar *key)
 static gchar *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"  suffix: Process ID.\n"
-	"    It added to all directories conf, cache and etc.\n"
+	"    It is added to all directories conf, cache and etc.\n"
 	"  action: Such as new(default), open, opennew ...\n"
 	"    Except 'new' and some, actions are sent to a window last focused.\n"
 	;
