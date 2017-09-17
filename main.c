@@ -25,7 +25,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define MIMEOPEN "mimeopen -n %s"
 
 #define DSET "set;"
-#define DIST 6
+#define THRESHOLD 8
 
 #define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
@@ -148,6 +148,7 @@ typedef struct {
 
 //@global
 static gchar     *suffix = "";
+static gint       threshold = THRESHOLD;
 static GPtrArray *wins = NULL;
 static GPtrArray *dlwins = NULL;
 static GQueue    *histimgs = NULL;
@@ -3207,7 +3208,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				deltax = (e->x - win->lastx) ,
 				deltay = e->y - win->lasty;
 
-			if (MAX(abs(deltax), abs(deltay)) < DIST * 3)
+			if (MAX(abs(deltax), abs(deltay)) < threshold * 2)
 			{ //default
 				run(win, "back", NULL);
 			}
@@ -3258,7 +3259,7 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 		win->lastx = win->lasty = 0;
 
-		if (MAX(abs(deltax), abs(deltay)) < DIST)
+		if (MAX(abs(deltax), abs(deltay)) < threshold)
 		{ //default
 			if (win->oneditable)
 			{
@@ -4019,6 +4020,9 @@ int main(int argc, char **argv)
 		g_object_unref(pix);
 	}
 
+	if (gtk_settings_get_default())
+		g_object_get(gtk_settings_get_default(),
+				"gtk-dnd-drag-threshold", &threshold, NULL);
 	wins = g_ptr_array_new();
 	dlwins = g_ptr_array_new();
 	histimgs = g_queue_new();
