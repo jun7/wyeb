@@ -317,8 +317,8 @@ static gchar *mainmdstr =
 static gint threshold(Win *win)
 {
 	gint ret = 8;
-	GtkSettings *ds = gtk_widget_get_settings(win->winw);
-	if (ds) g_object_get(ds, "gtk-dnd-drag-threshold", &ret, NULL);
+	g_object_get(gtk_widget_get_settings(win->winw),
+			"gtk-dnd-drag-threshold", &ret, NULL);
 	return ret;
 }
 static const gchar *dldir()
