@@ -419,15 +419,19 @@ static bool historycb(Win *win)
 
 
 	append(current, str);
-	if (confint("histimgs"))
+
+	gint maxi = confint("histimgs");
+	while (histimgs->length > 0 && histimgs->length >= maxi)
 	{
-		while (histimgs->length >= confint("histimgs"))
+		Img *img = g_queue_pop_tail(histimgs);
+		if (img)
 		{
-			Img *img = g_queue_pop_tail(histimgs);
 			g_free(img->buf);
 			g_free(img);
 		}
-
+	}
+	if (maxi)
+	{
 		gdouble ww = gtk_widget_get_allocated_width(win->kitw);
 		gdouble wh = gtk_widget_get_allocated_height(win->kitw);
 		gdouble scale = confint("histimgsize") / MAX(1, MAX(ww, wh));
