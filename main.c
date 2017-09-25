@@ -112,11 +112,15 @@ typedef struct {
 	gdouble px;
 	gdouble py;
 
+	//entry
+	GSList *undo;
+	GSList *redo;
+	gchar  *lastfind;
+
 	//misc
 	gint    cursorx;
 	gint    cursory;
 	gchar  *spawn;
-	gchar  *lastfind;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
 //	gint    backwinnum;
@@ -649,6 +653,20 @@ static void setresult(Win *win, WebKitHitTestResult *htr)
 	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
 }
 
+static void undo(Win *win, GSList **undo, GSList **redo)
+{
+	if (!*undo && redo != undo) return;
+	if (!*redo ||
+			strcmp((*redo)->data, gtk_entry_get_text(win->ent)) != 0)
+		*redo = g_slist_prepend(*redo,
+				g_strdup(gtk_entry_get_text(win->ent)));
+
+	if (redo == undo) return;
+	gtk_entry_set_text(win->ent, (*undo)->data);
+	gtk_editable_set_position((void *)win->ent, -1);
+	g_free((*undo)->data);
+	*undo = g_slist_delete_link(*undo, *undo);
+}
 
 //@conf
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
@@ -1185,6 +1203,7 @@ static void _modechanged(Win *win)
 	case Mopennew:
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
+		undo(win, &win->undo, &win->undo);
 		break;
 
 	case Mlist:
@@ -3692,9 +3711,7 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 {
 	switch (ke->keyval) {
 	case GDK_KEY_m:
-		if (!(ke->state & GDK_CONTROL_MASK))
-			return false;
-
+		if (!(ke->state & GDK_CONTROL_MASK)) return false;
 	case GDK_KEY_KP_Enter:
 	case GDK_KEY_Return:
 		{
@@ -3719,12 +3736,23 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 			tonormal(win);
 		}
 		break;
+
 	case GDK_KEY_Escape:
 		if (win->mode == Mfind) {
 			webkit_find_controller_search_finish(win->findct);
 		}
 		tonormal(win);
 		break;
+
+	case GDK_KEY_Z:
+		if (!(ke->state & GDK_CONTROL_MASK)) return false;
+		undo(win, &win->redo, &win->undo);
+		break;
+	case GDK_KEY_z:
+		if (!(ke->state & GDK_CONTROL_MASK)) return false;
+		undo(win, &win->undo, &win->redo);
+		break;
+
 	default:
 		return false;
 	}
