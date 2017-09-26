@@ -2744,6 +2744,11 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			" font-size: 79%;\n"
 			" color: #43a;\n"
 			"}\n"
+			"img {\n"
+			" border-radius: .4em;\n"
+			" box-shadow: 0 .1em .1em 0 #cbf;\n"
+			" margin: .3em 0;\n"
+			"}\n"
 			"</style>\n"
 			"<table>\n"
 			);
