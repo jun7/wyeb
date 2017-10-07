@@ -4,9 +4,6 @@
 / [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
-### Todo
-- Waiting for Webkit2gtk version 2.18 to get correct rects of elements
-
 ### Installation
 depends 'webkit2gtk' 'markdown' 'perl-file-mimeinfo' //on arch linux
 
