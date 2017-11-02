@@ -116,6 +116,7 @@ typedef struct {
 	GSList *undo;
 	GSList *redo;
 	gchar  *lastfind;
+	GtkStyleProvider *sp;
 
 	//misc
 	gint    cursorx;
@@ -241,6 +242,7 @@ Conf dconf[] = {
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/;audio/;application/"},
+	{DSET    , "entrybgcolor"     , "true"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -955,14 +957,14 @@ static void getdconf(GKeyFile *kf, bool isnew)
 	if (!isnew) return;
 
 	//sample and comment
-	g_key_file_set_comment(conf, "set;", NULL, "Default of 'set's.", NULL);
+	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's.", NULL);
 
 	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
 
 	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
 	g_key_file_set_comment(conf, sample, NULL,
 			"After 'uri:' is regular expressions for 'set'.\n"
-			"preferential order of sections: Last > First > 'set;'"
+			"preferential order of sections: Last > First > '"DSET"'"
 			, NULL);
 
 	sample = "uri:^foo|a-zA-Z0-9|*";
@@ -1139,6 +1141,7 @@ static void settitle(Win *win, const gchar *pstr)
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
+static void setbg(Win *win, int color); //declaration
 static void pmove(Win *win, guint key); //declaration
 static bool winlist(Win *win, guint type, cairo_t *cr); //declaration
 static void _modechanged(Win *win)
@@ -1156,6 +1159,8 @@ static void _modechanged(Win *win)
 		win->lastfind = g_strdup(gtk_entry_get_text(win->ent));
 	case Mopen:
 	case Mopennew:
+		setbg(win, 0);
+
 		gtk_widget_hide(win->entw);
 		gtk_widget_grab_focus(win->kitw);
 		break;
@@ -1201,6 +1206,14 @@ static void _modechanged(Win *win)
 		win->lastfind = NULL;
 	case Mopen:
 	case Mopennew:
+		if (win->mode != Mfind)
+		{
+			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
+			if (strcmp(setstr, getset(win, "search")) != 0)
+				setbg(win, 2);
+			g_free(setstr);
+		}
+
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
 		undo(win, &win->undo, &win->undo);
@@ -3706,6 +3719,31 @@ static bool contextcb(WebKitWebView *web_view,
 
 
 //@entry
+void setbg(Win *win, int color)
+{
+	static const gchar *colors[] = {"red", "skyblue"};
+	static GtkStyleProvider *cps[2] = {NULL};
+	if (!cps[0]) for (int i = 0; i < 2; i++)
+		{
+			GtkCssProvider *cssp = gtk_css_provider_new();
+			gchar *sstr = g_strdup_printf("entry {background-color: %s}", colors[i]);
+			gtk_css_provider_load_from_data(cssp, sstr, -1, NULL);
+
+			cps[i] = (void *)cssp;
+			g_free(sstr);
+		}
+
+	GtkStyleContext *sctx = gtk_widget_get_style_context(win->entw);
+	if (win->sp)
+		gtk_style_context_remove_provider(sctx, win->sp);
+
+	win->sp = NULL;
+	if (color < 1) return;
+	if (!getsetbool(win, "entrybgcolor")) return;
+
+	gtk_style_context_add_provider(sctx, win->sp = cps[color - 1],
+			GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
 static bool focusincb(Win *win)
 {
 	if (gtk_widget_get_visible(win->entw))
@@ -3766,6 +3804,8 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 static bool textcb(Win *win)
 {
 	if (win->mode == Mfind && gtk_widget_get_visible(win->entw)) {
+		setbg(win, 0);
+
 		const gchar *text = gtk_entry_get_text(win->ent);
 		if (strlen(text) > 2)
 			run(win, "find", text);
@@ -3777,6 +3817,9 @@ static bool textcb(Win *win)
 static void findfailedcb(Win *win)
 {
 	showmsg(win, "Not found");
+
+	if (win->mode == Mfind)
+		setbg(win, 1);
 }
 static void foundcb(Win *win)
 {
