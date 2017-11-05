@@ -141,6 +141,10 @@ typedef struct {
 		GtkBox    *box;
 		GtkWidget *boxw;
 	};
+	union {
+		GtkEntry  *ent;
+		GtkWidget *entw;
+	};
 	WebKitDownload *dl;
 	gchar  *name;
 	const gchar *dispname;
@@ -2531,6 +2535,14 @@ static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 
 
 //@download
+static void addlabel(DLWin *win, const gchar *str)
+{
+	GtkWidget *lbl = gtk_label_new(str);
+	gtk_label_set_selectable((GtkLabel *)lbl, true);
+	gtk_box_pack_start(win->box, lbl, true, true, 0);
+	gtk_label_set_ellipsize((GtkLabel *)lbl, PANGO_ELLIPSIZE_MIDDLE);
+	gtk_widget_show_all(lbl);
+}
 static void dldestroycb(DLWin *win)
 {
 	if (!win->finished)
@@ -2565,6 +2577,21 @@ static void dlfincb(DLWin *win)
 	{
 		title = g_strdup_printf("DL: Finished: %s", win->dispname);
 		gtk_progress_bar_set_fraction(win->prog, 1);
+
+		gchar *fn = g_filename_from_uri(
+				webkit_download_get_destination(win->dl), NULL, NULL);
+
+		const gchar *nfn = gtk_entry_get_text(win->ent);
+		if (strcmp(fn, nfn) != 0 && g_rename(fn, nfn) != 0)
+			nfn = fn; //failed
+
+		gtk_widget_hide(win->entw);
+
+		gchar *pathstr = g_strdup_printf("=>  %s", nfn);
+		addlabel(win, pathstr);
+
+		g_free(pathstr);
+		g_free(fn);
 	}
 	else
 		title = g_strdup_printf("DL: Failed: %s", win->dispname);
@@ -2593,25 +2620,20 @@ static void dldatacb(DLWin *win)
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
-static void addlabel(DLWin *win, const gchar *str)
-{
-	GtkWidget *lbl = gtk_label_new(str);
-	gtk_label_set_selectable((GtkLabel *)lbl, true);
-	gtk_box_pack_start(win->box, lbl, true, true, 0);
-	gtk_label_set_ellipsize((GtkLabel *)lbl, PANGO_ELLIPSIZE_MIDDLE);
-	gtk_widget_show_all(lbl);
-}
 //static void dlrescb(DLWin *win) {}
 static void dldestcb(DLWin *win)
 {
 	gchar *fn = g_filename_from_uri(
 			webkit_download_get_destination(win->dl), NULL, NULL);
-	gchar *pathstr = g_strdup_printf("=>  %s", fn);
 
-	addlabel(win, pathstr);
+	win->entw = gtk_entry_new();
+	gtk_entry_set_text(win->ent, fn);
+	gtk_entry_set_alignment(win->ent, .5);
+
+	gtk_box_pack_start(win->box, win->entw, true, true, 4);
+	gtk_widget_show_all(win->entw);
 
 	g_free(fn);
-	g_free(pathstr);
 }
 static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 {
