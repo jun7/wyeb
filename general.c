@@ -27,9 +27,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
 
-//currently textlink supports shared only
-#define SHARED 1
-
 #if DEBUG
 # define D(f, ...) g_print(#f"\n", __VA_ARGS__);
 # define DNN(f, ...) g_print(#f, __VA_ARGS__);
@@ -50,6 +47,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
 
 
+static bool shared = true;
 
 typedef enum {
 	Cstart  = 'a',
@@ -67,8 +65,8 @@ typedef enum {
 	Cblur   = 'b',
 	Crm     = 'r',
 	Cwhite  = 'w',
-	Ctlon   = 'n',
-	Ctlcheck= 'h',
+	Ctlget  = 'g',
+	Ctlset  = 'e',
 
 	Cfree   = 'f',
 } Coms;
@@ -188,13 +186,6 @@ static gchar *escape(const gchar *str)
 	}
 
 	return g_strdup(ret);
-}
-
-static bool isin(GPtrArray *ary, void *v)
-{
-	for (int i = 0; i < ary->len; i++)
-		if (v == ary->pdata[i]) return true;
-	return false;
 }
 
 

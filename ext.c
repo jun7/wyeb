@@ -288,22 +288,15 @@ static void showwhite(Page *page, bool white)
 }
 
 
-
 //@textlink
-static gchar *tlpath = NULL;
-static __time_t  tltime = 0;
-static Page  *tlpage = NULL;
 static WebKitDOMElement *tldoc;
 static WebKitDOMHTMLTextAreaElement *tlelm;
-static void textlinkcheck(bool monitor)
+static void textlinkset(Page *page, gchar *path)
 {
-	if (!tlpage || !isin(pages, tlpage)) return;
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(tlpage->kit);
+	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 	if (tldoc != webkit_dom_document_get_document_element(doc)) return;
 
-	if (!getctime(tlpath, &tltime)) return;
-
-	GIOChannel *io = g_io_channel_new_file(tlpath, "r", NULL);
+	GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
 	gchar *text;
 	g_io_channel_read_to_end(io, &text, NULL, NULL);
 	g_io_channel_unref(io);
@@ -311,7 +304,7 @@ static void textlinkcheck(bool monitor)
 	webkit_dom_html_text_area_element_set_value(tlelm, text);
 	g_free(text);
 }
-static void textlinkon(Page *page)
+static void textlinkget(Page *page, gchar *path)
 {
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
@@ -324,25 +317,16 @@ static void textlinkon(Page *page)
 		return;
 	}
 
-	if (!tlpath)
-	{
-		tlpath = g_build_filename(
-			g_get_user_data_dir(), fullname, "textlink.txt", NULL);
-		monitor(tlpath, textlinkcheck);
-	}
-	tlpage = page;
 	tldoc = webkit_dom_document_get_document_element(doc);
 	tlelm = (WebKitDOMHTMLTextAreaElement *)te;
 
 	gchar *text = webkit_dom_html_text_area_element_get_value(tlelm);
-	GIOChannel *io = g_io_channel_new_file(tlpath, "w", NULL);
+	GIOChannel *io = g_io_channel_new_file(path, "w", NULL);
 	g_io_channel_write_chars(io, text ?: "", -1, NULL, NULL);
 	g_io_channel_unref(io);
 	g_free(text);
 
-	getctime(tlpath, &tltime);
-
-	send(page, "openeditor", tlpath);
+	send(page, "textlinkon", NULL);
 }
 
 
@@ -1095,9 +1079,6 @@ static void pagestart(Page *page)
 	g_slist_free_full(page->white, g_free);
 	page->black = NULL;
 	page->white = NULL;
-
-	if (tlpage == page)
-		tlpage = NULL;
 }
 
 static void pageon(Page *page)
@@ -1198,14 +1179,10 @@ void ipccb(const gchar *line)
 	gchar **args = g_strsplit(line, ":", 4);
 
 	Page *page = NULL;
-#if SHARED
 	long lid = atol(args[0]);
 	for (int i = 0; i < pages->len; i++)
 		if (((Page *)pages->pdata[i])->id == lid)
 			page = pages->pdata[i];
-#else
-	page = *pages->pdata;
-#endif
 
 	if (!page) return;
 
@@ -1273,11 +1250,11 @@ void ipccb(const gchar *line)
 		showwhite(page, strcmp(arg, "white") == 0 ? true : false );
 		break;
 
-	case Ctlon:
-		textlinkon(page);
+	case Ctlget:
+		textlinkget(page, arg);
 		break;
-	case Ctlcheck:
-		textlinkcheck(false);
+	case Ctlset:
+		textlinkset(page, arg);
 		break;
 
 	case Cfree:
@@ -1386,11 +1363,12 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 	g_ptr_array_add(pages, page);
 
 	setwblist(false);
-#if ! SHARED
-	gchar *tmp = g_strdup_printf("%lu", page->id);
-	ipcwatch(tmp);
-	g_free(tmp);
-#endif
+	if (!shared)
+	{
+		gchar *tmp = g_strdup_printf("%lu", page->id);
+		ipcwatch(tmp);
+		g_free(tmp);
+	}
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
 	SIG( page->kit, "send-request"            , reqcb    , page);
@@ -1403,10 +1381,11 @@ G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 {
 	const gchar *str = g_variant_get_string((GVariant *)v, NULL);
 	fullname = g_strdup(g_strrstr(str, ";") + 1);
+	shared = fullname[0] == 's';
+	fullname = fullname + 1;
 
-#if SHARED
-	ipcwatch("ext");
-#endif
+	if (shared)
+		ipcwatch("ext");
 
 	pages = g_ptr_array_new();
 

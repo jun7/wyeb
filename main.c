@@ -216,6 +216,7 @@ Conf dconf[] = {
 
 	{"boot"  , "enablefavicon", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
+	{"boot"  , "multiwebprocs", "false"},
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
 
@@ -324,6 +325,12 @@ static gchar *mainmdstr =
 
 
 //@misc
+static bool isin(GPtrArray *ary, void *v)
+{
+	if (ary && v) for (int i = 0; i < ary->len; i++)
+		if (v == ary->pdata[i]) return true;
+	return false;
+}
 static gint threshold(Win *win)
 {
 	gint ret = 8;
@@ -545,13 +552,7 @@ static void send(Win *win, Coms type, gchar *args)
 	gchar *arg = g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: "");
 
 	static bool alerted = false;
-	if(!ipcsend(
-#if SHARED
-				"ext",
-#else
-				win->pageid,
-#endif
-				arg) &&
+	if(!ipcsend(shared ? "ext" : win->pageid, arg) &&
 			!win->crashed && !alerted && type == Cstart)
 	{
 		alert("Failed to communicate with the Web Extension.\n"
@@ -673,6 +674,39 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 	g_free((*undo)->data);
 	*undo = g_slist_delete_link(*undo, *undo);
 }
+
+
+static bool run(Win *win, gchar* action, const gchar *arg); //declaration
+
+//@textlink
+static gchar   *tlpath = NULL;
+static Win     *tlwin = NULL;
+static __time_t tltime = 0;
+static void textlinkcheck(bool monitor)
+{
+	if (!isin(wins, tlwin)) return;
+	if (!getctime(tlpath, &tltime)) return;
+	send(tlwin, Ctlset, tlpath);
+}
+static void textlinkon(Win *win)
+{
+	if (tltime == 0)
+		monitor(tlpath, textlinkcheck);
+
+	getctime(tlpath, &tltime);
+	run(win, "openeditor", tlpath);
+	tlwin = win;
+}
+static void textlinktry(Win *win)
+{
+	if (!tlpath)
+		tlpath = g_build_filename(
+			g_get_user_data_dir(), fullname, "textlink.txt", NULL);
+
+	tlwin = NULL;
+	send(win, Ctlget, tlpath);
+}
+
 
 //@conf
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
@@ -1732,7 +1766,6 @@ static gint inwins(Win *win, GSList **list, bool onlylen)
 	}
 	return len;
 }
-static bool run(Win *win, gchar* action, const gchar *arg); //declaration
 static bool quitnext(Win *win, bool next)
 {
 	if (inwins(win, NULL, true) < 1)
@@ -2182,6 +2215,8 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	if (win == NULL) return false;
 
 	//internal
+	Z("textlinkon" , textlinkon(win))
+
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
 			return true;)
@@ -2436,7 +2471,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	)
 //	Z("headercallback",)
 
-	Z("textlink", send(win, Ctlon, NULL));
+	Z("textlink", textlinktry(win));
 
 	gchar *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
 	showmsg(win, msg);
@@ -2463,8 +2498,9 @@ static bool focuscb(Win *win)
 			webkit_web_view_get_uri(win->kit))
 	{
 		addhistory(win);
-		send(win, Ctlcheck, NULL);
+		textlinkcheck(false);
 	}
+
 	return false;
 }
 static bool focusoutcb(Win *win)
@@ -3026,9 +3062,7 @@ static void destroycb(Win *win)
 
 	quitif(false);
 
-#if SHARED
 	send(win, Cfree, NULL);
-#endif
 
 	g_free(win->pageid);
 	g_free(win->lasturiconf);
@@ -3480,6 +3514,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
 		//D(WEBKIT_LOAD_STARTED %s, URI(win))
+		if (tlwin == win) tlwin = NULL;
 		win->px = win->py = 0;
 		win->scheme = false;
 		setresult(win, NULL);
@@ -3911,16 +3946,18 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 			webkit_cookie_manager_set_accept_policy(cookiemgr,
 					WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
 
-#if ! SHARED
-			webkit_web_context_set_process_model(ctx,
-					WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
-#endif
+			shared = !g_key_file_get_boolean(conf,
+					"boot", "multiwebprocs", NULL);
+			if (!shared)
+				webkit_web_context_set_process_model(ctx,
+						WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 
 			gchar **argv = g_key_file_get_string_list(
 					conf, "boot", "extensionargs", NULL, NULL);
 			gchar *args = g_strjoinv(";", argv);
 			g_strfreev(argv);
-			gchar *udata = g_strconcat(args, ";", fullname, NULL);
+			gchar *udata = g_strconcat(args,
+					";", shared ? "s" : "m", fullname, NULL);
 			g_free(args);
 
 			webkit_web_context_set_web_extensions_initialization_user_data(
