@@ -1243,7 +1243,6 @@ static void _modechanged(Win *win)
 		g_free(win->lastfind);
 		win->lastfind = NULL;
 	case Mopen:
-	case Mopennew:
 		if (win->mode != Mfind)
 		{
 			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
@@ -1251,7 +1250,7 @@ static void _modechanged(Win *win)
 				setbg(win, 2);
 			g_free(setstr);
 		}
-
+	case Mopennew:
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
 		undo(win, &win->undo, &win->undo);
