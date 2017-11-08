@@ -2617,7 +2617,10 @@ static void dlfincb(DLWin *win)
 				webkit_download_get_destination(win->dl), NULL, NULL);
 
 		const gchar *nfn = gtk_entry_get_text(win->ent);
-		if (strcmp(fn, nfn) != 0 && g_rename(fn, nfn) != 0)
+		if (strcmp(fn, nfn) != 0 &&
+			(g_file_test(nfn, G_FILE_TEST_EXISTS) ||
+			 g_rename(fn, nfn) != 0)
+		)
 			nfn = fn; //failed
 
 		gtk_widget_hide(win->entw);
