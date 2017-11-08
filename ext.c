@@ -1110,14 +1110,17 @@ static void mode(Page *page)
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
 
-	gchar *type = webkit_dom_element_get_attribute(te, "contenteditable");
-	bool iseditable = type && strcmp(type, "true") == 0;
-	g_free(type);
+	if (te)
+	{
+		gchar *type = webkit_dom_element_get_attribute(te, "contenteditable");
+		bool iseditable = type && strcmp(type, "true") == 0;
+		g_free(type);
 
-	if (iseditable || isinput(te))
-		send(page, "toinsert", NULL);
-	else
-		send(page, "tonormal", NULL);
+		if (iseditable || isinput(te))
+			return send(page, "toinsert", NULL);
+	}
+
+	send(page, "tonormal", NULL);
 }
 
 static void focus(Page *page)
