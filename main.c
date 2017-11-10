@@ -2619,14 +2619,18 @@ static void dlfincb(DLWin *win)
 		gchar *fn = g_filename_from_uri(
 				webkit_download_get_destination(win->dl), NULL, NULL);
 
-		const gchar *nfn = gtk_entry_get_text(win->ent);
-		if (strcmp(fn, nfn) != 0 &&
-			(g_file_test(nfn, G_FILE_TEST_EXISTS) ||
-			 g_rename(fn, nfn) != 0)
-		)
-			nfn = fn; //failed
+		const gchar *nfn = NULL;
+		if (win->ent)
+		{
+			nfn = gtk_entry_get_text(win->ent);
+			if (strcmp(fn, nfn) != 0 &&
+				(g_file_test(nfn, G_FILE_TEST_EXISTS) ||
+				 g_rename(fn, nfn) != 0)
+			)
+				nfn = fn; //failed
 
-		gtk_widget_hide(win->entw);
+			gtk_widget_hide(win->entw);
+		}
 
 		gchar *pathstr = g_strdup_printf("=>  %s", nfn);
 		addlabel(win, pathstr);
