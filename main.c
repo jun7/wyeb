@@ -1243,6 +1243,7 @@ static void _modechanged(Win *win)
 		g_free(win->lastfind);
 		win->lastfind = NULL;
 	case Mopen:
+	case Mopennew:
 		if (win->mode != Mfind)
 		{
 			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
@@ -1250,7 +1251,7 @@ static void _modechanged(Win *win)
 				setbg(win, 2);
 			g_free(setstr);
 		}
-	case Mopennew:
+
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
 		undo(win, &win->undo, &win->undo);
@@ -1350,7 +1351,7 @@ static void tonormal(Win *win)
 
 
 //@funcs for actions
-static void openuri(Win *win, const gchar *str)
+static void _openuri(Win *win, const gchar *str, Win *caller)
 {
 	win->userreq = true;
 
@@ -1413,7 +1414,7 @@ static void openuri(Win *win, const gchar *str)
 	gchar *dsearch;
 	if (regexec(url, str, 0, NULL, 0) == 0) {
 		uri = g_strdup_printf("http://%s", str);
-	} else if (dsearch = getset(win, "search")) {
+	} else if (dsearch = getset(caller ?: win, "search")) {
 		char *esc = g_uri_escape_string(str, NULL, true);
 		uri = g_strdup_printf(dsearch, esc);
 		g_free(esc);
@@ -1429,6 +1430,8 @@ out:
 	webkit_web_view_load_uri(win->kit, uri);
 	g_free(uri);
 }
+static void openuri(Win *win, const gchar *str)
+{ _openuri(win, str, NULL); }
 
 static void spawnwithenv(Win *win, gchar* path, bool ispath,
 		gchar *piped, gsize len)
@@ -2191,7 +2194,7 @@ static gchar *ke2name(GdkEventKey *ke)
 	return NULL;
 }
 //declaration
-static Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back);
+static Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back);
 bool run(Win *win, gchar* action, const gchar *arg)
 {
 	if (action == NULL) return false;
@@ -3886,7 +3889,7 @@ static void foundcb(Win *win)
 }
 
 //@newwin
-Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
+Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 {
 	Win *win = g_new0(Win, 1);
 	win->userreq = true;
@@ -3894,8 +3897,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	win->winw = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
 	gint w, h;
-	if (relwin)
-		gtk_window_get_size(relwin->win, &w, &h);
+	if (caller)
+		gtk_window_get_size(caller->win, &w, &h);
 	else
 		w = confint("winwidth"), h = confint("winheight");
 	gtk_window_set_default_size(win->win, w, h);
@@ -4093,7 +4096,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *relwin, bool back)
 	g_ptr_array_add(wins, win);
 
 	if (!cbwin)
-		openuri(win, uri);
+		_openuri(win, uri, caller);
 
 	return win;
 }
