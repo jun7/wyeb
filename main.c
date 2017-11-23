@@ -2903,7 +2903,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 				} else
 					sv[i++] = g_strdup_printf(
 							"<tr><th>%.11s</th>"
-							"<td><a href=%s>%s<br><span>%s</span></a>\n",
+							"<td><a href=%s>%s\n<br><span>%s</span></a>\n",
 							stra[0], stra[1], escpd, stra[1]);
 
 				g_free(escpd);
