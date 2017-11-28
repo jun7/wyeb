@@ -2646,7 +2646,7 @@ static void dlfincb(DLWin *win)
 }
 static void dlfailcb(DLWin *win)
 {
-	if (win->finished) return; //cancelled
+	if (!isin(dlwins, win)) return; //cancelled
 
 	win->finished = true;
 
