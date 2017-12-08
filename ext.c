@@ -934,6 +934,20 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 	page->lasttype = type;
 
+	if (type != Cclick)
+	{
+		WebKitDOMDocumentType *dtype = webkit_dom_document_get_doctype(doc);
+		if (dtype && strcmp("html", webkit_dom_document_type_get_name(dtype)) != 0)
+		{
+			//no elms may be;P
+			gchar *retstr = g_strdup_printf("l%s ", webkit_web_page_get_uri(page->kit));
+			send(page, "hintret", retstr);
+			g_free(retstr);
+
+			return false;
+		}
+	}
+
 	if (hintkeys)
 	{
 		g_free(page->lasthintkeys);
