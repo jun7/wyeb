@@ -2605,10 +2605,9 @@ static bool dlclosecb(DLWin *win)
 }
 static void dlfincb(DLWin *win)
 {
-	if (!isin(dlwins, win)) return;
+	if (!isin(dlwins, win) || win->finished) return;
 
 	win->finished = true;
-	g_timeout_add(confint("dlwinclosemsec"), (GSourceFunc)dlclosecb, win);
 
 	gchar *title;
 	if (win->res)
@@ -2637,6 +2636,8 @@ static void dlfincb(DLWin *win)
 
 		g_free(pathstr);
 		g_free(fn);
+
+		g_timeout_add(confint("dlwinclosemsec"), (GSourceFunc)dlclosecb, win);
 	}
 	else
 		title = g_strdup_printf("DL: Failed: %s", win->dispname);
@@ -2644,14 +2645,14 @@ static void dlfincb(DLWin *win)
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
-static void dlfailcb(DLWin *win)
+static void dlfailcb(WebKitDownload *wd, GError *err, DLWin *win)
 {
 	if (!isin(dlwins, win)) return; //cancelled
 
 	win->finished = true;
 
 	gchar *title;
-	title = g_strdup_printf("DL: Failed: %s", win->dispname);
+	title = g_strdup_printf("DL: Failed: %s - %s", win->dispname, err->message);
 	gtk_window_set_title(win->win, title);
 	g_free(title);
 }
@@ -2760,7 +2761,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	SIG( o, "decide-destination" , dldecidecb, win);
 	SIGW(o, "created-destination", dldestcb  , win);
 //	SIGW(o, "notify::response"   , dlrescb   , win);
-	SIGW(o, "failed"             , dlfailcb  , win);
+	SIG( o, "failed"             , dlfailcb  , win);
 	SIGW(o, "finished"           , dlfincb   , win);
 	SIGW(o, "received-data"      , dldatacb  , win);
 
