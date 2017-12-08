@@ -4,10 +4,13 @@
 / [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
-### Installation
-depends 'webkit2gtk' 'markdown' 'perl-file-mimeinfo' //on arch linux
+## Changes
+depends markdown -> discount: You have to add the flag '-f -style' to the generator of the main.conf
 
-'markdown' 'perl-file-mimeinfo' are used only in main.conf
+### Installation
+depends 'webkit2gtk' 'discount' 'perl-file-mimeinfo' //on arch linux
+
+'discount(markdown)' 'perl-file-mimeinfo' are used only in main.conf
 
 	make
 	make install

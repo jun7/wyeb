@@ -197,7 +197,7 @@ Conf dconf[] = {
 	},
 	{"all"   , "mdeditor"     , ""},
 	{"all"   , "diropener"    , MIMEOPEN},
-	{"all"   , "generator"    , "markdown %s"},
+	{"all"   , "generator"    , "markdown -f -style %s"},
 
 	{"all"   , "hintkeys"     , HINTKEYS},
 	{"all"   , "keybindswaps" , "",
