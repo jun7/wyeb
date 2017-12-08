@@ -4,7 +4,7 @@
 / [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
-## Changes
+### Changes
 depends markdown -> discount: You have to add the flag '-f -style' to the generator of the main.conf
 
 ### Installation
