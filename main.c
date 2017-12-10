@@ -2586,10 +2586,7 @@ static void dldestroycb(DLWin *win)
 	g_ptr_array_remove(dlwins, win);
 
 	if (!win->finished)
-	{
-		win->finished = true;
 		webkit_download_cancel(win->dl);
-	}
 
 	g_free(win->name);
 	g_free(win);
