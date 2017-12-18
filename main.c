@@ -2648,6 +2648,8 @@ static void dlfailcb(WebKitDownload *wd, GError *err, DLWin *win)
 
 	win->finished = true;
 
+	addlabel(win, err->message);
+
 	gchar *title;
 	title = g_strdup_printf("DL: Failed: %s - %s", win->dispname, err->message);
 	gtk_window_set_title(win->win, title);
