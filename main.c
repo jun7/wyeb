@@ -1012,7 +1012,7 @@ static void getdconf(GKeyFile *kf, bool isnew)
 			"Use reg if a regular expression has []."
 			, NULL);
 
-	g_key_file_set_string(conf, sample, "sets", "image;sctipt");
+	g_key_file_set_string(conf, sample, "sets", "image;script");
 	g_key_file_set_comment(conf, sample, "sets",
 			"include other sets." , NULL);
 
