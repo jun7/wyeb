@@ -2055,7 +2055,7 @@ static Keybind dkeys[]= {
 //normal
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
-	{"topointer"     , 'p', 0},
+	{"topointer"     , 'p', 0, "pp resets damping"},
 
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
