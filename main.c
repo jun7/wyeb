@@ -147,6 +147,7 @@ typedef struct {
 	};
 	WebKitDownload *dl;
 	gchar  *name;
+	gchar  *dldir;
 	const gchar *dispname;
 	guint64 len;
 	bool    res;
@@ -247,6 +248,7 @@ Conf dconf[] = {
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/;audio/;application/"},
+	{DSET    , "dlsubdir"         , ""},
 	{DSET    , "entrybgcolor"     , "true"},
 
 	//changes
@@ -271,12 +273,19 @@ static gchar *confcstr(gchar *key)
 	return str;
 }
 static gchar *getset(Win *win, gchar *key)
-{
-	return  g_object_get_data(win->seto, key);
+{//return is static string
+	static gchar *ret = NULL;
+	if (!win)
+	{
+		g_free(ret);
+		ret = g_key_file_get_string(conf, DSET, key, NULL);
+		return ret;
+	}
+	return g_object_get_data(win->seto, key);
 }
 static bool getsetbool(Win *win, gchar *key)
 {
-	return strcmp(getset(win, key), "true") == 0;
+	return g_strcmp0(getset(win, key), "true") == 0;
 }
 
 static gchar *usage =
@@ -338,10 +347,18 @@ static gint threshold(Win *win)
 			"gtk-dnd-drag-threshold", &ret, NULL);
 	return ret;
 }
-static const gchar *dldir()
-{
-	return g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
-		g_get_home_dir();
+static const gchar *dldir(Win *win)
+{//return is static string
+	static gchar *ret = NULL;
+	g_free(ret);
+	ret = g_build_filename(
+		g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
+		g_get_home_dir(),
+		getset(win, "dlsubdir"),
+		NULL
+	);
+
+	return ret;
 }
 
 static void quitif(bool force)
@@ -833,11 +850,11 @@ static gchar *addcss(const gchar *name)
 }
 static void setcss(Win *win, gchar *namesstr)
 {
+	gchar **names = g_strsplit(namesstr, ";", -1);
+
 	WebKitUserContentManager *cmgr =
 		webkit_web_view_get_user_content_manager(win->kit);
 	webkit_user_content_manager_remove_all_style_sheets(cmgr);
-
-	gchar **names = g_strsplit(namesstr, ";", -1);
 
 	for (gchar **name = names; *name; name++)
 	{
@@ -892,7 +909,7 @@ static void setprops(Win *win, GKeyFile *kf, gchar *group)
 		{
 			setcss(win, val);
 		}
-		g_object_set_data_full(win->seto, key, val, g_free);
+		g_object_set_data_full(win->seto, key, *val == '\0' ? NULL : val, g_free);
 	}
 }
 static void getkitprops(GObject *obj, GKeyFile *kf, gchar *group)
@@ -1247,7 +1264,7 @@ static void _modechanged(Win *win)
 		if (win->mode != Mfind)
 		{
 			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
-			if (strcmp(setstr, getset(win, "search")) != 0)
+			if (g_strcmp0(setstr, getset(win, "search")) != 0)
 				setbg(win, 2);
 			g_free(setstr);
 		}
@@ -1464,6 +1481,7 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath,
 	envp = g_environ_setenv(envp, "WINID"  , win->pageid, true);
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
 	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
+	envp = g_environ_setenv(envp, "DLDIR"  , dldir(win), true);
 
 	const gchar *title = webkit_web_view_get_title(win->kit);
 	if (!title) title = URI(win);
@@ -1996,7 +2014,7 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 
 		gchar *str;
 
-		gchar *items = getset(win, "linkdata");
+		gchar *items = getset(win, "linkdata") ?: "tu";
 		gint len = strlen(items);
 		const gchar *as[9];
 		for (int i = 0; i < 9; i++)
@@ -2310,7 +2328,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 	Z("tohintbookmark", win->mode = Mhintbkmrk)
 
 	Z("showdldir"   ,
-		command(win, confcstr("diropener"), dldir());
+		command(win, confcstr("diropener"), dldir(win));
 	)
 
 	Z("yankuri"     ,
@@ -2589,6 +2607,7 @@ static void dldestroycb(DLWin *win)
 		webkit_download_cancel(win->dl);
 
 	g_free(win->name);
+	g_free(win->dldir);
 	g_free(win);
 
 	quitif(false);
@@ -2682,7 +2701,7 @@ static void dldestcb(DLWin *win)
 }
 static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 {
-	const gchar *base = dldir();
+	const gchar *base = win->dldir ?: dldir(NULL);
 	gchar *path = g_build_filename(base, name, NULL);
 
 	gchar *check = g_path_get_dirname(path);
@@ -2743,6 +2762,10 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 {
 	DLWin *win = g_new0(DLWin, 1);
 	win->dl    = pdl;
+
+	WebKitWebView *kit = webkit_download_get_web_view(pdl);
+	if (kit)
+		win->dldir = g_strdup(dldir(g_object_get_data(G_OBJECT(kit), "win")));
 
 	win->winw  = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(win->win, "DL : Waiting for a response.");
@@ -2949,7 +2972,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"  the config dir, or click 'addMenu' in the context-menu. SUFFIX,\n"
 			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
-			"  MEDIA, IMAGE and MEDIA_IMAGE_LINK\n"
+			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK and DLDIR\n"
 			"  are set as environment variables. Available\n"
 			"  actions are in 'key:' section below. Of course it supports dir\n"
 			"  and '.'. '.' hides it from menu but still available in the accels.\n"
@@ -3459,12 +3482,11 @@ static bool policycb(
 	gchar *msr = getset(win, "dlmimetypes");
 	if (msr && *msr != '\0')
 	{
+		gchar **ms = g_strsplit(msr, ";", -1);
 		WebKitURIResponse *res =
 			webkit_response_policy_decision_get_response(
 				(WebKitResponsePolicyDecision *)dec);
-
 		const gchar *mime = webkit_uri_response_get_mime_type(res);
-		gchar **ms = g_strsplit(msr, ";", -1);
 		for (gchar **m = ms; *m; m++)
 			if (**m != '\0' && g_str_has_prefix(mime, *m))
 			{
@@ -3486,11 +3508,11 @@ static GtkWidget *createcb(Win *win)
 	gchar *handle = getset(win, "newwinhandle");
 	Win *new = NULL;
 
-	if      (strcmp(handle, "notnew") == 0)
+	if      (g_strcmp0(handle, "notnew") == 0)
 		return win->kitw;
-	else if (strcmp(handle, "ignore") == 0)
+	else if (g_strcmp0(handle, "ignore") == 0)
 		return NULL;
-	else if (strcmp(handle, "back") == 0)
+	else if (g_strcmp0(handle, "back") == 0)
 		new = newwin(NULL, win, win, true);
 	else
 		new = newwin(NULL, win, win, false);
@@ -3711,8 +3733,7 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "9---"             , "");
 
 		gchar *tmp = g_strdup_printf(APP" \"$SUFFIX\" sourcecallback "
-				"\"tee -a \\\"%s/"APP"-source\\\"\"",
-				dldir());
+				"\"tee -a \\\"$DLDIR/"APP"-source\\\"\"");
 		addscript(dir, "9saveHTMLSource2DLdir", tmp);
 		g_free(tmp);
 
@@ -4002,7 +4023,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
 			"web-context", ctx, "user-content-manager", cmgr, NULL);
 	}
-	g_object_set_data(win->kito, "win", win); //for schemecb
+	g_object_set_data(win->kito, "win", win); //for schemecb and download
 
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
