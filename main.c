@@ -2957,7 +2957,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"  You can add your own keys to access context-menu items we added.\n"
 			"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the\n"
 			"  last \"\" in the file 'accels' in the conf directory assigned 'c'\n"
-			"  key, and remeve the ';' at the beginning of line. alt is &lt;Alt&gt;.\n"
+			"  key, and remove the ';' at the beginning of line. alt is &lt;Alt&gt;.\n"
 			"\n"
 			"key:\n"
 			"#%d - is ctrl\n"
