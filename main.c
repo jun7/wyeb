@@ -3738,12 +3738,8 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "3openSelectionNew", APP" \"$SUFFIX\" opennew \"$PRIMARY\"");
 		addscript(dir, "6searchDictionary", APP" \"$SUFFIX\" open \"u $PRIMARY\"");
 		addscript(dir, "9---"             , "");
-
-		gchar *tmp = g_strdup_printf(APP" \"$SUFFIX\" sourcecallback "
+		addscript(dir, "9saveSource2DLdir", APP" \"$SUFFIX\" sourcecallback "
 				"\"tee -a \\\"$DLDIR/"APP"-source\\\"\"");
-		addscript(dir, "9saveHTMLSource2DLdir", tmp);
-		g_free(tmp);
-
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
 		addscript(dir, "xnoSuffixProcess" , APP" \"\" new $LINK_OR_URI");
