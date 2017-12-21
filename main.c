@@ -229,7 +229,7 @@ Conf dconf[] = {
 	{"set:script", "enable-javascript"    , "true"},
 	{"set:image" , "auto-load-images"     , "true"},
 
-	{DSET    , "search"           , "https://www.google.com/search?q=%s"},
+	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
 	{DSET    , "usercss"          , "user.css"},
 //	{DSET    , "loadsightedimages", "false"},
 	{DSET    , "reldomaindataonly", "false"},
@@ -1368,6 +1368,20 @@ static void tonormal(Win *win)
 
 
 //@funcs for actions
+static gchar *getsearch(gchar *pkey)
+{
+	gchar *ret = NULL;
+	gchar **kv = g_key_file_get_keys(conf, "search", NULL, NULL);
+	for (gchar **key = kv; *key; key++)
+		if (strcmp(pkey, *key) == 0)
+		{
+			ret = g_key_file_get_string(conf, "search", *key, NULL);
+			break;
+		}
+
+	g_strfreev(kv);
+	return ret;
+}
 static void _openuri(Win *win, const gchar *str, Win *caller)
 {
 	win->userreq = true;
@@ -1400,24 +1414,17 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 
 	if (*stra && stra[1])
 	{
-		gchar **kv = g_key_file_get_keys(conf, "search", NULL, NULL);
-		for (gchar **key = kv; *key; key++) {
+		gchar *search = getsearch(stra[0]);
+		if (search) {
+			char *esc = g_uri_escape_string(stra[1], NULL, true);
+			uri = g_strdup_printf(search, esc);
+			g_free(esc);
 
-			if (strcmp(stra[0], *key) == 0) {
-				char *esc = g_uri_escape_string(stra[1], NULL, true);
-				uri = g_strdup_printf(
-					g_key_file_get_string(conf, "search", *key, NULL),
-					esc);
-				g_free(esc);
+			g_free(win->lastfind);
+			win->lastfind = g_strdup(stra[1]);
 
-				g_free(win->lastfind);
-				win->lastfind = g_strdup(stra[1]);
-
-				g_strfreev(kv);
-				goto out;
-			}
+			goto out;
 		}
-		g_strfreev(kv);
 	}
 
 	static regex_t *url = NULL;
@@ -1433,7 +1440,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 		uri = g_strdup_printf("http://%s", str);
 	} else if (dsearch = getset(caller ?: win, "search")) {
 		char *esc = g_uri_escape_string(str, NULL, true);
-		uri = g_strdup_printf(dsearch, esc);
+		uri = g_strdup_printf(getsearch(dsearch) ?: dsearch, esc);
 		g_free(esc);
 
 		g_free(win->lastfind);
