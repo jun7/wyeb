@@ -226,7 +226,7 @@ Conf dconf[] = {
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
 	{"set:v"     , "enable-caret-browsing", "true"},
-	{"set:script", "enable-javascript"    , "true"},
+	{"set:script", "enable-javascript"    , "false"},
 	{"set:image" , "auto-load-images"     , "true"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
