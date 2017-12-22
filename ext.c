@@ -888,7 +888,21 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 	if (type == Curi || type == Cspawn)
 	{
 		uri = webkit_dom_element_get_attribute(te, "SRC");
-		if (type == Cspawn)
+
+		if (!uri)
+		{
+			WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(te);
+
+			for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
+				if (uri = webkit_dom_element_get_attribute(
+							(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i),
+							"SRC")
+				) break;
+
+			g_object_unref(cl);
+		}
+
+		if (uri && type == Cspawn)
 		{
 			gchar *tag = webkit_dom_element_get_tag_name(te);
 			if (strcmp(tag, "IMG") == 0)
@@ -899,13 +913,16 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 			g_free(tag);
 		}
 	}
+
 	if (!uri)
+	{
 		uri = webkit_dom_element_get_attribute(te, "HREF");
+		if (uri && type == Cspawn)
+			uritype = 'l';
+	}
 
 	if (!uri)
 		uri = g_strdup("about:blank");
-	else if (type == Cspawn)
-		uritype = 'l';
 
 	label =
 		webkit_dom_html_element_get_inner_text((WebKitDOMHTMLElement *)te) ?:
