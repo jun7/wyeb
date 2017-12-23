@@ -244,7 +244,7 @@ Conf dconf[] = {
 	{DSET    , "linkformat"       , "[%.40s](%s)",
 		"linkformat=[![](%s) %.40s](%s)"},
 	{DSET    , "linkdata"         , "tu",
-		"linkdata=ftu\n" "t: title, u: uri, f: favicon"},
+		"t: title, u: uri, f: favicon\n" "linkdata=ftu"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/;audio/;application/"},
