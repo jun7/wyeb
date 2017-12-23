@@ -223,7 +223,7 @@ Conf dconf[] = {
 
 	{"search", "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
-	{"search", "i"            , "https://www.google.com/search?q=%s&btnI=I"},
+	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
 	{"set:v"     , "enable-caret-browsing", "true"},
