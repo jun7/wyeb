@@ -891,7 +891,8 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 
 		if (!uri)
 		{
-			WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(te);
+			WebKitDOMHTMLCollection *cl =
+				webkit_dom_element_get_elements_by_tag_name_as_html_collection(te, "SOURCE");
 
 			for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
 				if (uri = webkit_dom_element_get_attribute(
