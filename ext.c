@@ -891,14 +891,20 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 
 		if (!uri)
 		{
-			WebKitDOMHTMLCollection *cl =
-				webkit_dom_element_get_elements_by_tag_name_as_html_collection(te, "SOURCE");
+			WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(te);
 
 			for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
-				if (uri = webkit_dom_element_get_attribute(
-							(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i),
-							"SRC")
-				) break;
+			{
+				WebKitDOMElement *le = (void *)webkit_dom_html_collection_item(cl, i);
+				gchar *tag = webkit_dom_element_get_tag_name(le);
+				if (g_strcmp0(tag, "SOURCE") == 0 &&
+						(uri = webkit_dom_element_get_attribute(le, "SRC")))
+				{
+					g_free(tag);
+					break;
+				}
+				g_free(tag);
+			}
 
 			g_object_unref(cl);
 		}
