@@ -18,6 +18,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <webkit2/webkit2.h>
+#include <JavaScriptCore/JSStringRef.h>
 #include <gdk/gdkx.h>
 
 #define APPNAME  "wyebrowser"
@@ -122,6 +123,7 @@ typedef struct {
 	gint    cursorx;
 	gint    cursory;
 	gchar  *spawn;
+	gchar  *spawndir;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
 //	gint    backwinnum;
@@ -573,9 +575,9 @@ static void send(Win *win, Coms type, gchar *args)
 	if(!ipcsend(shared ? "ext" : win->pageid, arg) &&
 			!win->crashed && !alerted && type == Cstart)
 	{
+		alerted = true;
 		alert("Failed to communicate with the Web Extension.\n"
 				"Make sure ext.so is in "EXTENSION_DIR".");
-		alerted = true;
 	}
 
 	g_free(arg);
@@ -1232,8 +1234,6 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mhintspawn:
-		g_free(win->spawn);
-		win->spawn = NULL;
 	case Mhint:
 	case Mhintopen:
 	case Mhintnew:
@@ -1458,31 +1458,34 @@ out:
 static void openuri(Win *win, const gchar *str)
 { _openuri(win, str, NULL); }
 
-static void spawnwithenv(Win *win, gchar* path, bool ispath,
-		gchar *piped, gsize len)
+static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
+		bool iscallback, gchar *jsresult,
+		gchar *piped, gsize plen)
 {
 	gchar **argv;
-	if (ispath)
+	if (shell)
 	{
-		argv = g_new0(gchar*, 2);
-		argv[0] = g_strdup(path);
-	} else {
-		//_showmsg(win, g_strdup_printf("Run %s", path), false);
+		_showmsg(win, g_strdup_printf("spawn '%s'", shell), false);
 		GError *err = NULL;
-		if (!g_shell_parse_argv(path, NULL, &argv, &err))
+		if (!g_shell_parse_argv(shell, NULL, &argv, &err))
 		{
-			alert(err->message);
+			showmsg(win, err->message);
 			g_error_free(err);
 			return;
 		}
+	} else {
+		argv = g_new0(gchar*, 2);
+		argv[0] = g_strdup(path);
 	}
 
-	gchar *dir = ispath ? g_path_get_dirname(path) : NULL;
+	gchar *dir = shell ? g_strdup(path) : g_path_get_dirname(path);
 
 	gchar **envp = g_get_environ();
 	envp = g_environ_setenv(envp, "SUFFIX" , suffix, true);
 	envp = g_environ_setenv(envp, "ISCALLBACK",
-			win->spawn ? "1" : "0", true);
+			iscallback ? "1" : "0", true);
+	envp = g_environ_setenv(envp, "JSRESULT", jsresult ?: "", true);
+
 	gchar buf[9];
 	snprintf(buf, 9, "%d", wins->len);
 	envp = g_environ_setenv(envp, "WINSLEN", buf, true);
@@ -1552,7 +1555,7 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath,
 			:
 			!g_spawn_async(
 				dir, argv, envp,
-				ispath ? G_SPAWN_DEFAULT : G_SPAWN_SEARCH_PATH,
+				shell ? G_SPAWN_SEARCH_PATH : G_SPAWN_DEFAULT,
 				NULL, NULL, &child_pid, &err))
 	{
 		alert(err->message);
@@ -1564,7 +1567,7 @@ static void spawnwithenv(Win *win, gchar* path, bool ispath,
 
 		if (G_IO_STATUS_NORMAL !=
 				g_io_channel_write_chars(
-					io, piped, len, NULL, &err))
+					io, piped, plen, NULL, &err))
 		{
 			alert(err->message);
 			g_error_free(err);
@@ -2054,17 +2057,62 @@ static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 {
 	if (!LASTWIN) return;
 	Win *win = LASTWIN;
+	GSList *sp = p;
 
 	gsize len;
 	guchar *data = webkit_web_resource_get_data_finish(
 			(WebKitWebResource *)srco, res, &len, NULL);
 
-	spawnwithenv(win, p, false, (gchar *)data, len);
+	spawnwithenv(win, sp->data, sp->next->data, true, NULL, (gchar *)data, len);
 
 	g_free(data);
-	g_free(p);
+	g_slist_free_full(sp, g_free);
 }
 
+static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
+{
+	if (!p) return;
+	GSList *sp = p;
+	if (!sp->data) goto out;
+
+	GError *err = NULL;
+	WebKitJavascriptResult *res =
+		webkit_web_view_run_javascript_finish(WEBKIT_WEB_VIEW(po), pres, &err);
+
+	gchar *resstr = NULL;
+	if (res)
+	{
+		JSValueRef jv = webkit_javascript_result_get_value(res);
+		JSGlobalContextRef jctx =
+			webkit_javascript_result_get_global_context(res);
+
+		if (JSValueIsString(jctx, jv))
+		{
+			JSStringRef jstr = JSValueToStringCopy(jctx, jv, NULL);
+			gsize len = JSStringGetMaximumUTF8CStringSize(jstr);
+			resstr = g_malloc(len);
+			JSStringGetUTF8CString(jstr, resstr, len);
+			JSStringRelease(jstr);
+		}
+		else
+			resstr = g_strdup("unsupported return value");
+
+		webkit_javascript_result_unref(res);
+	}
+	else
+	{
+		resstr = g_strdup(err->message);
+		g_error_free(err);
+	}
+
+	Win *win = g_object_get_data(po, "win");
+	if (isin(wins, win))
+		spawnwithenv(win, sp->data, sp->next->data, true, resstr, NULL, 0);
+
+	g_free(resstr);
+out:
+	g_slist_free_full(sp, g_free);
+}
 
 //@actions
 typedef struct {
@@ -2179,9 +2227,11 @@ static Keybind dkeys[]= {
 	{"download"      , 0, 0},
 	{"showmsg"       , 0, 0},
 	{"click"         , 0, 0, "x:y"},
+	{"spawn"         , 0, 0, "arg is called with environment variables"},
+	{"jscallback"    , 0, 0, "run script of arg1 and arg2 is called with $JSRESULT"},
 	{"tohintcallback", 0, 0,
-		"arg is called with environment variables selected by hint."},
-	{"sourcecallback", 0, 0},
+		"arg is called with env selected by hint."},
+	{"sourcecallback", 0, 0, "the web resource is sent via pipe"},
 //	{"headercallback"  , 0, 0}, //todo
 
 //todo pagelist
@@ -2221,7 +2271,7 @@ static gchar *ke2name(GdkEventKey *ke)
 }
 //declaration
 static Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back);
-bool run(Win *win, gchar* action, const gchar *arg)
+static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *exarg)
 {
 	if (action == NULL) return false;
 	gchar **retv = NULL; //hintret
@@ -2244,7 +2294,6 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 	//internal
 	Z("textlinkon" , textlinkon(win))
-
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
 			return true;)
@@ -2283,6 +2332,8 @@ bool run(Win *win, gchar* action, const gchar *arg)
 				win->media = g_strdup(arg); break;
 			}
 			action = "spawn";
+			arg = win->spawn;
+			cdir = win->spawndir;
 			break;
 
 		case Mhint:
@@ -2292,7 +2343,6 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 		win->mode = Mnormal;
 	}
-	Z("spawn"      , spawnwithenv(win, win->spawn, false, NULL, 0))
 
 	if (arg != NULL) {
 		Z("find"  ,
@@ -2307,7 +2357,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 
 		Z("bookmark",
 			gchar **args = g_strsplit(arg, " ", 2);
-			addlink(win, args[1], args[0]);
+			addlink(win, args[1] ?: exarg, args[0]);
 			g_strfreev(args);
 		)
 
@@ -2315,10 +2365,19 @@ bool run(Win *win, gchar* action, const gchar *arg)
 		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, true))
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
 
-		Z("tohintcallback", win->mode = Mhintspawn; win->spawn = g_strdup(arg))
+		Z("spawn"         , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
+		Z("jscallback"    ,
+			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
+			g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(exarg))))
+		Z("tohintcallback", win->mode = Mhintspawn;
+				g_free(win->spawn);
+				win->spawn = g_strdup(arg);
+				g_free(win->spawndir);
+				win->spawndir = g_strdup(cdir))
 		Z("sourcecallback",
 			WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
-			webkit_web_resource_get_data(res, NULL, resourcecb, g_strdup(arg));
+			webkit_web_resource_get_data(res, NULL, resourcecb,
+				g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(arg)))
 		)
 	}
 
@@ -2513,6 +2572,10 @@ out:
 	if (retv)
 		g_strfreev(retv);
 	return true;
+}
+bool run(Win *win, gchar* action, const gchar *arg)
+{
+	return _run(win, action, arg, NULL, NULL);
 }
 
 
@@ -3112,6 +3175,7 @@ static void destroycb(Win *win)
 	setresult(win, NULL);
 
 	g_free(win->spawn);
+	g_free(win->spawndir);
 	g_free(win->lastfind);
 	g_free(win);
 }
@@ -3615,7 +3679,7 @@ static void clearai(gpointer p)
 }
 static void actioncb(GtkAction *action, AItem *ai)
 {
-	spawnwithenv(LASTWIN, ai->path, true, NULL, 0);
+	spawnwithenv(LASTWIN, NULL, ai->path, false, NULL, NULL, 0);
 }
 static guint menuhash = 0;
 static GSList *dirmenu(
@@ -4027,7 +4091,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
 			"web-context", ctx, "user-content-manager", cmgr, NULL);
 	}
-	g_object_set_data(win->kito, "win", win); //for schemecb and download
+	g_object_set_data(win->kito, "win", win); //for schemecb and download and jscb
 
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
@@ -4132,7 +4196,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 
 
 //@main
-void ipccb(const gchar *line)
+static void runline(const gchar *line, gchar *cdir, gchar *exarg)
 {
 	gchar **args = g_strsplit(line, ":", 3);
 
@@ -4140,14 +4204,31 @@ void ipccb(const gchar *line)
 	if (*arg == '\0') arg = NULL;
 
 	if (strcmp(args[0], "0") == 0)
-		run(LASTWIN, args[1], arg);
+		_run(LASTWIN, args[1], arg, cdir, exarg);
 	else
 	{
 		Win *win = winbyid(args[0]);
 		if (win)
-			run(win, args[1], arg);
+			_run(win, args[1], arg, cdir, exarg);
 	}
 
+	g_strfreev(args);
+}
+void ipccb(const gchar *line)
+{
+	//m is from main
+	if (*line != 'm') return runline(line, NULL, NULL);
+
+	gchar **args = g_strsplit(line, ":", 4);
+	int clen = atoi(args[1]);
+	int elen = atoi(args[2]);
+	gchar *cdir = g_strndup(args[3], clen);
+	gchar *exarg = elen == 0 ? NULL : g_strndup(args[3] + clen, elen);
+
+	runline(args[3] + clen + elen, cdir, exarg);
+
+	g_free(cdir);
+	g_free(exarg);
 	g_strfreev(args);
 }
 int main(int argc, char **argv)
@@ -4156,20 +4237,24 @@ int main(int argc, char **argv)
 	g_log_set_always_fatal(G_LOG_LEVEL_CRITICAL);
 #endif
 
-	if (
-		argc > 4 || (
-			argc == 2 && (
-				strcmp(argv[1], "-h") == 0 ||
-				strcmp(argv[1], "--help") == 0
-			)
-		)
+	if (argc == 2 && (
+			strcmp(argv[1], "-h") == 0 ||
+			strcmp(argv[1], "--help") == 0)
 	) {
 		g_print(usage);
 		exit(0);
 	}
-	if (argc == 4)
+
+	if (argc >= 4)
 		suffix = argv[1];
 	fullname = g_strconcat(APPNAME, suffix, NULL);
+
+	gchar *exarg = "";
+	if (argc > 4)
+	{
+		exarg = argv[4];
+		argc = 4;
+	}
 
 	gchar *action = argc > 2 ? argv[argc - 2] : "new";
 	gchar *uri    = argc > 1 ? argv[argc - 1] : NULL;
@@ -4179,7 +4264,13 @@ int main(int argc, char **argv)
 	if (argc == 2 && uri && g_file_test(uri, G_FILE_TEST_EXISTS))
 		uri = g_strconcat("file://", uri, NULL);
 
-	gchar *sendstr = g_strconcat("0:", action, ":", uri, NULL);
+	gchar *cwd = g_get_current_dir();
+
+	gchar *sendstr = g_strdup_printf("m:%ld:%ld:%s%s0:%s:%s",
+			strlen(cwd), strlen(exarg), cwd, exarg, action, uri ?: "");
+
+	g_free(cwd);
+
 	if (ipcsend("main", sendstr)) exit(0);
 	g_free(sendstr);
 
