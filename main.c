@@ -1468,7 +1468,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	gchar **argv;
 	if (shell)
 	{
-		_showmsg(win, g_strdup_printf("spawn '%s'", shell), false);
+		_showmsg(win, g_strdup_printf("spawn: %s", shell), false);
 		GError *err = NULL;
 		if (!g_shell_parse_argv(shell, NULL, &argv, &err))
 		{
