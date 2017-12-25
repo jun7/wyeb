@@ -1055,6 +1055,9 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					}
 					else
 					{
+						if (webkit_dom_element_has_attribute(te, "TARGET"))
+							send(page, "showmsg", "the element has target, may have to type the enter key");
+
 						WebKitDOMEvent *ce =
 							webkit_dom_document_create_event(doc, "MouseEvent", NULL);
 
