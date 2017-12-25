@@ -253,6 +253,9 @@ Conf dconf[] = {
 	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/;audio/;application/"},
 	{DSET    , "dlsubdir"         , ""},
 	{DSET    , "entrybgcolor"     , "true"},
+	{DSET    , "onloadmenu"       , "",
+		"spawn a shell in the menu dir when load commited"},
+	{DSET    , "onloadedmenu"     , "", "when load finished"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -1558,7 +1561,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 				shell ? G_SPAWN_SEARCH_PATH : G_SPAWN_DEFAULT,
 				NULL, NULL, &child_pid, &err))
 	{
-		alert(err->message);
+		showmsg(win, err->message);
 		g_error_free(err);
 	}
 	else if (piped)
@@ -1569,7 +1572,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 				g_io_channel_write_chars(
 					io, piped, plen, NULL, &err))
 		{
-			alert(err->message);
+			showmsg(win, err->message);
 			g_error_free(err);
 		}
 		g_io_channel_unref(io);
@@ -3611,6 +3614,18 @@ static void sendstart(Win *win)
 	send(win, Cstart, args);
 	g_free(args);
 }
+static void runset(Win *win, gchar *key)
+{
+	gchar *fname = getset(win, key);
+	if (fname)
+	{
+		gchar *dir = path2conf("menu");
+		gchar *path = g_build_filename(dir, fname, NULL);
+		spawnwithenv(win, NULL, path, false, NULL, NULL, 0);
+		g_free(dir);
+		g_free(path);
+	}
+}
 static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 {
 	win->crashed = false;
@@ -3639,7 +3654,10 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	case WEBKIT_LOAD_COMMITTED:
 		//D(WEBKIT_LOAD_COMMITED %s, URI(win))
 		if (!win->scheme && g_str_has_prefix(URI(win), APP":"))
+		{
 			webkit_web_view_reload(win->kit);
+			break;
+		}
 
 		send(win, Con, NULL);
 
@@ -3650,10 +3668,16 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		else
 			win->tlserr = 0;
 
+		runset(win, "onloadmenu");
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
-		addhistory(win);
+		if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
+		{
+			addhistory(win);
+			runset(win, "onloadedmenu");
+		}
+
 		break;
 	}
 }
