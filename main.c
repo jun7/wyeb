@@ -4096,6 +4096,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 
 			SIG(ctx, "download-started", downloadcb, NULL);
 
+			webkit_security_manager_register_uri_scheme_as_local(
+					webkit_web_context_get_security_manager(ctx), APP);
+
 			webkit_web_context_register_uri_scheme(
 					ctx, APP, schemecb, NULL, NULL);
 
