@@ -45,9 +45,9 @@ typedef enum {
 	Mhintbkmrk = 2 + 64,
 	Mhintspawn = 2 + 128,
 
-	Mopen      = 256,
-	Mopennew   = 512,
-	Mfind      = 1024,
+	Mfind      = 256,
+	Mopen      = 512,
+	Mopennew   = 1024,
 
 	Mlist      = 2048,
 	Mpointer   = 4096,
@@ -1237,13 +1237,13 @@ static void _modechanged(Win *win)
 		gtk_widget_queue_draw(win->winw);
 		break;
 
-	case Mhintspawn:
 	case Mhint:
 	case Mhintopen:
 	case Mhintnew:
 	case Mhintback:
 	case Mhintdl:
 	case Mhintbkmrk:
+	case Mhintspawn:
 		send(win, Crm, NULL);
 		break;
 	}
@@ -1308,8 +1308,9 @@ static void _modechanged(Win *win)
 			gboolean script = false; //dont use bool
 			if (getsetbool(win, "hackedhint4js"))
 				g_object_get(win->seto, "enable-javascript", &script, NULL);
-			gchar *arg =
-				g_strdup_printf("%c%s", script ? 'y' : 'n', confcstr("hintkeys"));
+
+			gchar *arg = g_strdup_printf("%c%s",
+					script ? 'y' : 'n', confcstr("hintkeys"));
 
 			send(win, com, arg);
 			g_free(arg);
@@ -2141,8 +2142,8 @@ static Keybind dkeys[]= {
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
 	{"tohintback"    , 't', 0},
-	{"tohintbookmark", 'T', 0},
 	{"tohintdl"      , 'd', 0, "dl is Download"},
+	{"tohintbookmark", 'T', 0},
 
 	{"showdldir"     , 'D', 0},
 
@@ -2315,6 +2316,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		arg = *retv + 1;
 
 		switch (win->mode) {
+		case Mhintopen:
+			action = "open"    ; break;
 		case Mhintnew:
 			action = "opennew" ; break;
 		case Mhintback:
@@ -2324,8 +2327,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		case Mhintbkmrk:
 			arg = orgarg + 1;
 			action = "bookmark"; break;
-		case Mhintopen:
-			action = "open"    ; break;
 
 		case Mhintspawn:
 			setresult(win, NULL);

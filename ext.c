@@ -1263,10 +1263,8 @@ void ipccb(const gchar *line)
 	case Curi:
 	case Cspawn:
 		if (arg)
-		{
-			page->script = *arg == 'y';
-			arg++;
-		}
+			page->script = *arg++ == 'y';
+
 		if (!makehint(page, type, arg, ipkeys)) send(page, "tonormal", NULL);
 		break;
 
