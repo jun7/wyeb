@@ -256,6 +256,7 @@ Conf dconf[] = {
 	{DSET    , "onloadmenu"       , "",
 		"spawn a shell in the menu dir when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
+	{DSET    , "spawnmsg"         , "false"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -1468,7 +1469,6 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	gchar **argv;
 	if (shell)
 	{
-		_showmsg(win, g_strdup_printf("spawn: %s", shell), false);
 		GError *err = NULL;
 		if (!g_shell_parse_argv(shell, NULL, &argv, &err))
 		{
@@ -1480,6 +1480,9 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 		argv = g_new0(gchar*, 2);
 		argv[0] = g_strdup(path);
 	}
+
+	if (getsetbool(win, "spawnmsg"))
+		_showmsg(win, g_strdup_printf("spawn: %s", shell ?: path), false);
 
 	gchar *dir = shell ? g_strdup(path) : g_path_get_dirname(path);
 
