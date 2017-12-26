@@ -32,6 +32,7 @@ For example, context-menu items we added are just shell scripts.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time a lot.
 
 ### Usage:
+Also there are [Tips](https://github.com/jun7/wyeb/wiki)
 <pre>
 command: wyeb [[[suffix] action|""] uri|arg|""]
   suffix: Process ID.
@@ -149,12 +150,16 @@ key:
 0 - (null)     : findsecondary          : 
 0 - (null)     : tohintopen             : 
 0 - (null)     : openback               : 
+0 - (null)     : openwithref            : current uri is sent as Referer
 0 - (null)     : download               : 
 0 - (null)     : showmsg                : 
 0 - (null)     : click                  : x:y
+0 - (null)     : spawn                  : arg is called with environment variables
+0 - (null)     : jscallback             : run script of arg1 and
+                                          arg2 is called with $JSRESULT
 0 - (null)     : tohintcallback         : arg is called with environment variables
                                           selected by hint.
-0 - (null)     : sourcecallback         : 
+0 - (null)     : sourcecallback         : the web resource is sent via pipe
 
 
 </pre>
