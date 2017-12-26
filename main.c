@@ -299,7 +299,7 @@ static gchar *usage =
 	"  suffix: Process ID.\n"
 	"    It is added to all directories conf, cache and etc.\n"
 	"  action: Such as new(default), open, opennew ...\n"
-	"    Except 'new' and some, actions are sent to a window last focused.\n"
+	"    Except 'new' and some, without $WINID, actions are sent to a window last focused\n"
 	;
 
 static gchar *mainmdstr =
@@ -4299,10 +4299,12 @@ int main(int argc, char **argv)
 	if (argc == 2 && uri && g_file_test(uri, G_FILE_TEST_EXISTS))
 		uri = g_strconcat("file://", uri, NULL);
 
+	const gchar *winid = g_getenv("WINID") ?: "0";
+	if (*winid == '\0') winid = "0";
 	gchar *cwd = g_get_current_dir();
 
-	gchar *sendstr = g_strdup_printf("m:%ld:%ld:%s%s0:%s:%s",
-			strlen(cwd), strlen(exarg), cwd, exarg, action, uri ?: "");
+	gchar *sendstr = g_strdup_printf("m:%ld:%ld:%s%s%s:%s:%s",
+			strlen(cwd), strlen(exarg), cwd, exarg, winid, action, uri ?: "");
 
 	g_free(cwd);
 
