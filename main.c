@@ -2363,7 +2363,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 		Z("bookmark",
 			gchar **args = g_strsplit(arg, " ", 2);
-			addlink(win, args[1] ?: exarg, args[0]);
+			addlink(win, args[1], args[0]);
 			g_strfreev(args);
 		)
 
