@@ -2229,6 +2229,7 @@ static Keybind dkeys[]= {
 
 	{"tohintopen"    , 0, 0},
 	{"openback"      , 0, 0},
+	{"openwithref"   , 0, 0, "current uri is sent as Referer"},
 
 	{"download"      , 0, 0},
 	{"showmsg"       , 0, 0},
@@ -2369,8 +2370,14 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 		//nokey
 		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, true))
+		Z("openwithref",
+			WebKitURIRequest *req = webkit_uri_request_new(arg);
+			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
+			soup_message_headers_append(hdrs, "Referer", URI(win));
+			webkit_web_view_load_request(win->kit, req);
+			g_object_unref(req);
+		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
-
 		Z("spawn"         , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
 		Z("jscallback"    ,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
@@ -3556,14 +3563,15 @@ static bool policycb(
 {
 	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
 
+	WebKitResponsePolicyDecision *rdec = (void *)dec;
+
 	bool dl = false;
 	gchar *msr = getset(win, "dlmimetypes");
 	if (msr && *msr != '\0')
 	{
 		gchar **ms = g_strsplit(msr, ";", -1);
 		WebKitURIResponse *res =
-			webkit_response_policy_decision_get_response(
-				(WebKitResponsePolicyDecision *)dec);
+			webkit_response_policy_decision_get_response(rdec);
 		const gchar *mime = webkit_uri_response_get_mime_type(res);
 		for (gchar **m = ms; *m; m++)
 			if (**m != '\0' && g_str_has_prefix(mime, *m))
@@ -3574,8 +3582,7 @@ static bool policycb(
 		g_strfreev(ms);
 	}
 
-	if (!dl && webkit_response_policy_decision_is_mime_type_supported(
-				(WebKitResponsePolicyDecision *)dec))
+	if (!dl && webkit_response_policy_decision_is_mime_type_supported(rdec))
 		webkit_policy_decision_use(dec);
 	else
 		webkit_policy_decision_download(dec);
@@ -3816,6 +3823,8 @@ void makemenu(WebKitContextMenu *menu)
 	{
 		addscript(dir, ".openNewSrcURI"   , APP" \"$SUFFIX\" tohintcallback "
 				"'sh -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
+		addscript(dir, ".openWithRef"       , APP" \"$SUFFIX\" tohintcallback "
+				"'sh -c \""APP" \\\"$SUFFIX\\\" openwithref \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, "0addMenu"         , "mimeopen -n %s");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
