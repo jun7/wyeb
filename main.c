@@ -216,12 +216,13 @@ Conf dconf[] = {
 	{"all"   , "ignoretlserr" , "false"},
 	{"all"   , "histimgs"     , "66"},
 	{"all"   , "histimgsize"  , "222"},
+//	{"all"   , "configreload" , "true",
+//			"reload last window when whiteblack.conf or reldomain are changed"},
+//	{"all"    , "nostorewebcontext", "false"}, //ephemeral
 
 	{"boot"  , "enablefavicon", "false"},
 	{"boot"  , "extensionargs", "adblock:true;"},
 	{"boot"  , "multiwebprocs", "false"},
-//	{"all"   , "configreload" , "true",
-//			"reload last window when whiteblack.conf or reldomain are changed"},
 
 	{"search", "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
@@ -263,8 +264,6 @@ Conf dconf[] = {
 	//{DSET      , "enable-plugins"   , "false"},
 	//{DSET      , "enable-java"      , "false"},
 	//{DSET      , "enable-fullscreen", "false"},
-
-//	{"all"    , "nostorewebcontext", "false"}, //ephemeral
 };
 static bool confbool(gchar *key)
 { return g_key_file_get_boolean(conf, "all", key, NULL); }
@@ -2230,9 +2229,10 @@ static Keybind dkeys[]= {
 	{"findsecondary" , 0, 0},
 
 	{"tohintopen"    , 0, 0},
+
+	//with arg
 	{"openback"      , 0, 0},
 	{"openwithref"   , 0, 0, "current uri is sent as Referer"},
-
 	{"download"      , 0, 0},
 	{"showmsg"       , 0, 0},
 	{"click"         , 0, 0, "x:y"},
@@ -2241,7 +2241,9 @@ static Keybind dkeys[]= {
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint."},
 	{"sourcecallback", 0, 0, "the web resource is sent via pipe"},
-//	{"headercallback"  , 0, 0}, //todo
+
+	//without arg
+	{"openmenudir"   , 0, 0},
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
@@ -2380,7 +2382,17 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			g_object_unref(req);
 		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
-		Z("spawn"         , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
+		Z("showmsg" , showmsg(win, arg))
+		Z("click",
+			gchar **xy = g_strsplit(arg ?: "100:100", ":", 2);
+			gdouble z = webkit_web_view_get_zoom_level(win->kit);
+			win->px = atof(*xy) * z;
+			win->py = atof(*(xy + 1)) * z;
+			putbtne(win, GDK_BUTTON_PRESS);
+			putbtne(win, GDK_BUTTON_RELEASE);
+			g_strfreev(xy);
+		)
+		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
 		Z("jscallback"    ,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
 			g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(exarg))))
@@ -2496,7 +2508,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			webkit_find_controller_search_previous(win->findct);
 			senddelay(win, Cfocus, NULL);
 			)
-
 #define CLIP(clip) \
 	run(win, "find", gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
 	senddelay(win, Cfocus, NULL);
@@ -2560,20 +2571,13 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("addwhitelist", send(win, Cwhite, "white"))
 	Z("addblacklist", send(win, Cwhite, "black"))
 
-	Z("showmsg"     , showmsg(win, arg))
-
-	Z("click",
-		gchar **xy = g_strsplit(arg ?: "100:100", ":", 2);
-		gdouble z = webkit_web_view_get_zoom_level(win->kit);
-		win->px = atof(*xy) * z;
-		win->py = atof(*(xy + 1)) * z;
-		putbtne(win, GDK_BUTTON_PRESS);
-		putbtne(win, GDK_BUTTON_RELEASE);
-		g_strfreev(xy);
-	)
-//	Z("headercallback",)
-
 	Z("textlink", textlinktry(win));
+
+	Z("openmenudir",
+			gchar *dir = path2conf("menu");
+			command(win, confcstr("diropener"), dir);
+			g_free(dir);
+	)
 
 	gchar *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
 	showmsg(win, msg);
@@ -3810,7 +3814,7 @@ static void addscript(gchar* dir, gchar* name, gchar *script)
 		gchar *ap = g_build_filename(dir, name, NULL);
 		mkdirif(ap);
 		FILE *f = fopen(ap, "w");
-		fprintf(f, script, dir);
+		fputs(script, f);
 		fclose(f);
 		g_chmod(ap, 0700);
 		g_free(ap);
@@ -3827,7 +3831,7 @@ void makemenu(WebKitContextMenu *menu)
 				"'sh -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, ".openWithRef"       , APP" \"$SUFFIX\" tohintcallback "
 				"'sh -c \""APP" \\\"$SUFFIX\\\" openwithref \\\"$MEDIA_IMAGE_LINK\\\"\"'");
-		addscript(dir, "0addMenu"         , "mimeopen -n %s");
+		addscript(dir, "0addMenu"         , APP" \"$SUFFIX\" openmenudir \"\"");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
