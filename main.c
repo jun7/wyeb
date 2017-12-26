@@ -2230,7 +2230,6 @@ static Keybind dkeys[]= {
 
 	{"tohintopen"    , 0, 0},
 
-	//with arg
 	{"openback"      , 0, 0},
 	{"openwithref"   , 0, 0, "current uri is sent as Referer"},
 	{"download"      , 0, 0},
@@ -2241,9 +2240,6 @@ static Keybind dkeys[]= {
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint."},
 	{"sourcecallback", 0, 0, "the web resource is sent via pipe"},
-
-	//without arg
-	{"openmenudir"   , 0, 0},
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
@@ -2546,7 +2542,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("edit"        , openconf(win, false))
 	Z("editconf"    , openconf(win, true))
 	Z("openconfigdir",
-			gchar *dir = g_path_get_dirname(confpath);
+			gchar *dir = path2conf(arg);
 			command(win, confcstr("diropener"), dir);
 			g_free(dir);
 	)
@@ -2572,12 +2568,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("addblacklist", send(win, Cwhite, "black"))
 
 	Z("textlink", textlinktry(win));
-
-	Z("openmenudir",
-			gchar *dir = path2conf("menu");
-			command(win, confcstr("diropener"), dir);
-			g_free(dir);
-	)
 
 	gchar *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
 	showmsg(win, msg);
@@ -3831,7 +3821,7 @@ void makemenu(WebKitContextMenu *menu)
 				"'sh -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
 		addscript(dir, ".openWithRef"       , APP" \"$SUFFIX\" tohintcallback "
 				"'sh -c \""APP" \\\"$SUFFIX\\\" openwithref \\\"$MEDIA_IMAGE_LINK\\\"\"'");
-		addscript(dir, "0addMenu"         , APP" \"$SUFFIX\" openmenudir \"\"");
+		addscript(dir, "0addMenu"         , APP" \"$SUFFIX\" openconfigdir menu");
 		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
 		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
