@@ -1496,6 +1496,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	snprintf(buf, 9, "%d", wins->len);
 	envp = g_environ_setenv(envp, "WINSLEN", buf, true);
 	envp = g_environ_setenv(envp, "WINID"  , win->pageid, true);
+	envp = g_environ_setenv(envp, "CURRENTSET", win->overset ?: "", true);
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
 	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
 	envp = g_environ_setenv(envp, "DLDIR"  , dldir(win), true);
@@ -3056,7 +3057,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"  the config dir, or click 'addMenu' in the context-menu. SUFFIX,\n"
 			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
-			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK and DLDIR\n"
+			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, CURRENTSET and DLDIR\n"
 			"  are set as environment variables. Available\n"
 			"  actions are in 'key:' section below. Of course it supports dir\n"
 			"  and '.'. '.' hides it from menu but still available in the accels.\n"
