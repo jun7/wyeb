@@ -4303,8 +4303,10 @@ int main(int argc, char **argv)
 	if (argc == 2 && uri && g_file_test(uri, G_FILE_TEST_EXISTS))
 		uri = g_strconcat("file://", uri, NULL);
 
-	const gchar *winid = g_getenv("WINID") ?: "0";
-	if (*winid == '\0') winid = "0";
+	const gchar *winid =
+		strcmp(suffix, g_getenv("SUFFIX") ?: "") == 0 ?  g_getenv("WINID") : NULL;
+	if (!winid || *winid == '\0') winid = "0";
+
 	gchar *cwd = g_get_current_dir();
 
 	gchar *sendstr = g_strdup_printf("m:%ld:%ld:%s%s%s:%s:%s",
