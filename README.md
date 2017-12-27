@@ -1,5 +1,6 @@
 ## Changes
 mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use it.
+
 depends markdown -> discount: You have to add the flag '-f -style' to the generator of the main.conf
 
 # WithYourEditorBrowser / wyeb
