@@ -24,6 +24,9 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <glib/gstdio.h>
 #include <regex.h>
 
+#define APPNAME  "wyebrowser"
+#define APP      "wyeb"
+
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
 
@@ -47,7 +50,9 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
 
 
+static gchar *fullname = "";
 static bool shared = true;
+
 
 typedef enum {
 	Cstart  = 'a',

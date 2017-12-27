@@ -20,7 +20,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <ctype.h>
 #include <webkit2/webkit-web-extension.h>
 
-static gchar *fullname = "";
 #include "general.c"
 
 #if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
@@ -176,7 +175,7 @@ static void preparewb()
 			"# First char is 'w':white list or 'b':black list.\n"
 			"# Second and following chars are regular expressions.\n"
 			"# Preferential order: bottom > top\n"
-			"# Keys 'a' and 'A' on wyeb add blocked or loaded list to this file.\n"
+			"# Keys 'a' and 'A' on "APP" add blocked or loaded list to this file.\n"
 			"\n"
 			"w^https?://([a-z0-9]+\\.)*githubusercontent\\.com/\n"
 			"\n"

@@ -21,17 +21,14 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <JavaScriptCore/JSStringRef.h>
 #include <gdk/gdkx.h>
 
-#define APPNAME  "wyebrowser"
-#define APP      "wyeb"
+#include "general.c"
+
 #define MIMEOPEN "mimeopen -n %s"
 
 #define DSET "set;"
 
 #define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
-
-static gchar *fullname = APPNAME; //+suffix
-#include "general.c"
 
 typedef enum {
 	Mnormal    = 0,
