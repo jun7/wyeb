@@ -308,7 +308,8 @@ static gchar *usage =
 	"  suffix: Process ID.\n"
 	"    It is added to all directories conf, cache and etc.\n"
 	"  action: Such as new(default), open, opennew ...\n"
-	"    Except 'new' and some, without $WINID, actions are sent to a window last focused\n"
+	"    Except 'new' and some, without a set of $SUFFIX and $WINID,\n"
+	"    actions are sent to a window last focused\n"
 	;
 
 static gchar *mainmdstr =
