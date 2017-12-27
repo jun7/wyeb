@@ -126,6 +126,10 @@ typedef struct {
 	gchar  *spawndir;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
+
+	bool cancelcontext;
+	bool cancelbtn1r;
+
 //	gint    backwinnum;
 } Win;
 
@@ -182,9 +186,7 @@ static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
 static gchar *logdir = NULL;
 
 static GtkAccelGroup *accelg = NULL;
-
 //static bool ephemeral = false;
-
 static WebKitWebContext *ctx = NULL;
 
 typedef struct {
@@ -239,8 +241,17 @@ Conf dconf[] = {
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET    , "showblocked"      , "false"},
+
 	{DSET    , "mdlbtnlinkaction" , "openback"},
-	{DSET    , "mdlbtn2winlist"   , "false"},
+	{DSET    , "mdlbtnleft"       , "prevwin", "mdlbtnleft=winlist"},
+	{DSET    , "mdlbtnright"      , "nextwin"},
+	{DSET    , "mdlbtnup"         , "top"},
+	{DSET    , "mdlbtndown"       , "bottom"},
+	{DSET    , "rockerleft"       , "back"},
+	{DSET    , "rockerright"      , "forward"},
+	{DSET    , "rockerup"         , "quitprev"},
+	{DSET    , "rockerdown"       , "quitnext"},
+
 	{DSET    , "newwinhandle"     , "normal",
 		"newwinhandle=notnew | ignore | back | normal"},
 	{DSET    , "hjkl2arrowkeys"   , "false",
@@ -251,7 +262,8 @@ Conf dconf[] = {
 		"t: title, u: uri, f: favicon\n" "linkdata=ftu"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
-	{DSET    , "dlmimetypes"      , "", "dlmimetypes=text/plain;video/;audio/;application/"},
+	{DSET    , "dlmimetypes"      , "",
+		"dlmimetypes=text/plain;video/;audio/;application/"},
 	{DSET    , "dlsubdir"         , ""},
 	{DSET    , "entrybgcolor"     , "true"},
 	{DSET    , "onloadmenu"       , "",
@@ -2586,6 +2598,14 @@ bool run(Win *win, gchar* action, const gchar *arg)
 {
 	return _run(win, action, arg, NULL, NULL);
 }
+static void setact(Win *win, gchar *key)
+{
+	gchar *act = getset(win, key);
+	if (!act) return;
+	gchar **acta = g_strsplit(act, " ", 2);
+	run(win, acta[0], acta[1]);
+	g_strfreev(acta);
+}
 
 
 //@win and cbs:
@@ -3040,9 +3060,8 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"    left press and move down  and right: raise next   window and close\n"
 			"  middle button:\n"
 			"    on a link           : new background window\n"
-			"    on free space       : raise bottom window / show window list\n"
-			"    press and move left : raise bottom window / show window list\n"
-			"                                              / if mdlbtn2winlist: true\n"
+			"    on free space       : raise bottom window\n"
+			"    press and move left : raise bottom window\n"
 			"    press and move right: raise next   window\n"
 			"    press and move up   : go to top\n"
 			"    press and move down : go to bottom\n"
@@ -3340,8 +3359,6 @@ static void targetcb(
 	setresult(win, htr);
 	update(win);
 }
-static bool cancelcontext = false;
-static bool cancelbtn1r = false;
 static GdkEvent *pendingmiddlee = NULL;
 static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
@@ -3419,29 +3436,27 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	}
 	case 3:
 		if (e->state & GDK_BUTTON1_MASK) {
+			win->cancelcontext = win->cancelbtn1r = true;
+
 			gdouble
 				deltax = (e->x - win->lastx) ,
 				deltay = e->y - win->lasty;
 
 			if (MAX(abs(deltax), abs(deltay)) < threshold(win) * 3)
 			{ //default
-				run(win, "back", NULL);
+				setact(win, "rockerleft");
 			}
 			else if (abs(deltax) > abs(deltay)) {
 				if (deltax < 0) //left
-					run(win, "back", NULL);
+					setact(win, "rockerleft");
 				else //right
-					run(win, "forward", NULL);
+					setact(win, "rockerright");
 			} else {
 				if (deltay < 0) //up
-				{
-					if (run(win, "quitprev", NULL)) return true;
-				} else { //down
-					if (run(win, "quitnext", NULL)) return true;
-				}
+					setact(win, "rockerup");
+				else //down
+					setact(win, "rockerdown");
 			}
-			cancelcontext = true;
-			cancelbtn1r = true;
 		}
 		else if (win->crashed && e->button == 3)
 			run(win, "reload", NULL);
@@ -3458,8 +3473,8 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->winw);
 
-		if (cancelbtn1r) {
-			cancelbtn1r = false;
+		if (win->cancelbtn1r) {
+			win->cancelbtn1r = false;
 			return true;
 		}
 		break;
@@ -3490,26 +3505,18 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 					win->link);
 			}
 			else if (gtk_window_is_active(win->win))
-			{
-				if (getsetbool(win, "mdlbtn2winlist"))
-					run(win, "winlist", NULL);
-				else
-					run(win, "prevwin", NULL);
-			}
+				setact(win, "mdlbtnleft");
 		}
 		else if (abs(deltax) > abs(deltay)) {
 			if (deltax < 0) //left
-				if (getsetbool(win, "mdlbtn2winlist"))
-					run(win, "winlist", NULL);
-				else
-					run(win, "prevwin", NULL);
+				setact(win, "mdlbtnleft");
 			else //right
-				run(win, "nextwin", NULL);
+				setact(win, "mdlbtnright");
 		} else {
 			if (deltay < 0) //up
-				run(win, "top", NULL);
+				setact(win, "mdlbtnup");
 			else //down
-				run(win, "bottom", NULL);
+				setact(win, "mdlbtndown");
 		}
 
 		gtk_widget_queue_draw(win->winw);
@@ -3891,8 +3898,8 @@ static bool contextcb(WebKitWebView *web_view,
 		Win                 *win
 		)
 {
-	if (cancelcontext) {
-		cancelcontext = false;
+	if (win->cancelcontext) {
+		win->cancelcontext = false;
 		return true;
 	}
 
