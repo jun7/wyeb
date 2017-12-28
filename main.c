@@ -263,7 +263,8 @@ Conf dconf[] = {
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "hintrangemax"     , "9"},
 	{DSET    , "dlmimetypes"      , "",
-		"dlmimetypes=text/plain;video/;audio/;application/"},
+		"dlmimetypes=text/plain;video/;audio/;application/\n"
+		"dlmimetypes=*"},
 	{DSET    , "dlsubdir"         , ""},
 	{DSET    , "entrybgcolor"     , "true"},
 	{DSET    , "onloadmenu"       , "",
@@ -3568,7 +3569,7 @@ static bool policycb(
 			webkit_response_policy_decision_get_response(rdec);
 		const gchar *mime = webkit_uri_response_get_mime_type(res);
 		for (gchar **m = ms; *m; m++)
-			if (**m && g_str_has_prefix(mime, *m))
+			if (**m && (!strcmp(*m, "*") || g_str_has_prefix(mime, *m)))
 			{
 				dl = true;
 				break;
