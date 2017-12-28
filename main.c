@@ -2227,7 +2227,8 @@ static Keybind dkeys[]= {
 	{"textlink"      , 'e', GDK_CONTROL_MASK, "For textarea in insert mode"},
 
 //nokey
-	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf"},
+	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf. This toggles"},
+	{"set2"          , 0, 0, "Not toggle"},
 	{"new"           , 0, 0},
 	{"newclipboard"  , 0, 0, "Open [arg + ' ' +] clipboard text in a new window."},
 	{"newselection"  , 0, 0, "Open [arg + ' ' +] selection ..."},
@@ -2561,16 +2562,14 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("setimage"    , return run(win, "set", "image"))
 	Z("unset"       , return run(win, "set", NULL))
 	Z("set"         ,
-			gchar *set;
-			if (!g_strcmp0(win->overset, arg))
-				set = NULL;
+			if (g_strcmp0(win->overset, arg))
+				GFA(win->overset, g_strdup(arg))
 			else
-				set = arg ? g_strdup(arg) : NULL;
-
-			GFA(win->overset, set)
-
-			resetconf(win, true);
-	)
+				GFA(win->overset, NULL)
+			resetconf(win, true))
+	Z("set2"        ,
+			GFA(win->overset, g_strdup(arg))
+			resetconf(win, true))
 
 	Z("addwhitelist", send(win, Cwhite, "white"))
 	Z("addblacklist", send(win, Cwhite, "black"))
