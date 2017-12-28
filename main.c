@@ -1491,7 +1491,8 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	if (getsetbool(win, "spawnmsg"))
 		_showmsg(win, g_strdup_printf("spawn: %s", shell ?: path), false);
 
-	gchar *dir = shell ? g_strdup(path) : g_path_get_dirname(path);
+	gchar *dir = shell ?
+		(path ? g_strdup(path) : path2conf("menu")) : g_path_get_dirname(path);
 
 	gchar **envp = g_get_environ();
 	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);

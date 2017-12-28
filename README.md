@@ -14,7 +14,7 @@ depends markdown -> discount: You have to add the flag '-f -style' to the genera
 / [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
 ### Installation
-depends 'webkit2gtk' 'discount' 'perl-file-mimeinfo' //on arch linux
+depends are 'webkit2gtk' 'discount' 'perl-file-mimeinfo' //on arch linux
 
 'discount(markdown)' 'perl-file-mimeinfo' are used only in main.conf
 
@@ -25,18 +25,20 @@ depends 'webkit2gtk' 'discount' 'perl-file-mimeinfo' //on arch linux
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
 - Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor. As this all settings are thrown to editor.
-- Settings per URI matched regular expression. **e** on a page adds URI to conf and opens. And another thing, Ctrl + i/s switch setting set can be edited.
+- Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it. And another thing, Ctrl + i/s and v switch setting set can be edited.
 - Open actions. Most of actions assigned to keys are also can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
 - [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
 - [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
-- No tab. But keys J/K/x or button actions.
+- No tab. But keys J/K/x/X or button actions.
+- Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb $SUFFIX showmsg `pwd`")
+Of course it is in set, so we can set it by uri.
 - Focused history. Instead of loaded history.
-- Pointer Mode. Makes pure click event for javascript pages.
+- Pointer Mode. **p** makes pure click event for javascript pages.
 - Range hinting. See hidden files in the menu dir. You have to assign keys for it by use of the accels.
 - Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
-- [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time a lot.
+- [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time though.
 
 ### Usage:
 Also there are [Tips](https://github.com/jun7/wyeb/wiki)
@@ -148,6 +150,7 @@ key:
 0 - A          : addblacklist           : URIs loaded
 4 - e          : textlink               : For textarea in insert mode
 0 - (null)     : set                    : Use 'set:' + arg section of main.conf
+0 - (null)     : set2                   : Not toggle
 0 - (null)     : new                    : 
 0 - (null)     : newclipboard           : Open [arg + ' ' +] clipboard text
                                           in a new window.
@@ -166,6 +169,7 @@ key:
                                           arg2 is called with $JSRESULT
 0 - (null)     : tohintcallback         : arg is called with environment variables
                                           selected by hint.
+0 - (null)     : tohintrange            : Same as tohintcallback but range.
 0 - (null)     : sourcecallback         : the web resource is sent via pipe
 
 
