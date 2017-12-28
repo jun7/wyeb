@@ -3816,13 +3816,13 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
-		addscript(dir, ".openNewRange"   , APP" $SUFFIX tohintrange "
+		addscript(dir, ".openNewRange"    , APP" $SUFFIX tohintrange "
 				"'sh -c \""APP" $SUFFIX opennew $MEDIA_IMAGE_LINK\"'");
 		addscript(dir, ".openNewSrcURI"   , APP" $SUFFIX tohintcallback "
 				"'sh -c \""APP" $SUFFIX opennew $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, ".openWithRef"       , APP" $SUFFIX tohintcallback "
+		addscript(dir, ".openWithRef"     , APP" $SUFFIX tohintcallback "
 				"'sh -c \""APP" $SUFFIX openwithref $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, "0addMenu"         , APP" $SUFFIX openconfigdir menu");
+		addscript(dir, "0editMenu"        , APP" $SUFFIX openconfigdir menu");
 		addscript(dir, "0bookmark"        , APP" $SUFFIX bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
 		addscript(dir, "0duplicate"       , APP" $SUFFIX opennew $URI");
