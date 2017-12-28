@@ -40,6 +40,8 @@ typedef struct {
 	gchar         *lasthintkeys;
 	bool           relonly;
 	bool           showblocked;
+	gint           range;
+	WebKitDOMElement *rangestart; //not ref
 	bool           script;
 	gchar         *cutheads;
 	GSList        *black;
@@ -134,7 +136,7 @@ static bool isins(const gchar **ary, gchar *val)
 {
 	if (!val) return false;
 	for (;*ary; ary++)
-		if (strcmp(val, *ary) == 0) return true;
+		if (!strcmp(val, *ary)) return true;
 	return false;
 }
 static bool isinput(WebKitDOMElement *te)
@@ -143,7 +145,11 @@ static bool isinput(WebKitDOMElement *te)
 	bool ret = false;
 	if (isins(inputtags, tag))
 	{
-		if (strcmp(tag, "INPUT") != 0) return true;
+		if (strcmp(tag, "INPUT"))
+		{
+			g_free(tag);
+			return true;
+		}
 
 		gchar *type = webkit_dom_element_get_attribute(te, "type");
 		if (!type || !isins(inottext, type))
@@ -308,7 +314,7 @@ static void textlinkget(Page *page, gchar *path)
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
 	gchar *tag = webkit_dom_element_get_tag_name(te);
-	bool ist = strcmp(tag, "TEXTAREA") == 0;
+	bool ist = !strcmp(tag, "TEXTAREA");
 	g_free(tag);
 	if (!ist)
 	{
@@ -333,7 +339,7 @@ static void textlinkget(Page *page, gchar *path)
 static bool styleis(WebKitDOMCSSStyleDeclaration *dec, gchar* name, gchar *pval)
 {
 	gchar *val = webkit_dom_css_style_declaration_get_property_value(dec, name);
-	bool ret = (val && strcmp(pval, val) == 0);
+	bool ret = (val && !strcmp(pval, val));
 	g_free(val);
 
 	return ret;
@@ -398,7 +404,6 @@ static WebKitDOMElement *_makehintelm(
 {
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
-	WebKitDOMElement *hint = webkit_dom_document_create_element(doc, "span", NULL);
 
 	//ret
 	static const gchar *retstyle =
@@ -447,9 +452,11 @@ static WebKitDOMElement *_makehintelm(
 	g_object_unref(area);
 
 	//hint
+	if (!text) return ret;
+
+	WebKitDOMElement *hint = webkit_dom_document_create_element(doc, "span", NULL);
 
 	gchar *ht = g_strdup_printf("%s", text + len);
-
 	webkit_dom_element_set_inner_html(hint, ht, NULL);
 	g_free(ht);
 
@@ -779,6 +786,7 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 	if (type == Clink ) taglist = linktags;
 	if (type == Curi  ) taglist = uritags;
 	if (type == Cspawn) taglist = uritags;
+	if (type == Crange) taglist = uritags;
 	if (type == Ctext ) taglist = texttags;
 
 	if (type == Cclick && page->script)
@@ -881,10 +889,10 @@ static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
 
 static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 {
-	gchar uritype = 'n';
+	gchar uritype = 'l';
 	gchar *uri = NULL;
 	gchar *label = NULL;
-	if (type == Curi || type == Cspawn)
+	if (type == Curi || type == Cspawn || type == Crange)
 	{
 		uri = webkit_dom_element_get_attribute(te, "SRC");
 
@@ -908,10 +916,10 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 			g_object_unref(cl);
 		}
 
-		if (uri && type == Cspawn)
+		if (uri && (type == Cspawn || type == Crange))
 		{
 			gchar *tag = webkit_dom_element_get_tag_name(te);
-			if (strcmp(tag, "IMG") == 0)
+			if (!strcmp(tag, "IMG"))
 				uritype = 'i';
 			else
 				uritype = 'm';
@@ -921,11 +929,7 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 	}
 
 	if (!uri)
-	{
 		uri = webkit_dom_element_get_attribute(te, "HREF");
-		if (uri && type == Cspawn)
-			uritype = 'l';
-	}
 
 	if (!uri)
 		uri = g_strdup("about:blank");
@@ -960,13 +964,14 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	if (type != Cclick)
 	{
 		WebKitDOMDocumentType *dtype = webkit_dom_document_get_doctype(doc);
-		if (dtype && strcmp("html", webkit_dom_document_type_get_name(dtype)) != 0)
+		if (dtype && strcmp("html", webkit_dom_document_type_get_name(dtype)))
 		{
 			//no elms may be;P
 			gchar *retstr = g_strdup_printf("l%s ", webkit_web_page_get_uri(page->kit));
 			send(page, "hintret", retstr);
 			g_free(retstr);
 
+			g_free(ipkeys);
 			return false;
 		}
 	}
@@ -978,10 +983,9 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	}
 	else
 		hintkeys = page->lasthintkeys;
-
 	if (strlen(hintkeys) < 3) hintkeys = HINTKEYS;
-	rmhint(page);
 
+	rmhint(page);
 	page->apkeys = ipkeys;
 
 	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
@@ -997,21 +1001,72 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	gint iplen = ipkeys ? strlen(ipkeys) : 0;
 	gint digit = getdigit(keylen, tnum);
 	bool last = iplen == digit;
-	gint i = 0;
 	elms = g_slist_reverse(elms);
-
+	gint i = -1;
 	bool ret = false;
+
+	bool rangein = false;
+	gint rangeleft = page->range;
+	WebKitDOMElement *rangeend = NULL;
+
+	gchar enterkey[2] = {0};
+	*enterkey = (gchar)GDK_KEY_Return;
+	bool enter = page->rangestart && !g_strcmp0(enterkey, ipkeys);
+	if (type == Crange && (last || enter))
+		for (GSList *next = elms; next; next = next->next)
+		{
+			Elm *elm = (Elm *)next->data;
+			WebKitDOMElement *te = elm->elm;
+
+			rangein |= te == page->rangestart;
+
+			i++;
+			if (page->rangestart && !rangein)
+				continue;
+
+			if (enter)
+			{
+				rangeend = te;
+				if (--rangeleft < 0) break;
+				continue;
+			}
+
+			gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
+			if (!strcmp(key, ipkeys))
+			{
+				ipkeys = NULL;
+				iplen = 0;
+				g_free(page->apkeys);
+				page->apkeys = NULL;
+
+				if (!page->rangestart)
+					page->rangestart = te;
+				else
+					rangeend = te;
+
+				g_free(key);
+				break;
+			}
+			g_free(key);
+		}
+
+	GSList *rangeelms = NULL;
+	i = -1;
+	rangein = false;
+	rangeleft = page->range;
 	for (GSList *next = elms; next; next = next->next)
 	{
 		Elm *elm = (Elm *)next->data;
 		WebKitDOMElement *te = elm->elm;
 
-		gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
-		i++;
+		rangein |= te == page->rangestart;
 
-		if (last)
+		i++;
+		gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
+
+		if (last && type != Crange)
 		{
-			if (!ret && strcmp(key, ipkeys) == 0)
+			if (!ret && !strcmp(key, ipkeys))
 			{
 				webkit_dom_element_focus(te);
 
@@ -1040,7 +1095,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 						);
 #else
 					gchar *tag = webkit_dom_element_get_tag_name(te);
-					bool isa = strcmp(tag, "A") == 0;
+					bool isa = !strcmp(tag, "A");
 					g_free(tag);
 
 					if (page->script && !isi && !isa)
@@ -1067,24 +1122,42 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 						g_object_unref(ce);
 					}
-				} else
+				}
+				else
 					hintret(page, type, te);
-
-				ret = true;
 			}
 		}
-		else if (!ipkeys ||  g_str_has_prefix(key, ipkeys))
+		else if (rangeend && rangein)
 		{
-			ret = true;
-			WebKitDOMElement *ne = makehintelm(doc, elm, key, iplen, pagex, pagey);
-			webkit_dom_node_append_child(page->apnode, (WebKitDOMNode *)ne, NULL);
-			page->aplist = g_slist_prepend(page->aplist, ne);
+			rangeelms = g_slist_prepend(rangeelms, te);
+		}
+		else if (!page->rangestart || (rangein && !rangeend))
+		{
+			bool has = g_str_has_prefix(key, ipkeys ?: "");
+			if (has || rangein)
+			{
+				WebKitDOMElement *ne =
+					makehintelm(doc, elm, has ? key : NULL, iplen, pagex, pagey);
+				webkit_dom_node_append_child(page->apnode, (WebKitDOMNode *)ne, NULL);
+				page->aplist = g_slist_prepend(page->aplist, ne);
+				ret |= has;
+			}
 		}
 
 		g_free(key);
 		clearelm(elm);
 		g_free(elm);
+
+		if (rangein)
+			rangein = --rangeleft > 0 && rangeend != te;
 	}
+
+	for (GSList *next = rangeelms; next; next = next->next)
+	{
+		hintret(page, type, next->data);
+		g_usleep(99999);
+	}
+	g_slist_free(rangeelms);
 
 	g_slist_free(elms);
 
@@ -1104,9 +1177,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 static void hintcb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
 {
 	if (page->apnode)
-	{
 		makehint(page, page->lasttype, NULL, NULL);
-	}
 }
 
 
@@ -1153,7 +1224,7 @@ static void mode(Page *page)
 	if (te)
 	{
 		gchar *type = webkit_dom_element_get_attribute(te, "contenteditable");
-		bool iseditable = type && strcmp(type, "true") == 0;
+		bool iseditable = type && !strcmp(type, "true");
 		g_free(type);
 
 		if (iseditable || isinput(te))
@@ -1261,10 +1332,20 @@ void ipccb(const gchar *line)
 	case Clink:
 	case Curi:
 	case Cspawn:
+	case Crange:
 		if (arg)
-			page->script = *arg++ == 'y';
+		{
+			gchar *rangestr = g_strndup(arg, 9);
+			page->range = atoi(rangestr);
+			g_free(rangestr);
+			page->rangestart = NULL;
+			arg = arg + 9;
 
-		if (!makehint(page, type, arg, ipkeys)) send(page, "tonormal", NULL);
+			page->script = *arg++ == 'y';
+		}
+
+		if (!makehint(page, type, arg, ipkeys))
+			send(page, "tonormal", NULL);
 		break;
 
 	case Ctext:
@@ -1288,7 +1369,7 @@ void ipccb(const gchar *line)
 		break;
 
 	case Cwhite:
-		showwhite(page, strcmp(arg, "white") == 0 ? true : false );
+		showwhite(page, !strcmp(arg, "white") ? true : false );
 		break;
 
 	case Ctlget:

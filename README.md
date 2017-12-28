@@ -1,4 +1,8 @@
 ## Changes
+$SUFFIX's default value is changed from "" to "/" though "" in the args is still accepted.
+So the double-quotations of $SUFFIX are no longer required.
+
+
 mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use it.
 
 depends markdown -> discount: You have to add the flag '-f -style' to the generator of the main.conf
@@ -30,6 +34,7 @@ For example, context-menu items we added are just shell scripts.
 - No tab. But keys J/K/x or button actions.
 - Focused history. Instead of loaded history.
 - Pointer Mode. Makes pure click event for javascript pages.
+- Range hinting. See hidden files in the menu dir. You have to assign keys for it by use of the accels.
 - Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time a lot.
 

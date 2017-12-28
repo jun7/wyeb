@@ -29,6 +29,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 #define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
+#define GFA(p, v) {g_free(p); p = v;}
 
 typedef enum {
 	Mnormal    = 0,
@@ -41,13 +42,14 @@ typedef enum {
 	Mhintdl    = 2 + 32,
 	Mhintbkmrk = 2 + 64,
 	Mhintspawn = 2 + 128,
+	Mhintrange = 2 + 256,
 
-	Mfind      = 256,
-	Mopen      = 512,
-	Mopennew   = 1024,
+	Mfind      = 512,
+	Mopen      = 1024,
+	Mopennew   = 2048,
 
-	Mlist      = 2048,
-	Mpointer   = 4096,
+	Mlist      = 4096,
+	Mpointer   = 8192,
 } Modes;
 
 typedef struct {
@@ -259,6 +261,7 @@ Conf dconf[] = {
 		"t: title, u: uri, f: favicon\n" "linkdata=ftu"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
+	{DSET    , "hintrangemax"     , "9"},
 	{DSET    , "dlmimetypes"      , "",
 		"dlmimetypes=text/plain;video/;audio/;application/"},
 	{DSET    , "dlsubdir"         , ""},
@@ -283,8 +286,7 @@ static gdouble confdouble(gchar *key)
 static gchar *confcstr(gchar *key)
 {//return is static string
 	static gchar *str = NULL;
-	g_free(str);
-	str = g_key_file_get_string(conf, "all", key, NULL);
+	GFA(str, g_key_file_get_string(conf, "all", key, NULL))
 	return str;
 }
 static gchar *getset(Win *win, gchar *key)
@@ -292,21 +294,21 @@ static gchar *getset(Win *win, gchar *key)
 	static gchar *ret = NULL;
 	if (!win)
 	{
-		g_free(ret);
-		ret = g_key_file_get_string(conf, DSET, key, NULL);
+		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
 		return ret;
 	}
 	return g_object_get_data(win->seto, key);
 }
 static bool getsetbool(Win *win, gchar *key)
 {
-	return g_strcmp0(getset(win, key), "true") == 0;
+	return !g_strcmp0(getset(win, key), "true");
 }
 
 static gchar *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"  suffix: Process ID.\n"
 	"    It is added to all directories conf, cache and etc.\n"
+	"    '/' is default.\n"
 	"  action: Such as new(default), open, opennew ...\n"
 	"    Except 'new' and some, without a set of $SUFFIX and $WINID,\n"
 	"    actions are sent to a window last focused\n"
@@ -436,8 +438,7 @@ static bool historycb(Win *win)
 		for (gchar **file = logs; *file; file++)
 		{
 			currenti++;
-			g_free(current);
-			current = g_build_filename(logdir, *file, NULL);
+			GFA(current, g_build_filename(logdir, *file, NULL))
 
 			if (!g_file_test(current, G_FILE_TEST_EXISTS))
 				break;
@@ -459,13 +460,12 @@ static bool historycb(Win *win)
 			webkit_web_view_get_title(win->kit) ?: "");
 
 	static gchar *last = NULL;
-	if (last && strcmp(str + 18, last + 18) == 0)
+	if (last && !strcmp(str + 18, last + 18))
 	{
 		g_free(str);
 		return false;
 	}
-	g_free(last);
-	last = str;
+	GFA(last, str)
 
 
 	append(current, str);
@@ -521,8 +521,7 @@ static bool historycb(Win *win)
 		if (currenti >= logfnum)
 			currenti = 0;
 
-		g_free(current);
-		current = g_build_filename(logdir, logs[currenti], NULL);
+		GFA(current, g_build_filename(logdir, logs[currenti], NULL))
 		
 		FILE *f = fopen(current, "w");
 		fclose(f);
@@ -535,7 +534,7 @@ static bool historycb(Win *win)
 static void addhistory(Win *win)
 {
 	const gchar *uri = URI(win);
-	if (*uri == '\0' ||
+	if (!*uri ||
 			g_str_has_prefix(uri, APP":") ||
 			g_str_has_prefix(uri, "about:")
 			) return;
@@ -551,8 +550,7 @@ static void removehistory()
 		remove(tmp);
 		g_free(tmp);
 	}
-	g_free(logdir);
-	logdir = NULL;
+	GFA(logdir, NULL)
 }
 
 static guint msgfunc = 0;
@@ -560,8 +558,7 @@ static bool clearmsgcb(Win *win)
 {
 	if (isin(wins, win))
 	{
-		g_free(win->msg);
-		win->msg = NULL;
+		GFA(win->msg, NULL)
 		gtk_widget_queue_draw(win->winw);
 	}
 
@@ -571,8 +568,7 @@ static bool clearmsgcb(Win *win)
 static void _showmsg(Win *win, gchar *msg, bool small)
 {
 	if (msgfunc) g_source_remove(msgfunc);
-	g_free(win->msg);
-	win->msg = msg;
+	GFA(win->msg, msg)
 	win->smallmsg = small;
 	msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->winw);
@@ -621,7 +617,7 @@ static void senddelay(Win *win, Coms type, gchar *args)
 static Win *winbyid(const gchar *pageid)
 {
 	for (int i = 0; i < wins->len; i++)
-		if (strcmp(pageid, ((Win *)wins->pdata[i])->pageid) == 0)
+		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid))
 			return wins->pdata[i];
 	return NULL;
 }
@@ -697,7 +693,7 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 {
 	if (!*undo && redo != undo) return;
 	if (!*redo ||
-			strcmp((*redo)->data, gtk_entry_get_text(win->ent)) != 0)
+			strcmp((*redo)->data, gtk_entry_get_text(win->ent)))
 		*redo = g_slist_prepend(*redo,
 				g_strdup(gtk_entry_get_text(win->ent)));
 
@@ -782,7 +778,7 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 		case G_TYPE_STRING:
 			if (set) {
 				gchar *v = g_key_file_get_string(kf, group, key, NULL);
-				if (strcmp(g_value_get_string(&gv), v) == 0) {
+				if (!strcmp(g_value_get_string(&gv), v)) {
 					g_free(v);
 					continue;;
 				}
@@ -792,14 +788,14 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 				g_key_file_set_string(kf, group, key, g_value_get_string(&gv));
 			break;
 		default:
-			if (strcmp(key, "hardware-acceleration-policy") == 0) {
+			if (!strcmp(key, "hardware-acceleration-policy")) {
 				if (set) {
 					gchar *str = g_key_file_get_string(kf, group, key, NULL);
 
 					WebKitHardwareAccelerationPolicy v;
-					if (strcmp(str, "ALWAYS") == 0)
+					if (!strcmp(str, "ALWAYS"))
 						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS;
-					else if (strcmp(str, "NEVER") == 0)
+					else if (!strcmp(str, "NEVER"))
 						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER;
 					else //ON_DEMAND
 						v = WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND;
@@ -841,7 +837,7 @@ static gchar *addcss(const gchar *name)
 	bool already = false;
 
 	for(GSList *next = csslist; next; next = next->next)
-		if (strcmp(next->data, name) == 0)
+		if (!strcmp(next->data, name))
 		{
 			already = true;
 			break;
@@ -858,10 +854,8 @@ static gchar *addcss(const gchar *name)
 		monitor(path, checkconf);
 	}
 	if (!exists)
-	{
-		g_free(path);
-		path = NULL;
-	}
+		GFA(path, NULL)
+
 	return path;
 }
 static void setcss(Win *win, gchar *namesstr)
@@ -914,18 +908,18 @@ static void setprops(Win *win, GKeyFile *kf, gchar *group)
 	//non webkit settings
 	int len = sizeof(dconf) / sizeof(*dconf);
 	for (int i = 0; i < len; i++) {
-		if (strcmp(dconf[i].group, DSET) != 0) continue;
+		if (strcmp(dconf[i].group, DSET)) continue;
 		gchar *key = dconf[i].key;
 		if (!g_key_file_has_key(kf, group, key, NULL)) continue;
 
 		gchar *val = g_key_file_get_string(kf, group, key, NULL);
 
-		if (strcmp(key, "usercss") == 0 &&
-			g_strcmp0(g_object_get_data(win->seto, key), val) != 0)
+		if (!strcmp(key, "usercss") &&
+			g_strcmp0(g_object_get_data(win->seto, key), val))
 		{
 			setcss(win, val);
 		}
-		g_object_set_data_full(win->seto, key, *val == '\0' ? NULL : val, g_free);
+		g_object_set_data_full(win->seto, key, *val ? val : NULL, g_free);
 	}
 }
 static void getkitprops(GObject *obj, GKeyFile *kf, gchar *group)
@@ -959,8 +953,7 @@ static bool _seturiconf(Win *win, const gchar* uri)
 
 		if (regexec(&reg, uri, 0, NULL, 0) == 0) {
 			setprops(win, conf, *gl);
-			g_free(win->lasturiconf);
-			win->lasturiconf = g_strdup(uri);
+			GFA(win->lasturiconf, g_strdup(uri))
 			ret = true;
 		}
 
@@ -982,8 +975,7 @@ static void resetconf(Win *win, bool force)
 
 	if (win->lasturiconf || force)
 	{
-		g_free(win->lasturiconf);
-		win->lasturiconf = NULL;
+		GFA(win->lasturiconf, NULL)
 		setprops(win, conf, DSET);
 	}
 
@@ -1014,7 +1006,7 @@ static void getdconf(GKeyFile *kf, bool isnew)
 
 		if (!isnew)
 		{
-			if (strcmp(c.group, "search") == 0) continue;
+			if (!strcmp(c.group, "search")) continue;
 			if (g_str_has_prefix(c.group, "set:")) continue;
 		}
 
@@ -1154,8 +1146,7 @@ void checkconf(bool frommonitor)
 			__time_t *time = nt->data;
 			gchar *name = next->data;
 
-			g_free(path);
-			path = path2conf(name);
+			GFA(path, path2conf(name))
 
 			bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
 			if (!exists && *time == 0) continue;
@@ -1226,8 +1217,7 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mfind:
-		g_free(win->lastfind);
-		win->lastfind = g_strdup(gtk_entry_get_text(win->ent));
+		GFA(win->lastfind, g_strdup(gtk_entry_get_text(win->ent)))
 	case Mopen:
 	case Mopennew:
 		setbg(win, 0);
@@ -1253,6 +1243,7 @@ static void _modechanged(Win *win)
 	case Mhintdl:
 	case Mhintbkmrk:
 	case Mhintspawn:
+	case Mhintrange:
 		send(win, Crm, NULL);
 		break;
 	}
@@ -1271,14 +1262,13 @@ static void _modechanged(Win *win)
 			break;
 		}
 		gtk_entry_set_text(win->ent, win->lastfind ?: "");
-		g_free(win->lastfind);
-		win->lastfind = NULL;
+		GFA(win->lastfind, NULL)
 	case Mopen:
 	case Mopennew:
 		if (win->mode != Mfind)
 		{
 			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
-			if (g_strcmp0(setstr, getset(win, "search")) != 0)
+			if (g_strcmp0(setstr, getset(win, "search")))
 				setbg(win, 2);
 			g_free(setstr);
 		}
@@ -1309,6 +1299,8 @@ static void _modechanged(Win *win)
 		if (!com) com = Curi;
 	case Mhintspawn:
 		if (!com) com = Cspawn;
+	case Mhintrange:
+		if (!com) com = Crange;
 
 		if (win->crashed)
 			win->mode = Mnormal;
@@ -1318,7 +1310,9 @@ static void _modechanged(Win *win)
 			if (getsetbool(win, "hackedhint4js"))
 				g_object_get(win->seto, "enable-javascript", &script, NULL);
 
-			gchar *arg = g_strdup_printf("%c%s",
+
+			gchar *arg = g_strdup_printf("%09d%c%s",
+					atoi(getset(win, "hintrangemax") ?: "0"),
 					script ? 'y' : 'n', confcstr("hintkeys"));
 
 			send(win, com, arg);
@@ -1344,6 +1338,10 @@ static void update(Win *win)
 
 	case Mpointer:
 		settitle(win, "-- POINTER MODE --");
+		break;
+
+	case Mhintrange:
+		settitle(win, "-- RANGE MODE --");
 		break;
 
 	case Mhint:
@@ -1388,7 +1386,7 @@ static gchar *getsearch(gchar *pkey)
 	gchar *ret = NULL;
 	gchar **kv = g_key_file_get_keys(conf, "search", NULL, NULL);
 	for (gchar **key = kv; *key; key++)
-		if (strcmp(pkey, *key) == 0)
+		if (!strcmp(pkey, *key))
 		{
 			ret = g_key_file_get_string(conf, "search", *key, NULL);
 			break;
@@ -1435,8 +1433,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 			uri = g_strdup_printf(search, esc);
 			g_free(esc);
 
-			g_free(win->lastfind);
-			win->lastfind = g_strdup(stra[1]);
+			GFA(win->lastfind, g_strdup(stra[1]))
 
 			goto out;
 		}
@@ -1458,8 +1455,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 		uri = g_strdup_printf(getsearch(dsearch) ?: dsearch, esc);
 		g_free(esc);
 
-		g_free(win->lastfind);
-		win->lastfind = g_strdup(str);
+		GFA(win->lastfind, g_strdup(str))
 	}
 
 	if (!uri) uri = g_strdup(str);
@@ -1497,7 +1493,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	gchar *dir = shell ? g_strdup(path) : g_path_get_dirname(path);
 
 	gchar **envp = g_get_environ();
-	envp = g_environ_setenv(envp, "SUFFIX" , suffix, true);
+	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);
 	envp = g_environ_setenv(envp, "ISCALLBACK",
 			iscallback ? "1" : "0", true);
 	envp = g_environ_setenv(envp, "JSRESULT", jsresult ?: "", true);
@@ -1693,9 +1689,9 @@ static void command(Win *win, const gchar *cmd, const gchar *arg)
 
 static void openeditor(Win *win, const gchar *path, gchar *editor)
 {
-	if (!editor || *editor == '\0')
+	if (!editor || !*editor)
 		editor = confcstr("editor");
-	if (*editor == '\0')
+	if (!*editor)
 		editor = MIMEOPEN;
 
 	command(win, editor, path);
@@ -1818,7 +1814,7 @@ static bool quitnext(Win *win, bool next)
 {
 	if (inwins(win, NULL, true) < 1)
 	{
-		if (strcmp(APP":main", URI(win)) == 0)
+		if (!strcmp(APP":main", URI(win)))
 			return run(win, "quit", NULL);
 
 		run(win, "showmainpage", NULL);
@@ -2195,7 +2191,7 @@ static Keybind dkeys[]= {
 	{"forward"       , 'L', 0},
 	{"stop"          , 's', 0},
 	{"reload"        , 'r', 0},
-	{"reloadbypass"  , 'R', 0, "reload bypass cache"},
+	{"reloadbypass"  , 'R', 0, "Reload bypass cache"},
 
 	{"find"          , '/', 0},
 	{"findnext"      , 'n', 0},
@@ -2249,7 +2245,8 @@ static Keybind dkeys[]= {
 	{"jscallback"    , 0, 0, "run script of arg1 and arg2 is called with $JSRESULT"},
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint."},
-	{"sourcecallback", 0, 0, "the web resource is sent via pipe"},
+	{"tohintrange"   , 0, 0, "Same as tohintcallback but range."},
+	{"sourcecallback", 0, 0, "The web resource is sent via pipe"},
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
@@ -2293,7 +2290,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	if (action == NULL) return false;
 	gchar **retv = NULL; //hintret
 
-#define Z(str, func) if (strcmp(action, str) == 0) {func; goto out;}
+#define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
 	//nokey nowin
 	Z("new"         , win = newwin(arg, NULL, NULL, false))
 
@@ -2317,7 +2314,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("openeditor" , openeditor(win, arg, NULL))
 	Z("reloadlast" , reloadlast())
 
-	if (strcmp(action, "hintret") == 0)
+	if (!strcmp(action, "hintret"))
 	{
 		const gchar *orgarg = arg;
 		retv = g_strsplit(arg, " ", 2);
@@ -2336,6 +2333,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			arg = orgarg + 1;
 			action = "bookmark"; break;
 
+		case Mhintrange:
 		case Mhintspawn:
 			setresult(win, NULL);
 			win->linklabel = g_strdup(retv[1]);
@@ -2357,14 +2355,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		default:
 			break;
 		}
-
-		win->mode = Mnormal;
 	}
 
 	if (arg != NULL) {
 		Z("find"  ,
-				g_free(win->lastfind);
-				win->lastfind = g_strdup(arg);
+				GFA(win->lastfind, g_strdup(arg))
 				webkit_find_controller_search(win->findct, arg,
 					WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
 					WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT))
@@ -2383,7 +2378,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("openwithref",
 			WebKitURIRequest *req = webkit_uri_request_new(arg);
 			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
-			soup_message_headers_append(hdrs, "Referer", URI(win));
+			if (hdrs) //scheme wyeb: returns NULL
+				soup_message_headers_append(hdrs, "Referer", URI(win));
 			webkit_web_view_load_request(win->kit, req);
 			g_object_unref(req);
 		)
@@ -2403,10 +2399,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
 			g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(exarg))))
 		Z("tohintcallback", win->mode = Mhintspawn;
-				g_free(win->spawn);
-				win->spawn = g_strdup(arg);
-				g_free(win->spawndir);
-				win->spawndir = g_strdup(cdir))
+				GFA(win->spawn, g_strdup(arg))
+				GFA(win->spawndir, g_strdup(cdir)))
+		Z("tohintrange", win->mode = Mhintrange;
+				GFA(win->spawn, g_strdup(arg))
+				GFA(win->spawndir, g_strdup(cdir)))
 		Z("sourcecallback",
 			WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
 			webkit_web_resource_get_data(res, NULL, resourcecb,
@@ -2426,6 +2423,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("tohintback"  , win->mode = Mhintback)
 	Z("tohintdl"    , win->mode = Mhintdl)
 	Z("tohintbookmark", win->mode = Mhintbkmrk)
+	Z("tohintrange" , win->mode = Mhintrange)
 
 	Z("showdldir"   ,
 		command(win, confcstr("diropener"), dldir(win));
@@ -2563,13 +2561,12 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("unset"       , return run(win, "set", NULL))
 	Z("set"         ,
 			gchar *set;
-			if (g_strcmp0(win->overset, arg) == 0)
+			if (!g_strcmp0(win->overset, arg))
 				set = NULL;
 			else
 				set = arg ? g_strdup(arg) : NULL;
 
-			g_free(win->overset);
-			win->overset = set;
+			GFA(win->overset, set)
 
 			resetconf(win, true);
 	)
@@ -2736,7 +2733,7 @@ static void dlfincb(DLWin *win)
 		if (win->ent)
 		{
 			nfn = gtk_entry_get_text(win->ent);
-			if (strcmp(fn, nfn) != 0 &&
+			if (strcmp(fn, nfn) &&
 				(g_file_test(nfn, G_FILE_TEST_EXISTS) ||
 				 g_rename(fn, nfn) != 0)
 			)
@@ -2803,20 +2800,14 @@ static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 	gchar *path = g_build_filename(base, name, NULL);
 
 	gchar *check = g_path_get_dirname(path);
-	if (strcmp(base, check) != 0)
-	{
-		g_free(path);
-		path = g_build_filename(base, name = "noname", NULL);
-	}
+	if (strcmp(base, check))
+		GFA(path, g_build_filename(base, name = "noname", NULL))
 	g_free(check);
 
-	gchar *back = g_strdup(path);
+	gchar *org = g_strdup(path);
 	for (int i = 2; g_file_test(path, G_FILE_TEST_EXISTS); i++)
-	{
-		g_free(path);
-		path = g_strdup_printf("%s.%d", back, i);
-	}
-	g_free(back);
+		GFA(path, g_strdup_printf("%s.%d", org, i))
+	g_free(org);
 
 	gchar *uri = g_filename_to_uri(path, NULL, NULL);
 	webkit_download_set_destination(pdl, uri);
@@ -3252,7 +3243,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	gchar *action = ke2name(ek);
 
-	if (action && strcmp(action, "tonormal") == 0)
+	if (action && !strcmp(action, "tonormal"))
 	{
 		bool ret = win->mode & Mhint || win->mode == Mpointer;
 
@@ -3282,7 +3273,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 			return true;
 		}
-		if (action && strcmp(action, "textlink") == 0)
+		if (action && !strcmp(action, "textlink"))
 			return run(win, action, NULL);
 
 		return false;
@@ -3298,7 +3289,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	if (win->mode == Mlist)
 	{
-#define Z(str, func) if (action && strcmp(action, str) == 0) {func;}
+#define Z(str, func) if (action && !strcmp(action, str)) {func;}
 		Z("scrolldown"  , winlist(win, GDK_KEY_Down , NULL))
 		Z("scrollup"    , winlist(win, GDK_KEY_Up   , NULL))
 		Z("scrollleft"  , winlist(win, GDK_KEY_Left , NULL))
@@ -3565,17 +3556,19 @@ static bool policycb(
 	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
 
 	WebKitResponsePolicyDecision *rdec = (void *)dec;
+//	WebKitURIRequest *req =
+//		webkit_response_policy_decision_get_request(rdec);
 
 	bool dl = false;
 	gchar *msr = getset(win, "dlmimetypes");
-	if (msr && *msr != '\0')
+	if (msr && *msr)
 	{
 		gchar **ms = g_strsplit(msr, ";", -1);
 		WebKitURIResponse *res =
 			webkit_response_policy_decision_get_response(rdec);
 		const gchar *mime = webkit_uri_response_get_mime_type(res);
 		for (gchar **m = ms; *m; m++)
-			if (**m != '\0' && g_str_has_prefix(mime, *m))
+			if (**m && g_str_has_prefix(mime, *m))
 			{
 				dl = true;
 				break;
@@ -3594,11 +3587,11 @@ static GtkWidget *createcb(Win *win)
 	gchar *handle = getset(win, "newwinhandle");
 	Win *new = NULL;
 
-	if      (g_strcmp0(handle, "notnew") == 0)
+	if      (!g_strcmp0(handle, "notnew"))
 		return win->kitw;
-	else if (g_strcmp0(handle, "ignore") == 0)
+	else if (!g_strcmp0(handle, "ignore"))
 		return NULL;
-	else if (g_strcmp0(handle, "back") == 0)
+	else if (!g_strcmp0(handle, "back"))
 		new = newwin(NULL, win, win, true);
 	else
 		new = newwin(NULL, win, win, false);
@@ -3822,29 +3815,31 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
-		addscript(dir, ".openNewSrcURI"   , APP" \"$SUFFIX\" tohintcallback "
-				"'sh -c \""APP" \\\"$SUFFIX\\\" opennew \\\"$MEDIA_IMAGE_LINK\\\"\"'");
-		addscript(dir, ".openWithRef"       , APP" \"$SUFFIX\" tohintcallback "
-				"'sh -c \""APP" \\\"$SUFFIX\\\" openwithref \\\"$MEDIA_IMAGE_LINK\\\"\"'");
-		addscript(dir, "0addMenu"         , APP" \"$SUFFIX\" openconfigdir menu");
-		addscript(dir, "0bookmark"        , APP" \"$SUFFIX\" bookmark "
+		addscript(dir, ".openNewRange"   , APP" $SUFFIX tohintrange "
+				"'sh -c \""APP" $SUFFIX opennew $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, ".openNewSrcURI"   , APP" $SUFFIX tohintcallback "
+				"'sh -c \""APP" $SUFFIX opennew $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, ".openWithRef"       , APP" $SUFFIX tohintcallback "
+				"'sh -c \""APP" $SUFFIX openwithref $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, "0addMenu"         , APP" $SUFFIX openconfigdir menu");
+		addscript(dir, "0bookmark"        , APP" $SUFFIX bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
-		addscript(dir, "0duplicate"       , APP" \"$SUFFIX\" opennew $URI");
-		addscript(dir, "0history"         , APP" \"$SUFFIX\" showhistory \"\"");
-		addscript(dir, "0windowList"      , APP" \"$SUFFIX\" winlist \"\"");
-		addscript(dir, "1main"            , APP" \"$SUFFIX\" open "APP":main");
+		addscript(dir, "0duplicate"       , APP" $SUFFIX opennew $URI");
+		addscript(dir, "0history"         , APP" $SUFFIX showhistory \"\"");
+		addscript(dir, "0windowList"      , APP" $SUFFIX winlist \"\"");
+		addscript(dir, "1main"            , APP" $SUFFIX open "APP":main");
 		addscript(dir, "3---"             , "");
-		addscript(dir, "3openClipboard"   , APP" \"$SUFFIX\" open \"$CLIPBOARD\"");
-		addscript(dir, "3openClipboardNew", APP" \"$SUFFIX\" opennew \"$CLIPBOARD\"");
-		addscript(dir, "3openSelection"   , APP" \"$SUFFIX\" open \"$PRIMARY\"");
-		addscript(dir, "3openSelectionNew", APP" \"$SUFFIX\" opennew \"$PRIMARY\"");
-		addscript(dir, "6searchDictionary", APP" \"$SUFFIX\" open \"u $PRIMARY\"");
+		addscript(dir, "3openClipboard"   , APP" $SUFFIX open \"$CLIPBOARD\"");
+		addscript(dir, "3openClipboardNew", APP" $SUFFIX opennew \"$CLIPBOARD\"");
+		addscript(dir, "3openSelection"   , APP" $SUFFIX open \"$PRIMARY\"");
+		addscript(dir, "3openSelectionNew", APP" $SUFFIX opennew \"$PRIMARY\"");
+		addscript(dir, "6searchDictionary", APP" $SUFFIX open \"u $PRIMARY\"");
 		addscript(dir, "9---"             , "");
-		addscript(dir, "9saveSource2DLdir", APP" \"$SUFFIX\" sourcecallback "
+		addscript(dir, "9saveSource2DLdir", APP" $SUFFIX sourcecallback "
 				"\"tee -a \\\"$DLDIR/"APP"-source\\\"\"");
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
-		addscript(dir, "xnoSuffixProcess" , APP" \"\" new $LINK_OR_URI");
+		addscript(dir, "xnoSuffixProcess" , APP" / new $LINK_OR_URI");
 	}
 
 	if (firsttime)
@@ -3954,7 +3949,7 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 			gchar *action = NULL;
 			switch (win->mode) {
 			case Mfind:
-				if (!win->lastfind || strcmp(win->lastfind, text) != 0)
+				if (!win->lastfind || strcmp(win->lastfind, text))
 					run(win, "find", text);
 
 				senddelay(win, Cfocus, NULL);
@@ -4241,9 +4236,9 @@ static void runline(const gchar *line, gchar *cdir, gchar *exarg)
 	gchar **args = g_strsplit(line, ":", 3);
 
 	gchar *arg = args[2];
-	if (*arg == '\0') arg = NULL;
+	if (!*arg) arg = NULL;
 
-	if (strcmp(args[0], "0") == 0)
+	if (!strcmp(args[0], "0"))
 		_run(LASTWIN, args[1], arg, cdir, exarg);
 	else
 	{
@@ -4278,8 +4273,8 @@ int main(int argc, char **argv)
 #endif
 
 	if (argc == 2 && (
-			strcmp(argv[1], "-h") == 0 ||
-			strcmp(argv[1], "--help") == 0)
+			!strcmp(argv[1], "-h") ||
+			!strcmp(argv[1], "--help"))
 	) {
 		g_print(usage);
 		exit(0);
@@ -4287,6 +4282,7 @@ int main(int argc, char **argv)
 
 	if (argc >= 4)
 		suffix = argv[1];
+	if (!strcmp(suffix, "/")) suffix = "";
 	fullname = g_strconcat(APPNAME, suffix, NULL);
 
 	gchar *exarg = "";
@@ -4299,14 +4295,16 @@ int main(int argc, char **argv)
 	gchar *action = argc > 2 ? argv[argc - 2] : "new";
 	gchar *uri    = argc > 1 ? argv[argc - 1] : NULL;
 
-	if (*action == '\0') action = "new";
-	if (uri && *uri == '\0') uri = NULL;
+	if (!*action) action = "new";
+	if (uri && !*uri) uri = NULL;
 	if (argc == 2 && uri && g_file_test(uri, G_FILE_TEST_EXISTS))
 		uri = g_strconcat("file://", uri, NULL);
 
+	const gchar *envsuf = g_getenv("SUFFIX") ?: "";
+	if (!strcmp(envsuf, "/")) envsuf = "";
 	const gchar *winid =
-		strcmp(suffix, g_getenv("SUFFIX") ?: "") == 0 ?  g_getenv("WINID") : NULL;
-	if (!winid || *winid == '\0') winid = "0";
+		!strcmp(suffix,  envsuf) ? g_getenv("WINID") : NULL;
+	if (!winid || !*winid) winid = "0";
 
 	gchar *cwd = g_get_current_dir();
 

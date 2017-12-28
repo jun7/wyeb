@@ -49,13 +49,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define SIGW(o, n, c, u) \
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
 
-
 static gchar *fullname = "";
 static bool shared = true;
 
-
 typedef enum {
-	Cstart  = 'a',
+	Cstart  = 's',
 	Con     = 'o',
 
 	Ckey    = 'k',
@@ -63,17 +61,18 @@ typedef enum {
 	Clink   = 'l',
 	Curi    = 'u',
 	Ctext   = 't',
-	Cspawn  = 'p',
+	Cspawn  = 'S',
+	Crange  = 'r',
 
 	Cmode   = 'm',
-	Cfocus  = 's',
+	Cfocus  = 'f',
 	Cblur   = 'b',
-	Crm     = 'r',
+	Crm     = 'R',
 	Cwhite  = 'w',
+	Ctlset  = 'T',
 	Ctlget  = 'g',
-	Ctlset  = 'e',
 
-	Cfree   = 'f',
+	Cfree   = 'F',
 } Coms;
 
 static void _mkdirif(gchar *path, bool isfile)
