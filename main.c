@@ -4024,7 +4024,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 
 	gint w, h;
 	if (caller)
+	{
+		win->overset = caller->overset;
 		gtk_window_get_size(caller->win, &w, &h);
+	}
 	else
 		w = confint("winwidth"), h = confint("winheight");
 	gtk_window_set_default_size(win->win, w, h);
