@@ -2597,7 +2597,7 @@ bool run(Win *win, gchar* action, const gchar *arg)
 {
 	return _run(win, action, arg, NULL, NULL);
 }
-static void setact(Win *win, gchar *key, gchar *spare)
+static void setact(Win *win, gchar *key, const gchar *spare)
 {
 	gchar *act = getset(win, key);
 	if (!act) return;
@@ -3437,18 +3437,18 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 			if (MAX(abs(deltax), abs(deltay)) < threshold(win) * 3)
 			{ //default
-				setact(win, "rockerleft", NULL);
+				setact(win, "rockerleft", URI(win));
 			}
 			else if (abs(deltax) > abs(deltay)) {
 				if (deltax < 0) //left
-					setact(win, "rockerleft", NULL);
+					setact(win, "rockerleft", URI(win));
 				else //right
-					setact(win, "rockerright", NULL);
+					setact(win, "rockerright", URI(win));
 			} else {
 				if (deltay < 0) //up
-					setact(win, "rockerup", NULL);
+					setact(win, "rockerup", URI(win));
 				else //down
-					setact(win, "rockerdown", NULL);
+					setact(win, "rockerdown", URI(win));
 			}
 		}
 		else if (win->crashed && e->button == 3)
@@ -3494,18 +3494,18 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 			else if (win->link)
 				setact(win, "mdlbtnlinkaction", win->link);
 			else if (gtk_window_is_active(win->win))
-				setact(win, "mdlbtnleft", NULL);
+				setact(win, "mdlbtnleft", URI(win));
 		}
 		else if (abs(deltax) > abs(deltay)) {
 			if (deltax < 0) //left
-				setact(win, "mdlbtnleft", NULL);
+				setact(win, "mdlbtnleft", URI(win));
 			else //right
-				setact(win, "mdlbtnright", NULL);
+				setact(win, "mdlbtnright", URI(win));
 		} else {
 			if (deltay < 0) //up
-				setact(win, "mdlbtnup", NULL);
+				setact(win, "mdlbtnup", URI(win));
 			else //down
-				setact(win, "mdlbtndown", NULL);
+				setact(win, "mdlbtndown", URI(win));
 		}
 
 		gtk_widget_queue_draw(win->winw);
