@@ -251,6 +251,8 @@ Conf dconf[] = {
 	{DSET    , "rockerup"         , "quitprev"},
 	{DSET    , "rockerdown"       , "quitnext"},
 
+	{DSET    , "multiplescroll"   , "0"},
+
 	{DSET    , "newwinhandle"     , "normal",
 		"newwinhandle=notnew | ignore | back | normal"},
 	{DSET    , "hjkl2arrowkeys"   , "false",
@@ -1600,17 +1602,18 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 static void scroll(Win *win, gint x, gint y)
 {
 	GdkEvent *e = gdk_event_new(GDK_SCROLL);
-	GdkEventScroll *es = (GdkEventScroll *)e;
+	GdkEventScroll *es = (void *)e;
 
 	es->window = gtk_widget_get_window(win->kitw);
 	g_object_ref(es->window);
-	es->send_event = true;
+	es->send_event = false; //for multiplescroll
 	//es->time   = GDK_CURRENT_TIME;
 	es->direction =
 		x < 0 ? GDK_SCROLL_LEFT :
 		x > 0 ? GDK_SCROLL_RIGHT :
 		y < 0 ? GDK_SCROLL_UP :
 		        GDK_SCROLL_DOWN;
+
 	es->delta_x = x;
 	es->delta_y = y;
 
@@ -3548,6 +3551,30 @@ static bool motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 	}
 	return false;
 }
+static bool scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
+{
+	if (pe->send_event) return false;
+
+	int times = atoi(getset(win, "multiplescroll") ?: "0");
+	if (!times) return false;
+
+	GdkEvent *e = gdk_event_new(GDK_SCROLL);
+	GdkEventScroll *es = (void *)e;
+
+	es->window = gtk_widget_get_window(win->kitw);
+	g_object_ref(es->window);
+	es->send_event = true;
+	es->direction = pe->direction;
+	es->delta_x = pe->delta_x;
+	es->delta_y = pe->delta_y;
+	es->device = pe->device;
+
+	for (int i = 0; i < times; i++)
+		gdk_event_put(e);
+
+	gdk_event_free(e);
+	return false;
+}
 static bool policycb(
 		WebKitWebView *v,
 		WebKitPolicyDecision *dec,
@@ -4155,6 +4182,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	SIG( o, "button-release-event" , btnrcb    , win);
 	SIG( o, "enter-notify-event"   , entercb   , win);
 	SIG( o, "motion-notify-event"  , motioncb  , win);
+	SIG( o, "scroll-event"         , scrollcb  , win);
 
 	SIG( o, "decide-policy"        , policycb  , win);
 	SIGW(o, "create"               , createcb  , win);
