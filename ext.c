@@ -404,6 +404,7 @@ static WebKitDOMElement *_makehintelm(
 {
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
+	webkit_dom_element_set_class_name(area, "wyeb");
 
 	//ret
 	static const gchar *retstyle =
@@ -454,26 +455,26 @@ static WebKitDOMElement *_makehintelm(
 	if (!text) return ret;
 
 	WebKitDOMElement *hint = webkit_dom_document_create_element(doc, "span", NULL);
+	webkit_dom_element_set_class_name(hint, "wyeb");
 
 	gchar *ht = g_strdup_printf("%s", text + len);
 	webkit_dom_element_set_inner_html(hint, ht, NULL);
-	gchar *pad = strlen(ht) == 1 ? "1" : "03";
+	gchar *pad = strlen(ht) == 1 ? "1" : "04";
 	g_free(ht);
 
 	static const gchar *hintstyle =
-//		"position: absolute;"
-//		"-webkit-transform: rotate(-23deg);"
+//		"-webkit-transform: rotate(-9deg);"
 		"position: relative;"
 		"z-index: 2147483647;"
 		"font-size: large !important;"
 		"font-family: monospace !important;"
 		"background: linear-gradient(%s, %s);"
 		"color: white;"
-//		"border: 1px solid red;"
+//		"border: 1px solid indigo;"
 		"border-radius: .3em;"
 		"opacity: 0.%s;"
 		"display:inline-block;"
-		"padding: 0 .%sem;"
+		"padding: .03em .%sem;"
 		"line-height: 1em;"
 //		"font-weight: normal;"
 		"top: %s%dem;"
