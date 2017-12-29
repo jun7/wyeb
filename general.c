@@ -56,6 +56,7 @@ typedef enum {
 	Cstart  = 's',
 	Con     = 'o',
 
+	Cstyle  = 'C',
 	Ckey    = 'k',
 	Cclick  = 'c',
 	Clink   = 'l',

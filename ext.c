@@ -38,6 +38,7 @@ typedef struct {
 
 	Coms           lasttype;
 	gchar         *lasthintkeys;
+	gchar         *hintstyle;
 	bool           relonly;
 	bool           showblocked;
 	gint           range;
@@ -56,6 +57,7 @@ static void freepage(Page *page)
 	g_slist_free(page->aplist);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
+	g_free(page->hintstyle);
 	g_free(page->cutheads);
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
@@ -398,13 +400,13 @@ static void _trim(glong *tx, glong *tw, glong *px, glong *pw)
 }
 
 static WebKitDOMElement *_makehintelm(
+		Page *page,
 		WebKitDOMDocument *doc,
 		bool center ,glong y, glong x, glong h, glong w,
 		const gchar* text, gint len, bool head)
 {
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
-	webkit_dom_element_set_class_name(area, "wyeb");
 
 	//ret
 	static const gchar *retstyle =
@@ -455,7 +457,6 @@ static WebKitDOMElement *_makehintelm(
 	if (!text) return ret;
 
 	WebKitDOMElement *hint = webkit_dom_document_create_element(doc, "span", NULL);
-	webkit_dom_element_set_class_name(hint, "wyeb");
 
 	gchar *ht = g_strdup_printf("%s", text + len);
 	webkit_dom_element_set_inner_html(hint, ht, NULL);
@@ -478,14 +479,20 @@ static WebKitDOMElement *_makehintelm(
 		"line-height: 1em;"
 //		"font-weight: normal;"
 		"top: %s%dem;"
+		"%s" //user setting
 		;
 
 	const gchar *opacity = head ? "9" : "6";
 	const gint offset = 6;
 
 	stylestr = center ?
-		g_strdup_printf(hintstyle, "darkorange", "red", opacity, pad, ".", offset) :
-		g_strdup_printf(hintstyle, "#649", "#203", opacity, pad, "-.", y > offset ? offset : y);
+		g_strdup_printf(hintstyle,
+				"darkorange", "red", opacity, pad, ".", offset,
+				page->hintstyle)
+		:
+		g_strdup_printf(hintstyle,
+				"#649", "#203", opacity, pad, "-.", y > offset ? offset : y,
+				page->hintstyle);
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
@@ -497,7 +504,7 @@ static WebKitDOMElement *_makehintelm(
 
 	return ret;
 }
-static WebKitDOMElement *makehintelm(
+static WebKitDOMElement *makehintelm(Page *page,
 		WebKitDOMDocument *doc, Elm *elm, const gchar* text, gint len,
 		glong pagex, glong pagey)
 {
@@ -534,7 +541,7 @@ static WebKitDOMElement *makehintelm(
 		_trim(&x, &w, &elm->x, &elm->w);
 		_trim(&y, &h, &elm->y, &elm->h);
 
-		WebKitDOMElement *hint = _makehintelm(doc, center,
+		WebKitDOMElement *hint = _makehintelm(page, doc, center,
 				y + elm->fy + pagey,
 //				y + elm->fy + elm->gap,
 				//gap is workaround. so x is left.
@@ -551,7 +558,7 @@ static WebKitDOMElement *makehintelm(
 	return ret;
 #else
 
-	return _makehintelm(doc, center,
+	return _makehintelm(page, doc, center,
 			elm->y + elm->fy + pagey,
 			elm->x + elm->fx + pagex, elm->h, elm->w, text, len, true);
 #endif
@@ -1138,8 +1145,8 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 			bool has = g_str_has_prefix(key, ipkeys ?: "");
 			if (has || rangein)
 			{
-				WebKitDOMElement *ne =
-					makehintelm(doc, elm, has ? key : NULL, iplen, pagex, pagey);
+				WebKitDOMElement *ne = makehintelm(page,
+						doc, elm, has ? key : NULL, iplen, pagex, pagey);
 				webkit_dom_node_append_child(page->apnode, (WebKitDOMNode *)ne, NULL);
 				page->aplist = g_slist_prepend(page->aplist, ne);
 				ret |= has;
@@ -1292,7 +1299,7 @@ static void blur(Page *page)
 //@ipccb
 void ipccb(const gchar *line)
 {
-	gchar **args = g_strsplit(line, ":", 4);
+	gchar **args = g_strsplit(line, ":", 3);
 
 	Page *page = NULL;
 	long lid = atol(args[0]);
@@ -1316,6 +1323,12 @@ void ipccb(const gchar *line)
 		break;
 	case Con:
 		pageon(page);
+		break;
+
+	case Cstyle:
+
+		g_free(page->hintstyle);
+		page->hintstyle = g_strdup(arg);
 		break;
 
 	case Ckey:

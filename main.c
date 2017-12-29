@@ -273,6 +273,8 @@ Conf dconf[] = {
 		"spawn a shell in the menu dir when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
 	{DSET    , "spawnmsg"         , "false"},
+	{DSET    , "hintstyle"        , "",
+		"hintstyle=font-size: medium !important; -webkit-transform: rotate(-9deg);"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
@@ -1309,6 +1311,8 @@ static void _modechanged(Win *win)
 			win->mode = Mnormal;
 		else
 		{
+			send(win, Cstyle, getset(win, "hintstyle") ?: "");
+
 			gboolean script = false; //dont use bool
 			if (getsetbool(win, "hackedhint4js"))
 				g_object_get(win->seto, "enable-javascript", &script, NULL);
