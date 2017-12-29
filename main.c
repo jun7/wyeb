@@ -3848,12 +3848,12 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, ".openWithRef"     , APP" $SUFFIX tohintcallback "
 				"'sh -c \""APP" $SUFFIX openwithref $MEDIA_IMAGE_LINK\"'");
 		addscript(dir, "0editMenu"        , APP" $SUFFIX openconfigdir menu");
-		addscript(dir, "0bookmark"        , APP" $SUFFIX bookmark "
+		addscript(dir, "1bookmark"        , APP" $SUFFIX bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
-		addscript(dir, "0duplicate"       , APP" $SUFFIX opennew $URI");
-		addscript(dir, "0history"         , APP" $SUFFIX showhistory \"\"");
-		addscript(dir, "0windowList"      , APP" $SUFFIX winlist \"\"");
-		addscript(dir, "1main"            , APP" $SUFFIX open "APP":main");
+		addscript(dir, "1duplicate"       , APP" $SUFFIX opennew $URI");
+		addscript(dir, "1history"         , APP" $SUFFIX showhistory \"\"");
+		addscript(dir, "1windowList"      , APP" $SUFFIX winlist \"\"");
+		addscript(dir, "2main"            , APP" $SUFFIX open "APP":main");
 		addscript(dir, "3---"             , "");
 		addscript(dir, "3openClipboard"   , APP" $SUFFIX open \"$CLIPBOARD\"");
 		addscript(dir, "3openClipboardNew", APP" $SUFFIX opennew \"$CLIPBOARD\"");
