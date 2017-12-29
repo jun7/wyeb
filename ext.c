@@ -480,7 +480,7 @@ static WebKitDOMElement *_makehintelm(
 
 	const gchar *opacity = head ? "9" : "6";
 
-	const gint offset = 5;
+	const gint offset = 6;
 
 	if (center)
 		stylestr = g_strdup_printf(hintstyle, "darkorange", "red", opacity, ".", offset, "em");
