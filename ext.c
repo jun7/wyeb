@@ -469,7 +469,7 @@ static WebKitDOMElement *_makehintelm(
 		"z-index: 2147483647;"
 		"font-size: large !important;"
 		"font-family: monospace !important;"
-		"background: linear-gradient(%s, %s);"
+		"background: linear-gradient(#649, #203);"
 		"color: white;"
 //		"border: 1px solid indigo;"
 		"border-radius: .3em;"
@@ -479,7 +479,8 @@ static WebKitDOMElement *_makehintelm(
 		"line-height: 1em;"
 //		"font-weight: normal;"
 		"top: %s%dem;"
-		"%s" //user setting
+		"%s;" //user setting
+		"%s"
 		;
 
 	const gchar *opacity = head ? "9" : "6";
@@ -487,12 +488,12 @@ static WebKitDOMElement *_makehintelm(
 
 	stylestr = center ?
 		g_strdup_printf(hintstyle,
-				"darkorange", "red", opacity, pad, ".", offset,
-				page->hintstyle)
+				opacity, pad, ".", offset, page->hintstyle,
+				"background: linear-gradient(darkorange, red);")
 		:
 		g_strdup_printf(hintstyle,
-				"#649", "#203", opacity, pad, "-.", y > offset ? offset : y,
-				page->hintstyle);
+				opacity, pad, "-.", y > offset ? offset : y, page->hintstyle,
+				"");
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
