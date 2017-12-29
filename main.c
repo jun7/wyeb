@@ -2597,12 +2597,12 @@ bool run(Win *win, gchar* action, const gchar *arg)
 {
 	return _run(win, action, arg, NULL, NULL);
 }
-static void setact(Win *win, gchar *key)
+static void setact(Win *win, gchar *key, gchar *spare)
 {
 	gchar *act = getset(win, key);
 	if (!act) return;
 	gchar **acta = g_strsplit(act, " ", 2);
-	run(win, acta[0], acta[1]);
+	run(win, acta[0], acta[1] ?: spare);
 	g_strfreev(acta);
 }
 
@@ -3437,18 +3437,18 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 			if (MAX(abs(deltax), abs(deltay)) < threshold(win) * 3)
 			{ //default
-				setact(win, "rockerleft");
+				setact(win, "rockerleft", NULL);
 			}
 			else if (abs(deltax) > abs(deltay)) {
 				if (deltax < 0) //left
-					setact(win, "rockerleft");
+					setact(win, "rockerleft", NULL);
 				else //right
-					setact(win, "rockerright");
+					setact(win, "rockerright", NULL);
 			} else {
 				if (deltay < 0) //up
-					setact(win, "rockerup");
+					setact(win, "rockerup", NULL);
 				else //down
-					setact(win, "rockerdown");
+					setact(win, "rockerdown", NULL);
 			}
 		}
 		else if (win->crashed && e->button == 3)
@@ -3492,24 +3492,20 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 				pendingmiddlee = NULL;
 			}
 			else if (win->link)
-			{
-				run(win,
-					getset(win, "mdlbtnlinkaction"),
-					win->link);
-			}
+				setact(win, "mdlbtnlinkaction", win->link);
 			else if (gtk_window_is_active(win->win))
-				setact(win, "mdlbtnleft");
+				setact(win, "mdlbtnleft", NULL);
 		}
 		else if (abs(deltax) > abs(deltay)) {
 			if (deltax < 0) //left
-				setact(win, "mdlbtnleft");
+				setact(win, "mdlbtnleft", NULL);
 			else //right
-				setact(win, "mdlbtnright");
+				setact(win, "mdlbtnright", NULL);
 		} else {
 			if (deltay < 0) //up
-				setact(win, "mdlbtnup");
+				setact(win, "mdlbtnup", NULL);
 			else //down
-				setact(win, "mdlbtndown");
+				setact(win, "mdlbtndown", NULL);
 		}
 
 		gtk_widget_queue_draw(win->winw);
@@ -3648,7 +3644,7 @@ static void sendstart(Win *win)
 	send(win, Cstart, args);
 	g_free(args);
 }
-static void runset(Win *win, gchar *key)
+static void setspawn(Win *win, gchar *key)
 {
 	gchar *fname = getset(win, key);
 	if (fname)
@@ -3702,14 +3698,14 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		else
 			win->tlserr = 0;
 
-		runset(win, "onloadmenu");
+		setspawn(win, "onloadmenu");
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		//DD(WEBKIT_LOAD_FINISHED)
 		if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
 		{
 			addhistory(win);
-			runset(win, "onloadedmenu");
+			setspawn(win, "onloadedmenu");
 		}
 
 		break;
