@@ -3567,6 +3567,8 @@ static bool scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	es->direction = pe->direction;
 	es->delta_x = pe->delta_x;
 	es->delta_y = pe->delta_y;
+	es->x = pe->x;
+	es->y = pe->y;
 	es->device = pe->device;
 
 	for (int i = 0; i < times; i++)
