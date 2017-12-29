@@ -457,6 +457,7 @@ static WebKitDOMElement *_makehintelm(
 
 	gchar *ht = g_strdup_printf("%s", text + len);
 	webkit_dom_element_set_inner_html(hint, ht, NULL);
+	gchar *pad = strlen(ht) == 1 ? "1" : "03";
 	g_free(ht);
 
 	static const gchar *hintstyle =
@@ -464,7 +465,7 @@ static WebKitDOMElement *_makehintelm(
 //		"-webkit-transform: rotate(-23deg);"
 		"position: relative;"
 		"z-index: 2147483647;"
-		"font-size: medium !important;"
+		"font-size: large !important;"
 		"font-family: monospace !important;"
 		"background: linear-gradient(%s, %s);"
 		"color: white;"
@@ -472,20 +473,18 @@ static WebKitDOMElement *_makehintelm(
 		"border-radius: .3em;"
 		"opacity: 0.%s;"
 		"display:inline-block;"
-		"padding: 0;"
+		"padding: 0 .%sem;"
 		"line-height: 1em;"
 //		"font-weight: normal;"
-		"top: %s%d%s;"
+		"top: %s%dem;"
 		;
 
 	const gchar *opacity = head ? "9" : "6";
-
 	const gint offset = 6;
 
-	if (center)
-		stylestr = g_strdup_printf(hintstyle, "darkorange", "red", opacity, ".", offset, "em");
-	else
-		stylestr = g_strdup_printf(hintstyle, "#649", "#203", opacity, "-.", y > offset ? offset : y, "em");
+	stylestr = center ?
+		g_strdup_printf(hintstyle, "darkorange", "red", opacity, pad, ".", offset) :
+		g_strdup_printf(hintstyle, "#649", "#203", opacity, pad, "-.", y > offset ? offset : y);
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
