@@ -432,11 +432,10 @@ static WebKitDOMElement *_makehintelm(
 	static const gchar *areastyle =
 		"position: absolute;"
 		"z-index: 2147483647;"
-//		"background-color: purple;"
 		"background-color: #a6f;"
 //		"background: linear-gradient(to right, fuchsia, white, white, fuchsia);"
 //		"border: 1px solid white;" //causes changing of size
-		"opacity: 0.1;"
+		"opacity: .1;"
 //		"margin: -1px;"
 		"border-radius: .4em;"
 //		"cursor: pointer;"
@@ -472,18 +471,21 @@ static WebKitDOMElement *_makehintelm(
 //		"border: 1px solid red;"
 		"border-radius: .3em;"
 		"opacity: 0.%s;"
-		"padding: .0em .2em 0em .2em;"
-//		"font-weight: bold;"
+		"display:inline-block;"
+		"padding: 0;"
+		"line-height: 1em;"
 //		"font-weight: normal;"
 		"top: %s%d%s;"
 		;
 
 	const gchar *opacity = head ? "9" : "6";
 
+	const gint offset = 5;
+
 	if (center)
-		stylestr = g_strdup_printf(hintstyle, "orange", "red", opacity, ".", 6, "em");
+		stylestr = g_strdup_printf(hintstyle, "darkorange", "red", opacity, ".", offset, "em");
 	else
-		stylestr = g_strdup_printf(hintstyle, "#649", "#203", opacity, "-.", y > 6 ? 6 : y, "em");
+		stylestr = g_strdup_printf(hintstyle, "#649", "#203", opacity, "-.", y > offset ? offset : y, "em");
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
