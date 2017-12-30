@@ -32,7 +32,7 @@ For example, context-menu items we added are just shell scripts.
 - [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
 - [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
 - No tab. But keys J/K/x/X or button actions.
-- Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb $SUFFIX showmsg \`pwd\`")
+- Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
 Of course it is in set, so we can set it by uri.
 - Focused history. Instead of loaded history.
 - Pointer Mode. **p** makes pure click event for javascript pages.

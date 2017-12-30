@@ -313,7 +313,7 @@ static gchar *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"  suffix: Process ID.\n"
 	"    It is added to all directories conf, cache and etc.\n"
-	"    '/' is default.\n"
+	"    '/' is default. '//' means $SUFFIX.\n"
 	"  action: Such as new(default), open, opennew ...\n"
 	"    Except 'new' and some, without a set of $SUFFIX and $WINID,\n"
 	"    actions are sent to a window last focused\n"
@@ -2978,7 +2978,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 
 		gchar *sv[num + 2];
 		sv[0] =
-			"<meta charset=utf8>\n"
+			"<html><meta charset=utf8>\n"
 			"<style>\n"
 			"th {\n"
 			" font-weight: normal; font-family: monospace; vertical-align: top;\n"
@@ -3055,7 +3055,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"\n"
 			"context-menu:\n"
 			"  You can add your own script to context-menu. See 'menu' dir in\n"
-			"  the config dir, or click 'addMenu' in the context-menu. SUFFIX,\n"
+			"  the config dir, or click 'editMenu' in the context-menu. SUFFIX,\n"
 			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
 			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, CURRENTSET and DLDIR\n"
@@ -3835,27 +3835,27 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
-		addscript(dir, ".openNewRange"    , APP" $SUFFIX tohintrange "
-				"'sh -c \""APP" $SUFFIX opennew $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, ".openNewSrcURI"   , APP" $SUFFIX tohintcallback "
-				"'sh -c \""APP" $SUFFIX opennew $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, ".openWithRef"     , APP" $SUFFIX tohintcallback "
-				"'sh -c \""APP" $SUFFIX openwithref $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, "0editMenu"        , APP" $SUFFIX openconfigdir menu");
-		addscript(dir, "1bookmark"        , APP" $SUFFIX bookmark "
+		addscript(dir, ".openNewRange"    , APP" // tohintrange "
+				"'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, ".openNewSrcURI"   , APP" // tohintcallback "
+				"'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, ".openWithRef"     , APP" // tohintcallback "
+				"'sh -c \""APP" // openwithref $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, "0editMenu"        , APP" // openconfigdir menu");
+		addscript(dir, "1bookmark"        , APP" // bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
-		addscript(dir, "1duplicate"       , APP" $SUFFIX opennew $URI");
-		addscript(dir, "1history"         , APP" $SUFFIX showhistory \"\"");
-		addscript(dir, "1windowList"      , APP" $SUFFIX winlist \"\"");
-		addscript(dir, "2main"            , APP" $SUFFIX open "APP":main");
+		addscript(dir, "1duplicate"       , APP" // opennew $URI");
+		addscript(dir, "1history"         , APP" // showhistory \"\"");
+		addscript(dir, "1windowList"      , APP" // winlist \"\"");
+		addscript(dir, "2main"            , APP" // open "APP":main");
 		addscript(dir, "3---"             , "");
-		addscript(dir, "3openClipboard"   , APP" $SUFFIX open \"$CLIPBOARD\"");
-		addscript(dir, "3openClipboardNew", APP" $SUFFIX opennew \"$CLIPBOARD\"");
-		addscript(dir, "3openSelection"   , APP" $SUFFIX open \"$PRIMARY\"");
-		addscript(dir, "3openSelectionNew", APP" $SUFFIX opennew \"$PRIMARY\"");
-		addscript(dir, "6searchDictionary", APP" $SUFFIX open \"u $PRIMARY\"");
+		addscript(dir, "3openClipboard"   , APP" // open \"$CLIPBOARD\"");
+		addscript(dir, "3openClipboardNew", APP" // opennew \"$CLIPBOARD\"");
+		addscript(dir, "3openSelection"   , APP" // open \"$PRIMARY\"");
+		addscript(dir, "3openSelectionNew", APP" // opennew \"$PRIMARY\"");
+		addscript(dir, "6searchDictionary", APP" // open \"u $PRIMARY\"");
 		addscript(dir, "9---"             , "");
-		addscript(dir, "9saveSource2DLdir", APP" $SUFFIX sourcecallback "
+		addscript(dir, "9saveSource2DLdir", APP" // sourcecallback "
 				"\"tee -a \\\"$DLDIR/"APP"-source\\\"\"");
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
@@ -4306,7 +4306,15 @@ int main(int argc, char **argv)
 
 	if (argc >= 4)
 		suffix = argv[1];
+	const gchar *envsuf = g_getenv("SUFFIX") ?: "";
+	if (!strcmp(suffix, "//")) suffix = g_strdup(envsuf);
 	if (!strcmp(suffix, "/")) suffix = "";
+	if (!strcmp(envsuf, "/")) envsuf = "";
+	const gchar *winid =
+		!strcmp(suffix,  envsuf) ? g_getenv("WINID") : NULL;
+	if (!winid || !*winid) winid = "0";
+
+
 	fullname = g_strconcat(APPNAME, suffix, NULL);
 
 	gchar *exarg = "";
@@ -4324,17 +4332,9 @@ int main(int argc, char **argv)
 	if (argc == 2 && uri && g_file_test(uri, G_FILE_TEST_EXISTS))
 		uri = g_strconcat("file://", uri, NULL);
 
-	const gchar *envsuf = g_getenv("SUFFIX") ?: "";
-	if (!strcmp(envsuf, "/")) envsuf = "";
-	const gchar *winid =
-		!strcmp(suffix,  envsuf) ? g_getenv("WINID") : NULL;
-	if (!winid || !*winid) winid = "0";
-
 	gchar *cwd = g_get_current_dir();
-
 	gchar *sendstr = g_strdup_printf("m:%ld:%ld:%s%s%s:%s:%s",
 			strlen(cwd), strlen(exarg), cwd, exarg, winid, action, uri ?: "");
-
 	g_free(cwd);
 
 	if (ipcsend("main", sendstr)) exit(0);
