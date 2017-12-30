@@ -271,7 +271,7 @@ Conf dconf[] = {
 	{DSET    , "dlsubdir"         , ""},
 	{DSET    , "entrybgcolor"     , "true"},
 	{DSET    , "onstartmenu"      , "",
-		"spawn a shell in the menu dir when load started. not commited."},
+		"onstartmenu spawns a shell in the menu dir when load started before redirect"},
 	{DSET    , "onloadmenu"       , "", "when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
 	{DSET    , "spawnmsg"         , "false"},
