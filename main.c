@@ -91,6 +91,7 @@ typedef struct {
 	//conf
 	bool    userreq;
 	gchar  *lasturiconf;
+	gchar  *lastreset;
 	gchar  *overset;
 
 	//draw
@@ -269,8 +270,9 @@ Conf dconf[] = {
 		"dlmimetypes=*"},
 	{DSET    , "dlsubdir"         , ""},
 	{DSET    , "entrybgcolor"     , "true"},
-	{DSET    , "onloadmenu"       , "",
-		"spawn a shell in the menu dir when load commited"},
+	{DSET    , "onstartmenu"      , "",
+		"spawn a shell in the menu dir when load started. not commited."},
+	{DSET    , "onloadmenu"       , "", "when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
 	{DSET    , "spawnmsg"         , "false"},
 	{DSET    , "hintstyle"        , "",
@@ -938,6 +940,7 @@ static void getkitprops(GObject *obj, GKeyFile *kf, gchar *group)
 static bool _seturiconf(Win *win, const gchar* uri)
 {
 	bool ret = false;
+	GFA(win->lastreset, g_strdup(uri))
 
 	gchar **groups = g_key_file_get_groups(conf, NULL);
 	for (gchar **gl = groups; *gl; gl++)
@@ -3188,6 +3191,7 @@ static void destroycb(Win *win)
 
 	g_free(win->pageid);
 	g_free(win->lasturiconf);
+	g_free(win->lastreset);
 	g_free(win->overset);
 	g_free(win->msg);
 
@@ -3672,6 +3676,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		resetconf(win, false);
 		sendstart(win);
 
+		setspawn(win, "onstartmenu");
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
@@ -3699,8 +3704,14 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		setspawn(win, "onloadmenu");
 		break;
 	case WEBKIT_LOAD_FINISHED:
-		//DD(WEBKIT_LOAD_FINISHED)
-		if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
+		//D(WEBKIT_LOAD_FINISHED %s, URI(win))
+
+		if (g_strcmp0(win->lastreset, URI(win)))
+		{ //for load-failed before commit
+			resetconf(win, false);
+			sendstart(win);
+		}
+		else if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
 		{
 			addhistory(win);
 			setspawn(win, "onloadedmenu");
