@@ -48,6 +48,7 @@ typedef struct {
 	GSList        *black;
 	GSList        *white;
 	WebKitDOMDOMWindow *emitter;
+	bool           history;
 } Page;
 
 static GPtrArray *pages = NULL;
@@ -513,6 +514,7 @@ static WebKitDOMElement *makehintelm(Page *page,
 	bool center = isins(uritags, tag) && !isins(linktags, tag);
 	g_free(tag);
 
+
 #if NEWV
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	static const gchar *retstyle =
@@ -527,7 +529,8 @@ static WebKitDOMElement *makehintelm(Page *page,
 	webkit_dom_css_style_declaration_set_css_text(styledec, retstyle, NULL);
 	g_object_unref(styledec);
 
-	gulong l = webkit_dom_client_rect_list_get_length(elm->rects);
+	gulong l = page->history ? 1 :
+		webkit_dom_client_rect_list_get_length(elm->rects);
 	for (gulong i = 0; i < l; i++)
 	{
 		WebKitDOMClientRect *rect =
@@ -799,7 +802,7 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 	if (type == Crange) taglist = uritags;
 	if (type == Ctext ) taglist = texttags;
 
-	if (type == Cclick && page->script)
+	if (type == Cclick && page->script && !page->history)
 	{
 		WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(
 				(WebKitDOMElement *)webkit_dom_document_get_body(doc));
@@ -813,8 +816,17 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 
 		for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
 		{
-			WebKitDOMElement *te =
-				(WebKitDOMElement *)webkit_dom_html_collection_item(cl, j);
+			WebKitDOMNode *tn = webkit_dom_html_collection_item(cl, j);
+			WebKitDOMElement *te = (void *)tn;
+
+			if (page->history)
+			{
+				WebKitDOMElement *pe = webkit_dom_node_get_parent_element(tn);
+				gchar *ptag = webkit_dom_element_get_tag_name(pe);
+				bool nott = g_strcmp0(ptag, "TD");
+				g_free(ptag);
+				if (nott) continue;
+			}
 
 			Elm elm = checkelm(win, frect, prect, te, false, false);
 			if (elm.ok)
@@ -1358,6 +1370,8 @@ void ipccb(const gchar *line)
 			arg = arg + 9;
 
 			page->script = *arg++ == 'y';
+
+			page->history = !g_strcmp0(webkit_web_page_get_uri(page->kit), "wyeb:history");
 		}
 
 		if (!makehint(page, type, arg, ipkeys))
