@@ -703,10 +703,14 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 				g_strdup(gtk_entry_get_text(win->ent)));
 
 	if (redo == undo) return;
+	if (!strcmp((*undo)->data, gtk_entry_get_text(win->ent)))
+	{
+		g_free((*undo)->data);
+		*undo = g_slist_delete_link(*undo, *undo);
+		if (!*undo) return;
+	}
 	gtk_entry_set_text(win->ent, (*undo)->data);
 	gtk_editable_set_position((void *)win->ent, -1);
-	g_free((*undo)->data);
-	*undo = g_slist_delete_link(*undo, *undo);
 }
 
 
@@ -3995,10 +3999,12 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		break;
 
 	case GDK_KEY_Z:
+	case GDK_KEY_n:
 		if (!(ke->state & GDK_CONTROL_MASK)) return false;
 		undo(win, &win->redo, &win->undo);
 		break;
 	case GDK_KEY_z:
+	case GDK_KEY_p:
 		if (!(ke->state & GDK_CONTROL_MASK)) return false;
 		undo(win, &win->undo, &win->redo);
 		break;
