@@ -112,6 +112,7 @@ typedef struct {
 	guint   lastkey;
 	gdouble px;
 	gdouble py;
+	guint   pbtn;
 
 	//entry
 	GSList *undo;
@@ -643,21 +644,21 @@ static void reloadlast()
 	reloadfunc = g_timeout_add(300, (GSourceFunc)reloadlastcb, NULL);
 }
 
-static void putbtne(Win* win, GdkEventType type)
+static void putbtne(Win* win, GdkEventType type, guint btn)
 {
 	GdkEvent *e = gdk_event_new(type);
 	GdkEventButton *eb = (GdkEventButton *)e;
 
 	eb->window = gtk_widget_get_window(win->kitw);
 	g_object_ref(eb->window);
-	eb->send_event = true;
+	eb->send_event = false; //true destroys the mdl btn hack
 
 	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
 	gdk_event_set_device(e, gdk_seat_get_pointer(seat));
 
 	eb->x = win->px;
 	eb->y = win->py;
-	eb->button = 1;
+	eb->button = btn;
 	eb->type = type;
 	gdk_event_put(e);
 	gdk_event_free(e);
@@ -1245,6 +1246,7 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mpointer:
+		win->pbtn = 1;
 		gtk_widget_queue_draw(win->winw);
 		break;
 
@@ -2159,6 +2161,8 @@ static Keybind dkeys[]= {
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 	{"topointer"     , 'p', 0, "pp resets damping"},
+	{"tomdlpointer"  , 'P', 0, "make middle click"},
+	{"torightpointer", 'p', GDK_CONTROL_MASK, "right click"},
 
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
@@ -2407,8 +2411,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			gdouble z = webkit_web_view_get_zoom_level(win->kit);
 			win->px = atof(*xy) * z;
 			win->py = atof(*(xy + 1)) * z;
-			putbtne(win, GDK_BUTTON_PRESS);
-			putbtne(win, GDK_BUTTON_RELEASE);
+			putbtne(win, GDK_BUTTON_PRESS, 1);
+			putbtne(win, GDK_BUTTON_RELEASE, 1);
 			g_strfreev(xy);
 		)
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
@@ -2432,6 +2436,17 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 	Z("toinsert"    , win->mode = Minsert)
 	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, NULL))
+
+	if (!strcmp(action, "torightpointer"))
+	{
+		action = "topointer";
+		win->pbtn = 3;
+	}
+	if (!strcmp(action, "tomdlpointer"))
+	{
+		action = "topointer";
+		win->pbtn = 2;
+	}
 	Z("topointer"   , win->mode = win->mode == Mpointer ? Mnormal : Mpointer)
 
 	Z("tohint"      , win->mode = Mhint)
@@ -3233,7 +3248,12 @@ static void favcb(Win *win)
 	else
 		gtk_window_set_icon(win->win, NULL);
 }
-
+static bool delaymdlr(Win *win)
+{
+	if (isin(wins, win))
+		putbtne(win, GDK_BUTTON_RELEASE, 2);
+	return false;
+}
 static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
@@ -3241,8 +3261,12 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (win->mode == Mpointer &&
 			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
-		putbtne(win, GDK_BUTTON_PRESS);
-		putbtne(win, GDK_BUTTON_RELEASE);
+		putbtne(win, GDK_BUTTON_PRESS,  win->pbtn);
+		if (win->pbtn == 2)
+			g_timeout_add(40, (GSourceFunc)delaymdlr, win);
+		else
+			putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
+
 		tonormal(win);
 		return true;
 	}
@@ -3385,7 +3409,6 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	//D(event button %d, e->button)
 	switch (e->button) {
 	case 1:
-
 	case 2:
 		win->lastx = e->x;
 		win->lasty = e->y;
@@ -3393,9 +3416,9 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	if (e->button == 1) break;
 	{
-		//workaround
 		//for lacking of target change event when btn event happens with focus in;
 		//now this is also for back from mlist mode may be
+		//and pointer mode making events without the target change.
 		if (e->send_event)
 		{
 			win->lastx = win->lasty = 0;
