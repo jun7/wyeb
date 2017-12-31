@@ -2984,31 +2984,31 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			return g_strdup("<h1>No Data</h1>");
 
 		gchar *sv[num + 2];
-		sv[0] =
+		sv[0] = g_strdup_printf(
 			"<html><meta charset=utf8>\n"
 			"<style>\n"
-			"th {\n"
-			" font-weight: normal; font-family: monospace; vertical-align: top;\n"
-			" padding-right: .3em;\n"
-			"}\n"
-			"td {padding-bottom: .4em;}\n"
-			"a {font-size: 100%; color:black; text-decoration: none;}\n"
-			"span {\n"
-			" font-size: 79%;\n"
-			" color: #43a;\n"
-			"}\n"
-			"img {\n"
-			" border-radius: .4em;\n"
-			" box-shadow: 0 .1em .1em 0 #cbf;\n"
-			" margin: .3em 0;\n"
+			"p {margin:.7em 0;}\n"
+			"a {display:inline-block; white-space:nowrap;"
+			" color:black; text-decoration:none;}\n"
+			"span:first-child {display:inline-block; font-family:"
+			" monospace; padding-right:.6em;}\n"
+			"span + span {display:inline-block; white-space:normal; vertical-align:top;}\n"
+			"span > span {font-size:.79em; color:#43a;}\n"
+			//for img
+			"span:first-child span{display:inline-block; min-width:%dpx;}\n"
+			"img {"
+			" border-radius:.4em;"
+			" box-shadow:0 .1em .1em 0 #cbf;"
+			" display:block;"
+			" margin:auto;"
 			"}\n"
 			"</style>\n"
-			"<table>\n"
-			;
+			, confint("histimgsize") + 9);
 		sv[num + 1] = NULL;
 
 		int i = 0;
 		static int unique = 0;
+
 		for (GSList *next = hist; next; next = next->next)
 		{
 			gchar **stra = next->data;
@@ -3017,19 +3017,19 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			if (imgs)
 			{
 				gchar *itag = i < histimgs->length ?
-					g_strdup_printf("<img src="APP":histimg/%d/%d></img>", i, unique++)
+					g_strdup_printf("<span><img src="APP":histimg/%d/%d></img></span>", i, unique++)
 					: g_strdup("");
 
 				sv[++i] = g_strdup_printf(
-						"<tr><th><a href=%s>%s</a></th>"
-						"<td><a href=%s>%s\n<br><span>%s</span><br>%.11s</a>\n",
-						stra[1], itag, stra[1], escpd, stra[1], stra[0]);
+						"<p><a href=%s><span>%s</span>"
+						"<span>%s<br><span>%s</span><br>%.11s</span></a></p>\n",
+						stra[1], itag, escpd, stra[1], stra[0]);
 				g_free(itag);
 			} else
 				sv[++i] = g_strdup_printf(
-						"<tr><th>%.11s</th>"
-						"<td><a href=%s>%s\n<br><span>%s</span></a>\n",
-						stra[0], stra[1], escpd, stra[1]);
+						"<p><a href=%s><span>%.11s</span>"
+						"<span>%s\n<br><span>%s</span></span></a>\n",
+						stra[1], stra[0], escpd, stra[1]);
 
 			g_free(escpd);
 			g_strfreev(stra);
@@ -3037,8 +3037,8 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 		g_slist_free(hist);
 
 		gchar *allhist = g_strjoinv("", sv);
-		for (int j = 0; j < num; j++)
-			g_free(sv[j + 1]);
+		for (int j = 0; j <= num; j++)
+			g_free(sv[j]);
 
 		data = allhist;
 	}
