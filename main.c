@@ -4168,6 +4168,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	}
 	g_object_set_data(win->kito, "win", win); //for schemecb and download and jscb
 
+	//workaround. without this inspector doesen't work
+	webkit_web_view_get_inspector(win->kit);
+
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
 	webkit_web_view_set_settings(win->kit, win->set);
