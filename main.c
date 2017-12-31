@@ -419,7 +419,7 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
-static bool historycb(Win *win)
+static gboolean historycb(Win *win)
 {
 	if (win && (
 		!isin(wins, win) ||
@@ -562,7 +562,7 @@ static void removehistory()
 }
 
 static guint msgfunc = 0;
-static bool clearmsgcb(Win *win)
+static gboolean clearmsgcb(Win *win)
 {
 	if (isin(wins, win))
 	{
@@ -604,7 +604,7 @@ typedef struct {
 	Coms   type;
 	gchar *args;
 } Send;
-static bool senddelaycb(Send *s)
+static gboolean senddelaycb(Send *s)
 {
 	if (isin(wins, s->win))
 		send(s->win, s->type, s->args);
@@ -631,7 +631,7 @@ static Win *winbyid(const gchar *pageid)
 }
 
 static guint reloadfunc = 0;
-static bool reloadlastcb()
+static gboolean reloadlastcb()
 {
 	reloadfunc = 0;
 	return false;
@@ -2634,7 +2634,7 @@ static void setact(Win *win, gchar *key, const gchar *spare)
 
 
 //@win and cbs:
-static bool focuscb(Win *win)
+static gboolean focuscb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
@@ -2648,13 +2648,13 @@ static bool focuscb(Win *win)
 
 	return false;
 }
-static bool focusoutcb(Win *win)
+static gboolean focusoutcb(Win *win)
 {
 	if (win->mode == Mlist)
 		tonormal(win);
 	return false;
 }
-static bool drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
+static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
 	static guint csize = 0;
 	if (!csize) csize = gdk_display_get_default_cursor_size(
@@ -2737,7 +2737,7 @@ static void dldestroycb(DLWin *win)
 
 	quitif(false);
 }
-static bool dlclosecb(DLWin *win)
+static gboolean dlclosecb(DLWin *win)
 {
 	if (isin(dlwins, win))
 		gtk_widget_destroy(win->winw);
@@ -2824,7 +2824,7 @@ static void dldestcb(DLWin *win)
 
 	g_free(fn);
 }
-static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
+static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 {
 	const gchar *base = win->dldir ?: dldir(NULL);
 	gchar *path = g_build_filename(base, name, NULL);
@@ -2867,12 +2867,12 @@ static bool dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 	}
 	return true;
 }
-static bool dlkeycb(GtkWidget *w, GdkEventKey *ek, Win *win)
+static gboolean dlkeycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (GDK_KEY_q == ek->keyval) gtk_widget_destroy(w);
 	return false;
 }
-static bool accept_focus(GtkWindow *w)
+static gboolean acceptfocuscb(GtkWindow *w)
 {
 	gtk_window_set_accept_focus(w, true);
 	return false;
@@ -2928,7 +2928,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 //				false);
 //		gdk_window_lower();
 		gtk_window_present(LASTWIN->win);
-		g_timeout_add(200, (GSourceFunc)accept_focus, win->win);
+		g_timeout_add(200, (GSourceFunc)acceptfocuscb, win->win);
 	} else {
 		gtk_widget_show_all(win->winw);
 	}
@@ -3248,13 +3248,13 @@ static void favcb(Win *win)
 	else
 		gtk_window_set_icon(win->win, NULL);
 }
-static bool delaymdlr(Win *win)
+static gboolean delaymdlrcb(Win *win)
 {
 	if (isin(wins, win))
 		putbtne(win, GDK_BUTTON_RELEASE, 2);
 	return false;
 }
-static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
+static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
 
@@ -3263,7 +3263,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	{
 		putbtne(win, GDK_BUTTON_PRESS,  win->pbtn);
 		if (win->pbtn == 2)
-			g_timeout_add(40, (GSourceFunc)delaymdlr, win);
+			g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
 		else
 			putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
 
@@ -3360,7 +3360,7 @@ static bool keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	return true;
 }
-static bool keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
+static gboolean keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
 	if (win->mode == Minsert) return false;
@@ -3379,7 +3379,7 @@ static void targetcb(
 	update(win);
 }
 static GdkEvent *pendingmiddlee = NULL;
-static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
+static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	win->userreq = true;
 
@@ -3484,7 +3484,7 @@ static bool btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	return false;
 }
-static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
+static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	switch (e->button) {
 	case 1:
@@ -3543,7 +3543,7 @@ static bool btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	return false;
 }
-static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
+static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 { //for checking drag end with button1
 	if (
 			!(e->state & GDK_BUTTON1_MASK) &&
@@ -3556,7 +3556,7 @@ static bool entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 
 	return false;
 }
-static bool motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
+static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
 	if (win->mode == Mlist)
 	{
@@ -3572,7 +3572,7 @@ static bool motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 	}
 	return false;
 }
-static bool scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
+static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 {
 	if (pe->send_event) return false;
 
@@ -3598,7 +3598,7 @@ static bool scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	gdk_event_free(e);
 	return false;
 }
-static bool policycb(
+static gboolean policycb(
 		WebKitWebView *v,
 		WebKitPolicyDecision *dec,
 		WebKitPolicyDecisionType type,
@@ -3653,7 +3653,7 @@ static void closecb(Win *win)
 {
 	gtk_widget_destroy(win->winw);
 }
-static bool sdialogcb(Win *win)
+static gboolean sdialogcb(Win *win)
 {
 	if (getsetbool(win, "scriptdialog"))
 		return false;
@@ -3942,7 +3942,7 @@ void makemenu(WebKitContextMenu *menu)
 
 	g_free(dir);
 }
-static bool contextcb(WebKitWebView *web_view,
+static gboolean contextcb(WebKitWebView *web_view,
 		WebKitContextMenu   *menu,
 		GdkEvent            *e,
 		WebKitHitTestResult *htr,
@@ -3989,13 +3989,13 @@ void setbg(Win *win, int color)
 	gtk_style_context_add_provider(sctx, win->sp = cps[color - 1],
 			GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }
-static bool focusincb(Win *win)
+static gboolean focusincb(Win *win)
 {
 	if (gtk_widget_get_visible(win->entw))
 		tonormal(win);
 	return false;
 }
-static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
+static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 {
 	switch (ke->keyval) {
 	case GDK_KEY_m:
@@ -4048,7 +4048,7 @@ static bool entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	}
 	return true;
 }
-static bool textcb(Win *win)
+static gboolean textcb(Win *win)
 {
 	if (win->mode == Mfind && gtk_widget_get_visible(win->entw)) {
 		setbg(win, 0);
@@ -4072,7 +4072,7 @@ static void foundcb(Win *win)
 {
 	_showmsg(win, NULL, false); //clear
 }
-static bool detachcb(GtkWidget * w)
+static gboolean detachcb(GtkWidget * w)
 {
 	gtk_widget_grab_focus(w);
 	return false;
