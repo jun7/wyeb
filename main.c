@@ -4049,6 +4049,11 @@ static void foundcb(Win *win)
 {
 	_showmsg(win, NULL, false); //clear
 }
+static bool detachcb(GtkWidget * w)
+{
+	gtk_widget_grab_focus(w);
+	return false;
+}
 
 //@newwin
 Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
@@ -4168,8 +4173,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	}
 	g_object_set_data(win->kito, "win", win); //for schemecb and download and jscb
 
-	//workaround. without this inspector doesen't work
-	webkit_web_view_get_inspector(win->kit);
+	//workaround. without get_inspector inspector doesen't work
+	//and have to grab forcus;
+	SIGW(webkit_web_view_get_inspector(win->kit),
+			"detach", detachcb, win->kitw);
 
 	win->set = webkit_settings_new();
 	setprops(win, conf, DSET);
