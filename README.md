@@ -46,9 +46,10 @@ Also there are [Tips](https://github.com/jun7/wyeb/wiki)
 command: wyeb [[[suffix] action|""] uri|arg|""]
   suffix: Process ID.
     It is added to all directories conf, cache and etc.
+    '/' is default. '//' means $SUFFIX.
   action: Such as new(default), open, opennew ...
-    Except 'new' and some, actions are sent to a window last focused.
-
+    Except 'new' and some, without a set of $SUFFIX and $WINID,
+    actions are sent to a window last focused
 
 mouse:
   rocker gesture:
@@ -58,19 +59,18 @@ mouse:
     left press and move down  and right: raise next   window and close
   middle button:
     on a link           : new background window
-    on free space       : raise bottom window / show win list
-    press and move left : raise bottom window / show win list
-                                              / if mdlbtn2winlist: true
+    on free space       : raise bottom window
+    press and move left : raise bottom window
     press and move right: raise next   window
     press and move up   : go to top
     press and move down : go to bottom
 
 context-menu:
   You can add your own script to context-menu. See 'menu' dir in
-  the config dir, or click 'addMenu' in the context-menu. SUFFIX,
+  the config dir, or click 'editMenu' in the context-menu. SUFFIX,
   ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,
   SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,
-  MEDIA, IMAGE and MEDIA_IMAGE_LINK
+  MEDIA, IMAGE, MEDIA_IMAGE_LINK, CURRENTSET and DLDIR
   are set as environment variables. Available
   actions are in 'key:' section below. Of course it supports dir
   and '.'. '.' hides it from menu but still available in the accels.
@@ -88,7 +88,9 @@ key:
 4 - bracketleft: tonormal               : 
 0 - i          : toinsert               : 
 0 - I          : toinsertinput          : To Insert Mode with focus of first input
-0 - p          : topointer              : 
+0 - p          : topointer              : pp resets damping
+0 - P          : tomdlpointer           : make middle click
+4 - p          : torightpointer         : right click
 0 - f          : tohint                 : 
 0 - F          : tohintnew              : 
 0 - t          : tohintback             : 
