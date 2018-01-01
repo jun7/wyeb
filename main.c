@@ -3002,15 +3002,14 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 		sv[0] = g_strdup_printf(
 			"<html><meta charset=utf8>\n"
 			"<style>\n"
-			"p {margin:.7em 0;}\n"
-			"a {display:inline-block; white-space:nowrap;"
-			" color:black; text-decoration:none;}\n"
-			"span:first-child {display:inline-block; font-family:"
-			" monospace; padding-right:.6em;}\n"
-			"span + span {display:inline-block; white-space:normal; vertical-align:top;}\n"
-			"span > span {font-size:.79em; color:#43a;}\n"
+			"p {margin:.7em 0; white-space:nowrap;}\n"
+			"a, a > * {display:inline-block; vertical-align:middle;}"
+			"a {color:inherit; text-decoration:none;}\n"
+			"time {font-family:monospace;}\n"
+			"a > span {padding:0 .6em; white-space:normal; word-wrap:break-word;}\n"
+			"i {font-size:.79em; color:#43a;}\n"
 			//for img
-			"span:first-child span{display:inline-block; min-width:%dpx;}\n"
+			"em {min-width:%dpx;}\n"
 			"img {"
 			" border-radius:.4em;"
 			" box-shadow:0 .1em .1em 0 #cbf;"
@@ -3018,7 +3017,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			" margin:auto;"
 			"}\n"
 			"</style>\n"
-			, confint("histimgsize") + 9);
+			, confint("histimgsize"));
 		sv[num + 1] = NULL;
 
 		int i = 0;
@@ -3032,18 +3031,18 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			if (imgs)
 			{
 				gchar *itag = i < histimgs->length ?
-					g_strdup_printf("<span><img src="APP":histimg/%d/%d></img></span>", i, unique++)
+					g_strdup_printf("<em><img src="APP":histimg/%d/%d></img></em>", i, unique++)
 					: g_strdup("");
 
 				sv[++i] = g_strdup_printf(
-						"<p><a href=%s><span>%s</span>"
-						"<span>%s<br><span>%s</span><br>%.11s</span></a></p>\n",
+						"<p><a href=%s>%s"
+						"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a></p>\n",
 						stra[1], itag, escpd, stra[1], stra[0]);
 				g_free(itag);
 			} else
 				sv[++i] = g_strdup_printf(
-						"<p><a href=%s><span>%.11s</span>"
-						"<span>%s\n<br><span>%s</span></span></a>\n",
+						"<p><a href=%s><time>%.11s</time>"
+						"<span>%s<br><i>%s</i></span></a>\n",
 						stra[1], stra[0], escpd, stra[1]);
 
 			g_free(escpd);
