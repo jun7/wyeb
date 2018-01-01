@@ -1594,6 +1594,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	else if (piped)
 	{
 		GIOChannel *io = g_io_channel_unix_new(input);
+		g_io_channel_set_encoding(io, NULL, NULL);
 
 		if (G_IO_STATUS_NORMAL !=
 				g_io_channel_write_chars(
