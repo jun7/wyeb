@@ -2557,11 +2557,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("open"        , win->mode = Mopen)
 	Z("edituri"     ,
 			win->mode = Mopen;
-			gtk_entry_set_text(win->ent, URI(win)))
+			gtk_entry_set_text(win->ent, arg ?: URI(win)))
 	Z("opennew"     , win->mode = Mopennew)
 	Z("editurinew"  ,
 			win->mode = Mopennew;
-			gtk_entry_set_text(win->ent, URI(win)))
+			gtk_entry_set_text(win->ent, arg ?: URI(win)))
 
 //	Z("showsource"  , )
 	Z("showhelp"    , openuri(win, APP":help"))
