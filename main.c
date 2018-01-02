@@ -4294,7 +4294,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	gtk_window_present(
 			back && LASTWIN ? LASTWIN->win : win->win);
 
-	win->pageid = g_strdup_printf("%lu", webkit_web_view_get_page_id(win->kit));
+	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
+			webkit_web_view_get_page_id(win->kit));
 	g_ptr_array_add(wins, win);
 
 	if (!cbwin)

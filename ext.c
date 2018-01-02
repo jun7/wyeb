@@ -129,7 +129,8 @@ static const gchar *inottext[] = {
 //@misc
 static void send(Page *page, gchar *action, const gchar *arg)
 {
-	gchar *ss = g_strdup_printf("%lu:%s:%s", page->id, action, arg);
+	gchar *ss = g_strdup_printf("%"G_GUINT64_FORMAT":%s:%s",
+			page->id, action, arg);
 	//D(send to main %s, ss)
 	ipcsend("main", ss);
 	g_free(ss);
@@ -1504,7 +1505,7 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 	setwblist(false);
 	if (!shared)
 	{
-		gchar *tmp = g_strdup_printf("%lu", page->id);
+		gchar *tmp = g_strdup_printf("%"G_GUINT64_FORMAT, page->id);
 		ipcwatch(tmp);
 		g_free(tmp);
 	}
