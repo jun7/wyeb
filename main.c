@@ -421,6 +421,11 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
+static void freeimg(Img *img)
+{
+	g_free(img ? img->buf : NULL);
+	g_free(img);
+}
 static gboolean historycb(Win *win)
 {
 	if (win && (
@@ -472,24 +477,14 @@ static gboolean historycb(Win *win)
 	static gchar *last = NULL;
 	if (last && !strcmp(str + 18, last + 18))
 	{
-		g_free(str);
-		return false;
+		GFA(str, NULL);
+		freeimg(g_queue_pop_head(histimgs));
 	}
-	GFA(last, str)
-
-
-	append(current, str);
 
 	gint maxi = confint("histimgs");
 	while (histimgs->length > 0 && histimgs->length >= maxi)
-	{
-		Img *img = g_queue_pop_tail(histimgs);
-		if (img)
-		{
-			g_free(img->buf);
-			g_free(img);
-		}
-	}
+		freeimg(g_queue_pop_tail(histimgs));
+
 	if (maxi)
 	{
 		gdouble ww = gtk_widget_get_allocated_width(win->kitw);
@@ -500,9 +495,7 @@ static gboolean historycb(Win *win)
 			gtk_widget_get_visible(win->kitw) &&
 			gtk_widget_is_drawable(win->kitw) &&
 			scale > 0.0 && ww > 0.0 && wh > 0.0
-			)
-		{
-
+		) {
 			GdkPixbuf *pix = gdk_pixbuf_get_from_window(
 				gtk_widget_get_window(win->kitw), 0, 0, ww, wh);
 
@@ -523,8 +516,12 @@ static gboolean historycb(Win *win)
 			g_queue_push_head(histimgs, NULL);
 	}
 
-	logsize += strlen(str) + 1;
+	if (!str) return false;
 
+	append(current, str);
+	GFA(last, str)
+
+	logsize += strlen(str) + 1;
 	if (logsize > MAXSIZE)
 	{
 		currenti++;
@@ -532,13 +529,10 @@ static gboolean historycb(Win *win)
 			currenti = 0;
 
 		GFA(current, g_build_filename(logdir, logs[currenti], NULL))
-		
 		FILE *f = fopen(current, "w");
 		fclose(f);
-
 		logsize = 0;
 	}
-
 	return false;
 }
 static void addhistory(Win *win)
