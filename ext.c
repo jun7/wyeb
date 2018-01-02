@@ -47,7 +47,7 @@ typedef struct {
 	gchar         *cutheads;
 	GSList        *black;
 	GSList        *white;
-	WebKitDOMDOMWindow *emitter;
+	WebKitDOMEventTarget *emitter;
 } Page;
 
 static GPtrArray *pages = NULL;
@@ -130,7 +130,7 @@ static const gchar *inottext[] = {
 static void send(Page *page, gchar *action, const gchar *arg)
 {
 	gchar *ss = g_strdup_printf("%"G_GUINT64_FORMAT":%s:%s",
-			page->id, action, arg);
+			page->id, action, arg ?: "");
 	//D(send to main %s, ss)
 	ipcsend("main", ss);
 	g_free(ss);
@@ -160,6 +160,20 @@ static bool isinput(WebKitDOMElement *te)
 	}
 	g_free(tag);
 
+	return ret;
+}
+static gchar *tofull(WebKitDOMElement *te, gchar *uri)
+{
+	if (!te || !uri) return NULL;
+	gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
+	SoupURI *base = soup_uri_new(bases);
+	SoupURI *full = soup_uri_new_with_base(base, uri);
+
+	gchar *ret = soup_uri_to_string(full, false);
+
+	g_free(bases);
+	soup_uri_free(base);
+	soup_uri_free(full);
 	return ret;
 }
 
@@ -951,19 +965,12 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 		webkit_dom_element_get_attribute(te, "ALT") ?:
 		webkit_dom_element_get_attribute(te, "TITLE");
 
-	gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
-	SoupURI *base = soup_uri_new(bases);
-	SoupURI *last = soup_uri_new_with_base(base, uri);
-	gchar *suri = soup_uri_to_string(last, false);
-
+	gchar *suri = tofull(te, uri);
 	gchar *retstr = g_strdup_printf("%c%s %s", uritype, suri, label);
 	send(page, "hintret", retstr);
 
-	soup_uri_free(base);
-	soup_uri_free(last);
 	g_free(uri);
 	g_free(label);
-	g_free(bases);
 	g_free(suri);
 	g_free(retstr);
 }
@@ -1021,6 +1028,12 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	gint rangeleft = page->range;
 	WebKitDOMElement *rangeend = NULL;
 
+	//tab key
+	bool focused = false;
+	bool dofocus = ipkeys && ipkeys[strlen(ipkeys) - 1] == 9;
+	if (dofocus)
+		ipkeys[strlen(ipkeys) - 1] = '\0';
+
 	gchar enterkey[2] = {0};
 	*enterkey = (gchar)GDK_KEY_Return;
 	bool enter = page->rangestart && !g_strcmp0(enterkey, ipkeys);
@@ -1076,7 +1089,17 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 		i++;
 		gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
 
-		if (last && type != Crange)
+		if (dofocus)
+		{
+			if (!focused &&
+					(type != Crange || !page->rangestart || rangein) &&
+					g_str_has_prefix(key, ipkeys ?: ""))
+			{
+				webkit_dom_element_focus(te);
+				focused = true;
+			}
+		}
+		else if (last && type != Crange)
 		{
 			if (!ret && !strcmp(key, ipkeys))
 			{
@@ -1177,16 +1200,23 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 }
 
 
-
 //@dom cbs
+static void domfocusincb(WebKitDOMDOMWindow *w, WebKitDOMEvent *e, Page *page)
+{
+	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMElement *te = webkit_dom_document_get_active_element(doc);
+	gchar *href = te ? webkit_dom_element_get_attribute(te, "HREF") : NULL;
+	gchar *uri = tofull(te, href);
+	send(page, "focusuri", uri);
 
-//static void domfocusincb(WebKitDOMElement *elm, WebKitDOMEvent *e, Page *page)
-//{ send(page, "toinsert", NULL); }
-//static void domfocusoutcb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
-//{ send(page, "tonormal", NULL); }
-//static void domactivatecb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
+	g_free(uri);
+	g_free(href);
+}
+static void domfocusoutcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+{ send(page, "focusuri", NULL); }
+//static void domactivatecb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 //{ DD(domactivate!) }
-static void hintcb(WebKitDOMElement *welm, WebKitDOMEvent *ev, Page *page)
+static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 {
 	if (page->apnode)
 		makehint(page, page->lasttype, NULL, NULL);
@@ -1209,22 +1239,23 @@ static void pageon(Page *page)
 	//DD(pageon)
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	if (page->emitter) g_object_unref(page->emitter);
-	page->emitter = webkit_dom_document_get_default_view(doc);
+	page->emitter = WEBKIT_DOM_EVENT_TARGET(
+			webkit_dom_document_get_default_view(doc));
 
-//	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
-//			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);
-//	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
-//			"DOMFocusOut", G_CALLBACK(domfocusoutcb), false, page);
-//	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
+	webkit_dom_event_target_add_event_listener(page->emitter,
+			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);
+	webkit_dom_event_target_add_event_listener(page->emitter,
+			"DOMFocusOut", G_CALLBACK(domfocusoutcb), false, page);
+//	webkit_dom_event_target_add_event_listener(page->emitter,
 //			"DOMActivate", G_CALLBACK(domactivatecb), false, page);
 
 	//for refresh hint
-	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(page->emitter),
+	webkit_dom_event_target_add_event_listener(page->emitter,
 			"resize", G_CALLBACK(hintcb), false, page);
-	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(page->emitter),
+	webkit_dom_event_target_add_event_listener(page->emitter,
 			"scroll", G_CALLBACK(hintcb), false, page);
 //may be heavy
-//	webkit_dom_event_target_add_event_listener(WEBKIT_DOM_EVENT_TARGET(elm),
+//	webkit_dom_event_target_add_event_listener(page->emitter,
 //			"DOMSubtreeModified", G_CALLBACK(hintcb), false, page);
 }
 

@@ -102,6 +102,8 @@ typedef struct {
 
 	//hittestresult
 	gchar  *link;
+	gchar  *focusuri;
+	bool    usefocus;
 	gchar  *linklabel;
 	gchar  *image;
 	gchar  *media;
@@ -679,6 +681,7 @@ static void setresult(Win *win, WebKitHitTestResult *htr)
 	g_free(win->linklabel);
 
 	win->image = win->media = win->link = win->linklabel = NULL;
+	win->usefocus = false;
 
 	if (!htr) return;
 
@@ -1380,9 +1383,11 @@ static void update(Win *win)
 	//normal mode
 	if (win->mode != Mnormal) return;
 
-	if (win->link)
+	if (win->focusuri || win->link)
 	{
-		gchar *str = g_strconcat("Link: ", win->link, NULL);
+		bool f = (win->usefocus && win->focusuri) || !win->link;
+		gchar *str = g_strconcat(f ? "Focus" : "Link",
+				": ", f ? win->focusuri : win->link, NULL);
 		settitle(win, str);
 		g_free(str);
 	}
@@ -1529,44 +1534,39 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	envp = g_environ_setenv(envp, "TITLE" , title, true);
 	envp = g_environ_setenv(envp, "LABEL_OR_TITLE" , title, true);
 
+	envp = g_environ_setenv(envp, "FOCUSURI", win->focusuri ?: "", true);
+
+	envp = g_environ_setenv(envp, "LINK", win->link ?: "", true);
 	if (win->link)
 	{
-		envp = g_environ_setenv(envp, "LINK", win->link, true);
 		envp = g_environ_setenv(envp, "LINK_OR_URI", win->link, true);
 		envp = g_environ_setenv(envp, "LABEL_OR_TITLE" , win->link, true);
 	}
+	envp = g_environ_setenv(envp, "LINKLABEL", win->linklabel ?: "", true);
 	if (win->linklabel)
 	{
-		envp = g_environ_setenv(envp, "LINKLABEL", win->linklabel, true);
 		envp = g_environ_setenv(envp, "LABEL_OR_TITLE" , win->linklabel, true);
 	}
 
-	if (win->media)
-		envp = g_environ_setenv(envp, "MEDIA", win->media, true);
-	if (win->image)
-		envp = g_environ_setenv(envp, "IMAGE", win->image, true);
+	envp = g_environ_setenv(envp, "MEDIA", win->media ?: "", true);
+	envp = g_environ_setenv(envp, "IMAGE", win->image ?: "", true);
 
-	if (win->media || win->image || win->link)
-		envp = g_environ_setenv(envp, "MEDIA_IMAGE_LINK",
-				win->media ?: win->image ?: win->link, true);
+	envp = g_environ_setenv(envp, "MEDIA_IMAGE_LINK",
+			win->media ?: win->image ?: win->link ?: "", true);
 
 	gchar *cbtext;
 	cbtext = gtk_clipboard_wait_for_text(
 			gtk_clipboard_get(GDK_SELECTION_PRIMARY));
-	if (cbtext) {
-		envp = g_environ_setenv(envp, "PRIMARY"  , cbtext, true);
-		envp = g_environ_setenv(envp, "SELECTION", cbtext, true);
-	}
+	envp = g_environ_setenv(envp, "PRIMARY"  , cbtext ?: "", true);
+	envp = g_environ_setenv(envp, "SELECTION", cbtext ?: "", true);
 
 	cbtext = gtk_clipboard_wait_for_text(
 			gtk_clipboard_get(GDK_SELECTION_SECONDARY));
-	if (cbtext)
-		envp = g_environ_setenv(envp, "SECONDARY", cbtext, true);
+	envp = g_environ_setenv(envp, "SECONDARY", cbtext ?: "", true);
 
 	cbtext = gtk_clipboard_wait_for_text(
 			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
-	if (cbtext)
-		envp = g_environ_setenv(envp, "CLIPBOARD", cbtext, true);
+	envp = g_environ_setenv(envp, "CLIPBOARD", cbtext ?: "", true);
 
 	gint input;
 	GPid child_pid;
@@ -2221,8 +2221,8 @@ static Keybind dkeys[]= {
 
 	{"open"          , 'o', 0},
 	{"opennew"       , 'w', 0, "New window"},
-	{"edituri"       , 'O', 0},
-	{"editurinew"    , 'W', 0},
+	{"edituri"       , 'O', 0, "arg or focused link or Current"},
+	{"editurinew"    , 'W', 0, "arg or focused link or Current"},
 
 //	{"showsource"    , 'S', 0}, //not good
 	{"showhelp"      , ':', 0},
@@ -2274,7 +2274,6 @@ static Keybind dkeys[]= {
 //	{"windowimage"   , 0, 0}, //pageid
 //	{"windowlist"    , 0, 0}, //=>pageid uri title
 //	{"present"       , 0, 0}, //pageid
-
 };
 static gchar *ke2name(GdkEventKey *ke)
 {
@@ -2335,6 +2334,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			return true;)
 	Z("openeditor" , openeditor(win, arg, NULL))
 	Z("reloadlast" , reloadlast())
+	Z("focusuri"   , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
 
 	if (!strcmp(action, "hintret"))
 	{
@@ -2557,11 +2557,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("open"        , win->mode = Mopen)
 	Z("edituri"     ,
 			win->mode = Mopen;
-			gtk_entry_set_text(win->ent, arg ?: URI(win)))
+			gtk_entry_set_text(win->ent, arg ?: win->focusuri ?: URI(win)))
 	Z("opennew"     , win->mode = Mopennew)
 	Z("editurinew"  ,
 			win->mode = Mopennew;
-			gtk_entry_set_text(win->ent, arg ?: URI(win)))
+			gtk_entry_set_text(win->ent, arg ?: win->focusuri ?: URI(win)))
 
 //	Z("showsource"  , )
 	Z("showhelp"    , openuri(win, APP":help"))
@@ -3080,7 +3080,7 @@ static gchar *schemedata(WebKitWebView *kit, const gchar *path)
 			"  the config dir, or click 'editMenu' in the context-menu. SUFFIX,\n"
 			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
-			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, CURRENTSET and DLDIR\n"
+			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET and DLDIR\n"
 			"  are set as environment variables. Available\n"
 			"  actions are in 'key:' section below. Of course it supports dir\n"
 			"  and '.'. '.' hides it from menu but still available in the accels.\n"
@@ -3211,6 +3211,7 @@ static void destroycb(Win *win)
 	g_free(win->msg);
 
 	setresult(win, NULL);
+	g_free(win->focusuri);
 
 	g_free(win->spawn);
 	g_free(win->spawndir);
@@ -3691,6 +3692,8 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		win->px = win->py = 0;
 		win->scheme = false;
 		setresult(win, NULL);
+		GFA(win->focusuri, NULL)
+
 		if (win->mode == Minsert) send(win, Cblur, NULL); //clear im
 		tonormal(win);
 		if (win->userreq) {
