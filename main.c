@@ -1413,16 +1413,14 @@ static gchar *getsearch(gchar *pkey)
 static void _openuri(Win *win, const gchar *str, Win *caller)
 {
 	win->userreq = true;
-
-	if (!str || strlen(str) == 0)
-		str = APP":main";
+	if (!str || !*str) str = APP":main";
 
 	if (
 		g_str_has_prefix(str, "http:") ||
 		g_str_has_prefix(str, "https:") ||
+		g_str_has_prefix(str, APP":") ||
 		g_str_has_prefix(str, "file:") ||
-		g_str_has_prefix(str, "about:") ||
-		g_str_has_prefix(str, APP":")
+		g_str_has_prefix(str, "about:")
 	) {
 		webkit_web_view_load_uri(win->kit, str);
 		return;
