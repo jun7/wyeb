@@ -33,7 +33,7 @@ For example, context-menu items we added are just shell scripts.
 - [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.png)
 - No tab. But keys J/K/x/X or button actions.
 - Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
-Of course it is in set, so we can set it by uri.
+Of course it is in the set, so we can set it by uri.
 - Focused history. Instead of loaded history.
 - Pointer Mode. **p** makes pure click event for javascript pages.
 - Range hinting. See hidden files in the menu dir. You have to assign keys for it by use of the accels.

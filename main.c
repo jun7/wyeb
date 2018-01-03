@@ -2934,178 +2934,164 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 
 //@uri scheme
-static gchar *schemedata(WebKitWebView *kit, const gchar *path)
+static gchar *histdata()
 {
-	gchar *data = NULL;
+	historycb(NULL);
+	GSList *hist = NULL;
+	gint start = 0;
+	gint num = 0;
+	__time_t mtime = 0;
 
-	if (g_str_has_prefix(path, "main")) {
-		preparemd();
+	bool imgs = confint("histimgs");
 
-		gchar *cmd = g_strdup_printf(confcstr("generator"), mdpath);
-		g_spawn_command_line_sync(cmd, &data, NULL, NULL, NULL);
-		g_free(cmd);
-	}
-	if (g_str_has_prefix(path, "history")) {
-		historycb(NULL);
-		GSList *hist = NULL;
-		gint start = 0;
-		gint num = 0;
-		__time_t mtime = 0;
+	for (int j = 2; j > 0; j--) for (int i = 0; i < logfnum ;i++)
+	{
+		gchar *path = g_build_filename(logdir, logs[i], NULL);
+		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
 
-		bool imgs = confint("histimgs");
-
-		for (int j = 2; j > 0; j--) for (int i = 0; i < logfnum ;i++)
-		{
-			gchar *path = g_build_filename(logdir, logs[i], NULL);
-			bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
-
-			if (!start) {
-				if (exists)
-				{
-					struct stat info;
-					stat(path, &info);
-					if (mtime > info.st_mtime)
-						start++;
-					mtime = info.st_mtime;
-				} else {
+		if (!start) {
+			if (exists)
+			{
+				struct stat info;
+				stat(path, &info);
+				if (mtime > info.st_mtime)
 					start++;
-				}
-			} else start++;
-
-			if (!start) continue;
-			if (!exists) continue;
-			if (start > logfnum) break;
-
-			GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
-			gchar *line;
-			while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
-					== G_IO_STATUS_NORMAL)
-			{
-				hist = g_slist_prepend(hist, g_strsplit(line, " ", 3));
-				num++;
-
-				g_free(line);
+				mtime = info.st_mtime;
+			} else {
+				start++;
 			}
-			g_io_channel_unref(io);
-			g_free(path);
-		}
+		} else start++;
 
-		if (!num)
-			return g_strdup("<h1>No Data</h1>");
+		if (!start) continue;
+		if (!exists) continue;
+		if (start > logfnum) break;
 
-		gchar *sv[num + 2];
-		sv[0] = g_strdup_printf(
-			"<html><meta charset=utf8>\n"
-			"<style>\n"
-			"p {margin:.7em 0; white-space:nowrap;}\n"
-			"a, a > * {display:inline-block; vertical-align:middle;}"
-			"a {color:inherit; text-decoration:none;}\n"
-			"time {font-family:monospace;}\n"
-			"a > span {padding:0 .6em; white-space:normal; word-wrap:break-word;}\n"
-			"i {font-size:.79em; color:#43a;}\n"
-			//for img
-			"em {min-width:%dpx;}\n"
-			"img {"
-			" border-radius:.4em;"
-			" box-shadow:0 .1em .1em 0 #cbf;"
-			" display:block;"
-			" margin:auto;"
-			"}\n"
-			"</style>\n"
-			, confint("histimgsize"));
-		sv[num + 1] = NULL;
-
-		int i = 0;
-		static int unique = 0;
-
-		for (GSList *next = hist; next; next = next->next)
+		GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
+		gchar *line;
+		while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
+				== G_IO_STATUS_NORMAL)
 		{
-			gchar **stra = next->data;
-			gchar *escpd = g_markup_escape_text(stra[2] ?: stra[1], -1);
+			hist = g_slist_prepend(hist, g_strsplit(line, " ", 3));
+			num++;
 
-			if (imgs)
-			{
-				gchar *itag = i < histimgs->length ?
-					g_strdup_printf("<em><img src="APP":histimg/%d/%d></img></em>", i, unique++)
-					: g_strdup("");
-
-				sv[++i] = g_strdup_printf(
-						"<p><a href=%s>%s"
-						"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a></p>\n",
-						stra[1], itag, escpd, stra[1], stra[0]);
-				g_free(itag);
-			} else
-				sv[++i] = g_strdup_printf(
-						"<p><a href=%s><time>%.11s</time>"
-						"<span>%s<br><i>%s</i></span></a>\n",
-						stra[1], stra[0], escpd, stra[1]);
-
-			g_free(escpd);
-			g_strfreev(stra);
+			g_free(line);
 		}
-		g_slist_free(hist);
-
-		gchar *allhist = g_strjoinv("", sv);
-		for (int j = 0; j <= num; j++)
-			g_free(sv[j]);
-
-		data = allhist;
-	}
-	if (g_str_has_prefix(path, "help")) {
-		data = g_strdup_printf(
-			"<pre style=\"font-size: large\">\n"
-			"%s\n"
-			"mouse:\n"
-			"  rocker gesture:\n"
-			"    left press and       -        right: back\n"
-			"    left press and move right and right: forward\n"
-			"    left press and move up    and right: raise bottom window and close\n"
-			"    left press and move down  and right: raise next   window and close\n"
-			"  middle button:\n"
-			"    on a link           : new background window\n"
-			"    on free space       : raise bottom window\n"
-			"    press and move left : raise bottom window\n"
-			"    press and move right: raise next   window\n"
-			"    press and move up   : go to top\n"
-			"    press and move down : go to bottom\n"
-			"\n"
-			"context-menu:\n"
-			"  You can add your own script to context-menu. See 'menu' dir in\n"
-			"  the config dir, or click 'editMenu' in the context-menu. SUFFIX,\n"
-			"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
-			"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
-			"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET and DLDIR\n"
-			"  are set as environment variables. Available\n"
-			"  actions are in 'key:' section below. Of course it supports dir\n"
-			"  and '.'. '.' hides it from menu but still available in the accels.\n"
-			"accels:\n"
-			"  You can add your own keys to access context-menu items we added.\n"
-			"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the\n"
-			"  last \"\" in the file 'accels' in the conf directory assigned 'c'\n"
-			"  key, and remove the ';' at the beginning of line. alt is &lt;Alt&gt;.\n"
-			"\n"
-			"key:\n"
-			"#%d - is ctrl\n"
-			"#(null) is only for script\n"
-			, usage, GDK_CONTROL_MASK);
-
-		for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
-		{
-			gchar *tmp = g_strdup_printf("%d - %-11s: %-22s : %s\n",
-					dkeys[i].mask,
-					gdk_keyval_name(dkeys[i].key),
-					dkeys[i].name,
-					dkeys[i].desc ?: "");
-			gchar *last = data;
-			data = g_strconcat(data, tmp, NULL);
-			g_free(last);
-			g_free(tmp);
-		}
+		g_io_channel_unref(io);
+		g_free(path);
 	}
 
-	if (!data)
-		data = g_strdup("<h1>Empty</h1>");
+	if (!num)
+		return g_strdup("<h1>No Data</h1>");
 
+	gchar *sv[num + 2];
+	sv[0] = g_strdup_printf(
+		"<html><meta charset=utf8>\n"
+		"<style>\n"
+		"p {margin:.7em 0; white-space:nowrap;}\n"
+		"a, a > * {display:inline-block; vertical-align:middle;}"
+		"a {color:inherit; text-decoration:none;}\n"
+		"time {font-family:monospace;}\n"
+		"a > span {padding:0 .6em; white-space:normal; word-wrap:break-word;}\n"
+		"i {font-size:.79em; color:#43a;}\n"
+		//for img
+		"em {min-width:%dpx;}\n"
+		"img {"
+		" border-radius:.4em;"
+		" box-shadow:0 .1em .1em 0 #cbf;"
+		" display:block;"
+		" margin:auto;"
+		"}\n"
+		"</style>\n"
+		, confint("histimgsize"));
+	sv[num + 1] = NULL;
+
+	int i = 0;
+	static int unique = 0;
+
+	for (GSList *next = hist; next; next = next->next)
+	{
+		gchar **stra = next->data;
+		gchar *escpd = g_markup_escape_text(stra[2] ?: stra[1], -1);
+
+		if (imgs)
+		{
+			gchar *itag = i < histimgs->length ?
+				g_strdup_printf("<em><img src="APP":histimg/%d/%d></img></em>", i, unique++)
+				: g_strdup("");
+
+			sv[++i] = g_strdup_printf(
+					"<p><a href=%s>%s"
+					"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a></p>\n",
+					stra[1], itag, escpd, stra[1], stra[0]);
+			g_free(itag);
+		} else
+			sv[++i] = g_strdup_printf(
+					"<p><a href=%s><time>%.11s</time>"
+					"<span>%s<br><i>%s</i></span></a>\n",
+					stra[1], stra[0], escpd, stra[1]);
+
+		g_free(escpd);
+		g_strfreev(stra);
+	}
+	g_slist_free(hist);
+
+	gchar *allhist = g_strjoinv("", sv);
+	for (int j = 0; j <= num; j++)
+		g_free(sv[j]);
+
+	return allhist;
+}
+static gchar *helpdata()
+{
+	gchar *data = g_strdup_printf(
+		"<pre style=\"font-size: large\">\n"
+		"%s\n"
+		"mouse:\n"
+		"  rocker gesture:\n"
+		"    left press and       -        right: back\n"
+		"    left press and move right and right: forward\n"
+		"    left press and move up    and right: raise bottom window and close\n"
+		"    left press and move down  and right: raise next   window and close\n"
+		"  middle button:\n"
+		"    on a link           : new background window\n"
+		"    on free space       : raise bottom window\n"
+		"    press and move left : raise bottom window\n"
+		"    press and move right: raise next   window\n"
+		"    press and move up   : go to top\n"
+		"    press and move down : go to bottom\n"
+		"\n"
+		"context-menu:\n"
+		"  You can add your own script to context-menu. See 'menu' dir in\n"
+		"  the config dir, or click 'editMenu' in the context-menu. SUFFIX,\n"
+		"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
+		"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
+		"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET and DLDIR\n"
+		"  are set as environment variables. Available\n"
+		"  actions are in 'key:' section below. Of course it supports dir\n"
+		"  and '.'. '.' hides it from menu but still available in the accels.\n"
+		"accels:\n"
+		"  You can add your own keys to access context-menu items we added.\n"
+		"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the\n"
+		"  last \"\" in the file 'accels' in the conf directory assigned 'c'\n"
+		"  key, and remove the ';' at the beginning of line. alt is &lt;Alt&gt;.\n"
+		"\n"
+		"key:\n"
+		"#%d - is ctrl\n"
+		"#(null) is only for script\n"
+		, usage, GDK_CONTROL_MASK);
+
+	for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
+	{
+		gchar *tmp = g_strdup_printf("%d - %-11s: %-22s : %s\n",
+				dkeys[i].mask,
+				gdk_keyval_name(dkeys[i].key),
+				dkeys[i].name,
+				dkeys[i].desc ?: "");
+		gchar *last = data;
+		data = g_strconcat(data, tmp, NULL);
+		g_free(last);
+		g_free(tmp);
+	}
 	return data;
 }
 static cairo_status_t faviconcairocb(void *p,
@@ -3134,27 +3120,16 @@ static void faviconcb(GObject *src, GAsyncResult *res, gpointer p)
 	g_object_unref(st);
 	g_object_unref(req);
 }
-static void schemecb(WebKitURISchemeRequest *req, gpointer p)
+static gboolean _schemecb(WebKitURISchemeRequest *req)
 {
 	const gchar *path = webkit_uri_scheme_request_get_path(req);
-	WebKitWebView *kit = webkit_uri_scheme_request_get_web_view(req);
-	if (kit)
-	{
-		Win *win = g_object_get_data(G_OBJECT(kit), "win");
-		win->scheme = true;
-	}
 
 	if (g_str_has_prefix(path, "f/"))
 	{
-//		gchar *fav = webkit_favicon_database_get_favicon_uri(
-//				webkit_web_context_get_favicon_database(ctx), "https://github.com/");
-//		g_free(fav);
-
 		webkit_favicon_database_get_favicon(
 				webkit_web_context_get_favicon_database(ctx),
 				path + 2, NULL, faviconcb, req);
-		g_object_ref(req);
-		return;
+		return false;
 	}
 
 	gchar *type = NULL;
@@ -3179,13 +3154,37 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 	if (!type)
 	{
 		type = "text/html";
-		data = schemedata(kit, path);
+		if (g_str_has_prefix(path, "main"))
+		{
+			preparemd();
+			gchar *cmd = g_strdup_printf(confcstr("generator"), mdpath);
+			g_spawn_command_line_sync(cmd, &data, NULL, NULL, NULL);
+			g_free(cmd);
+		}
+		else if (g_str_has_prefix(path, "history"))
+			data = histdata();
+		else if (g_str_has_prefix(path, "help"))
+			data = helpdata();
+		if (!data)
+			data = g_strdup("<h1>Empty</h1>");
 		len = strlen(data);
 	}
 
 	GInputStream *st = g_memory_input_stream_new_from_data(data, len, g_free);
 	webkit_uri_scheme_request_finish(req, st, len, type);
 	g_object_unref(st);
+
+	g_object_unref(req);
+	return false;
+}
+static void schemecb(WebKitURISchemeRequest *req, gpointer p)
+{
+	WebKitWebView *kit = webkit_uri_scheme_request_get_web_view(req);
+	Win *win = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
+	if (win) win->scheme = true;
+
+	g_object_ref(req);
+	g_idle_add((GSourceFunc)_schemecb, req);
 }
 
 
