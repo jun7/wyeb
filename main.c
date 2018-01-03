@@ -225,7 +225,7 @@ Conf dconf[] = {
 //			"reload last window when whiteblack.conf or reldomain are changed"},
 //	{"all"    , "nostorewebcontext", "false"}, //ephemeral
 
-	{"boot"  , "enablefavicon", "false"},
+	{"boot"  , "enablefavicon", "true"},
 	{"boot"  , "extensionargs", "adblock:true;"},
 	{"boot"  , "multiwebprocs", "false"},
 
@@ -237,6 +237,8 @@ Conf dconf[] = {
 	{"set:v"     , "enable-caret-browsing", "true"},
 	{"set:script", "enable-javascript"    , "false"},
 	{"set:image" , "auto-load-images"     , "true"},
+	{"set:image" , "linkformat"   , "[![](%s) %.40s](%s)"},
+	{"set:image" , "linkdata"     , "ftu"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
 	{DSET    , "usercss"          , "user.css"},
