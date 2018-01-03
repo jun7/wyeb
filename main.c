@@ -132,6 +132,7 @@ typedef struct {
 
 	bool cancelcontext;
 	bool cancelbtn1r;
+	bool cancelmdlr;
 
 //	gint    backwinnum;
 } Win;
@@ -252,6 +253,8 @@ Conf dconf[] = {
 	{DSET    , "mdlbtnright"      , "nextwin"},
 	{DSET    , "mdlbtnup"         , "top"},
 	{DSET    , "mdlbtndown"       , "bottom"},
+	{DSET    , "pressscrollup"    , "top"},
+	{DSET    , "pressscrolldown"  , "bottom"},
 	{DSET    , "rockerleft"       , "back"},
 	{DSET    , "rockerright"      , "forward"},
 	{DSET    , "rockerup"         , "quitprev"},
@@ -2616,13 +2619,14 @@ bool run(Win *win, gchar* action, const gchar *arg)
 {
 	return _run(win, action, arg, NULL, NULL);
 }
-static void setact(Win *win, gchar *key, const gchar *spare)
+static bool setact(Win *win, gchar *key, const gchar *spare)
 {
 	gchar *act = getset(win, key);
-	if (!act) return;
+	if (!act) return false;
 	gchar **acta = g_strsplit(act, " ", 2);
 	run(win, acta[0], acta[1] ?: spare);
 	g_strfreev(acta);
+	return true;
 }
 
 
@@ -3051,12 +3055,14 @@ static gchar *helpdata()
 		"    left press and move up    and right: raise bottom window and close\n"
 		"    left press and move down  and right: raise next   window and close\n"
 		"  middle button:\n"
-		"    on a link           : new background window\n"
-		"    on free space       : raise bottom window\n"
-		"    press and move left : raise bottom window\n"
-		"    press and move right: raise next   window\n"
-		"    press and move up   : go to top\n"
-		"    press and move down : go to bottom\n"
+		"    on a link            : new background window\n"
+		"    on free space        : raise bottom window\n"
+		"    press and move left  : raise bottom window\n"
+		"    press and move right : raise next   window\n"
+		"    press and move up    : go to top\n"
+		"    press and move down  : go to bottom\n"
+		"    press and scroll up  : go to top\n"
+		"    press and scroll down: go to bottom\n"
 		"\n"
 		"context-menu:\n"
 		"  You can add your own script to context-menu. See 'menu' dir in\n"
@@ -3499,6 +3505,12 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 		win->lastx = win->lasty = 0;
 
+		if (win->cancelmdlr)
+		{
+			win->cancelmdlr = false;
+			return true;
+		}
+
 		if (MAX(abs(deltax), abs(deltay)) < threshold(win))
 		{ //default
 			if (win->oneditable)
@@ -3567,6 +3579,18 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 {
 	if (pe->send_event) return false;
+
+	if (pe->state & GDK_BUTTON2_MASK)
+	{
+		win->cancelmdlr = true;
+		if (
+			((pe->direction == GDK_SCROLL_UP || pe->delta_y < 0) &&
+			 setact(win, "pressscrollup", URI(win))
+			) ||
+			((pe->direction == GDK_SCROLL_DOWN || pe->delta_y > 0) &&
+			setact(win, "pressscrolldown", URI(win))
+			)) return true;
+	}
 
 	int times = atoi(getset(win, "multiplescroll") ?: "0");
 	if (!times) return false;
