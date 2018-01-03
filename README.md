@@ -10,6 +10,7 @@ depends markdown -> discount: You have to add the flag '-f -style' to the genera
 # WithYourEditorBrowser / wyeb
 
 [Screenshot](https://github.com/jun7/wyeb/wiki/img/favicon.png)
+/ [OwnStyleBookmarks](https://github.com/jun7/wyeb/wiki/img/bookmark.png)
 / [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.png)
 
