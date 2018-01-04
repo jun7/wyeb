@@ -2157,7 +2157,7 @@ static Keybind dkeys[]= {
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 	{"topointer"     , 'p', 0, "pp resets damping"},
-	{"tomdlpointer"  , 'P', 0, "make middle click"},
+	{"tomdlpointer"  , 'P', 0, "makes middle click"},
 	{"torightpointer", 'p', GDK_CONTROL_MASK, "right click"},
 
 	{"tohint"        , 'f', 0},
