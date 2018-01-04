@@ -1373,8 +1373,6 @@ static void update(Win *win)
 	case Mfind:
 		settitle(win, NULL);
 		break;
-	default:
-		settitle(win, "-- UNKNOWN MODE --");
 	}
 
 	//normal mode
