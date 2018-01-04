@@ -3755,6 +3755,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		{
 			addhistory(win);
 			setspawn(win, "onloadedmenu");
+			send(win, Con, NULL); //for iframe
 		}
 
 		break;

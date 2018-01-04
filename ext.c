@@ -47,7 +47,7 @@ typedef struct {
 	gchar         *cutheads;
 	GSList        *black;
 	GSList        *white;
-	WebKitDOMEventTarget *emitter;
+	GSList        *emitters;
 } Page;
 
 static GPtrArray *pages = NULL;
@@ -62,7 +62,7 @@ static void freepage(Page *page)
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
 
-	if (page->emitter) g_object_unref(page->emitter);
+	g_slist_free_full(page->emitters, g_object_unref);
 
 	g_ptr_array_remove(pages, page);
 	g_free(page);
@@ -1203,7 +1203,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 //@dom cbs
 static void domfocusincb(WebKitDOMDOMWindow *w, WebKitDOMEvent *e, Page *page)
 {
-	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMDocument *doc = webkit_dom_dom_window_get_document(w);
 	WebKitDOMElement *te = webkit_dom_document_get_active_element(doc);
 	gchar *href = te ? webkit_dom_element_get_attribute(te, "HREF") : NULL;
 	gchar *uri = tofull(te, href);
@@ -1234,29 +1234,44 @@ static void pagestart(Page *page)
 	page->white = NULL;
 }
 
-static void pageon(Page *page)
+static void frameon(Page *page, WebKitDOMDocument *doc)
 {
-	//DD(pageon)
-	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
-	if (page->emitter) g_object_unref(page->emitter);
-	page->emitter = WEBKIT_DOM_EVENT_TARGET(
+	WebKitDOMEventTarget *emitter = WEBKIT_DOM_EVENT_TARGET(
 			webkit_dom_document_get_default_view(doc));
 
-	webkit_dom_event_target_add_event_listener(page->emitter,
+	page->emitters = g_slist_prepend(page->emitters, emitter);
+
+	webkit_dom_event_target_add_event_listener(emitter,
 			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);
-	webkit_dom_event_target_add_event_listener(page->emitter,
+	webkit_dom_event_target_add_event_listener(emitter,
 			"DOMFocusOut", G_CALLBACK(domfocusoutcb), false, page);
-//	webkit_dom_event_target_add_event_listener(page->emitter,
+//	webkit_dom_event_target_add_event_listener(emitter,
 //			"DOMActivate", G_CALLBACK(domactivatecb), false, page);
 
 	//for refresh hint
-	webkit_dom_event_target_add_event_listener(page->emitter,
+	webkit_dom_event_target_add_event_listener(emitter,
 			"resize", G_CALLBACK(hintcb), false, page);
-	webkit_dom_event_target_add_event_listener(page->emitter,
+	webkit_dom_event_target_add_event_listener(emitter,
 			"scroll", G_CALLBACK(hintcb), false, page);
 //may be heavy
-//	webkit_dom_event_target_add_event_listener(page->emitter,
+//	webkit_dom_event_target_add_event_listener(emitter,
 //			"DOMSubtreeModified", G_CALLBACK(hintcb), false, page);
+
+	WebKitDOMHTMLCollection *cl =
+		webkit_dom_document_get_elements_by_tag_name_as_html_collection(
+				doc, "IFRAME");
+	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
+		frameon(page,
+				webkit_dom_html_iframe_element_get_content_document(
+					(void *)webkit_dom_html_collection_item(cl, j)));
+
+	g_object_unref(cl);
+}
+static void pageon(Page *page)
+{
+	g_slist_free_full(page->emitters, g_object_unref);
+	page->emitters = NULL;
+	frameon(page, webkit_web_page_get_dom_document(page->kit));
 }
 
 static void mode(Page *page)
