@@ -133,8 +133,6 @@ typedef struct {
 	bool cancelcontext;
 	bool cancelbtn1r;
 	bool cancelmdlr;
-
-//	gint    backwinnum;
 } Win;
 
 typedef struct {
@@ -190,7 +188,6 @@ static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
 static gchar *logdir = NULL;
 
 static GtkAccelGroup *accelg = NULL;
-//static bool ephemeral = false;
 static WebKitWebContext *ctx = NULL;
 
 typedef struct {
@@ -224,7 +221,6 @@ Conf dconf[] = {
 	{"all"   , "histimgsize"  , "222"},
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
-//	{"all"    , "nostorewebcontext", "false"}, //ephemeral
 
 	{"boot"  , "enablefavicon", "true"},
 	{"boot"  , "extensionargs", "adblock:true;"},
@@ -449,6 +445,7 @@ static gboolean historycb(Win *win)
 		if (!logdir)
 			logdir = g_build_filename(
 				g_get_user_cache_dir(), fullname, "history", NULL);
+
 		_mkdirif(logdir, false);
 
 		currenti = -1;
@@ -1206,12 +1203,9 @@ static void settitle(Win *win, const gchar *pstr)
 
 	gchar *title = g_strdup_printf("%s%s%s%s%s%s - %s",
 		win->tlserr ? "!TLS has errors! " : "",
-		suffix,
-		*suffix ? "| " : "",
-		win->overset ?: "",
-		win->overset ? "| " : "",
-		wtitle,
-		uri);
+		suffix            , *suffix      ? "| " : "",
+		win->overset ?: "", win->overset ? "| " : "",
+		wtitle, uri);
 
 	gtk_window_set_title(win->win, title);
 	g_free(title);
@@ -4123,94 +4117,84 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
-	WebKitUserContentManager *cmgr =
-		webkit_user_content_manager_new();
+	if (!ctx) {
+		gchar *data  = g_build_filename(g_get_user_data_dir() , fullname, NULL);
+		gchar *cache = g_build_filename(g_get_user_cache_dir(), fullname, NULL);
+		WebKitWebsiteDataManager * mgr = webkit_website_data_manager_new(
+				"base-data-directory" , data,
+				"base-cache-directory", cache, NULL);
+		g_free(data);
+		g_free(cache);
 
-	if (cbwin)
-		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
-			"related-view", cbwin->kit, "user-content-manager", cmgr, NULL);
-	else {
-		if (!ctx) {
-			gchar *data =
-				g_build_filename(g_get_user_data_dir(), fullname, NULL);
-			gchar *cache =
-				g_build_filename(g_get_user_cache_dir(), fullname, NULL);
+		ctx = webkit_web_context_new_with_website_data_manager(mgr);
 
-			WebKitWebsiteDataManager * mgr = webkit_website_data_manager_new(
-					"base-data-directory", data,
-					"base-cache-directory", cache,
-					NULL);
+		//cookie  //have to be after ctx are made
+		WebKitCookieManager *cookiemgr =
+			webkit_website_data_manager_get_cookie_manager(mgr);
 
+		//we assume cookies are conf
+		gchar *cookiefile = path2conf("cookies");
+		webkit_cookie_manager_set_persistent_storage(cookiemgr,
+				cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
+		g_free(cookiefile);
 
-			g_free(data);
-			g_free(cache);
+		webkit_cookie_manager_set_accept_policy(cookiemgr,
+				WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
 
-			ctx = webkit_web_context_new_with_website_data_manager(mgr);
+		shared = !g_key_file_get_boolean(conf, "boot", "multiwebprocs", NULL);
+		if (!shared)
+			webkit_web_context_set_process_model(ctx,
+					WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 
-			//cookie  //have to be after ctx are made
-			WebKitCookieManager *cookiemgr =
-				webkit_website_data_manager_get_cookie_manager(mgr);
+		gchar **argv = g_key_file_get_string_list(
+				conf, "boot", "extensionargs", NULL, NULL);
+		gchar *args = g_strjoinv(";", argv);
+		g_strfreev(argv);
+		gchar *udata = g_strconcat(args,
+				";", shared ? "s" : "m", fullname, NULL);
+		g_free(args);
 
-			//we assume cookies are conf
-			gchar *cookiefile = path2conf("cookies");
-			webkit_cookie_manager_set_persistent_storage(cookiemgr,
-					cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
-			g_free(cookiefile);
-
-			webkit_cookie_manager_set_accept_policy(cookiemgr,
-					WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
-
-			shared = !g_key_file_get_boolean(conf,
-					"boot", "multiwebprocs", NULL);
-			if (!shared)
-				webkit_web_context_set_process_model(ctx,
-						WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
-
-			gchar **argv = g_key_file_get_string_list(
-					conf, "boot", "extensionargs", NULL, NULL);
-			gchar *args = g_strjoinv(";", argv);
-			g_strfreev(argv);
-			gchar *udata = g_strconcat(args,
-					";", shared ? "s" : "m", fullname, NULL);
-			g_free(args);
-
-			webkit_web_context_set_web_extensions_initialization_user_data(
-					ctx, g_variant_new_string(udata));
-			g_free(udata);
+		webkit_web_context_set_web_extensions_initialization_user_data(
+				ctx, g_variant_new_string(udata));
+		g_free(udata);
 
 #if DEBUG
-			gchar *extdir = g_get_current_dir();
-			webkit_web_context_set_web_extensions_directory(ctx, extdir);
-			g_free(extdir);
+		gchar *extdir = g_get_current_dir();
+		webkit_web_context_set_web_extensions_directory(ctx, extdir);
+		g_free(extdir);
 #else
-			webkit_web_context_set_web_extensions_directory(ctx, EXTENSION_DIR);
+		webkit_web_context_set_web_extensions_directory(ctx, EXTENSION_DIR);
 #endif
 
-			SIG(ctx, "download-started", downloadcb, NULL);
+		SIG(ctx, "download-started", downloadcb, NULL);
 
-			webkit_security_manager_register_uri_scheme_as_local(
-					webkit_web_context_get_security_manager(ctx), APP);
+		webkit_security_manager_register_uri_scheme_as_local(
+				webkit_web_context_get_security_manager(ctx), APP);
 
-			webkit_web_context_register_uri_scheme(
-					ctx, APP, schemecb, NULL, NULL);
+		webkit_web_context_register_uri_scheme(
+				ctx, APP, schemecb, NULL, NULL);
 
-			if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
-			{
-				gchar *favdir =
-					g_build_filename(g_get_user_cache_dir(), fullname, "favicon", NULL);
-				webkit_web_context_set_favicon_database_directory(ctx, favdir);
-				g_free(favdir);
-			}
-
-			if (confbool("ignoretlserr"))
-				webkit_web_context_set_tls_errors_policy(ctx,
-						WEBKIT_TLS_ERRORS_POLICY_IGNORE);
+		if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
+		{
+			gchar *favdir =
+				g_build_filename(g_get_user_cache_dir(), fullname, "favicon", NULL);
+			webkit_web_context_set_favicon_database_directory(ctx, favdir);
+			g_free(favdir);
 		}
 
-		win->kito = g_object_new(WEBKIT_TYPE_WEB_VIEW,
-			"web-context", ctx, "user-content-manager", cmgr, NULL);
+		if (confbool("ignoretlserr"))
+			webkit_web_context_set_tls_errors_policy(ctx,
+					WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 	}
-	g_object_set_data(win->kito, "win", win); //for schemecb and download and jscb
+	WebKitUserContentManager *cmgr = webkit_user_content_manager_new();
+	win->kito = cbwin ?
+		g_object_new(WEBKIT_TYPE_WEB_VIEW,
+				"related-view", cbwin->kit, "user-content-manager", cmgr, NULL)
+		:
+		g_object_new(WEBKIT_TYPE_WEB_VIEW,
+				"web-context", ctx, "user-content-manager", cmgr, NULL);
+
+	g_object_set_data(win->kito, "win", win);
 
 	//workaround. without get_inspector inspector doesen't work
 	//and have to grab forcus;
