@@ -189,6 +189,7 @@ static gchar *logdir = NULL;
 
 static GtkAccelGroup *accelg = NULL;
 static WebKitWebContext *ctx = NULL;
+static bool ephemeral = false;
 
 typedef struct {
 	gchar *group;
@@ -225,6 +226,7 @@ Conf dconf[] = {
 	{"boot"  , "enablefavicon", "true"},
 	{"boot"  , "extensionargs", "adblock:true;"},
 	{"boot"  , "multiwebprocs", "false"},
+	{"boot"  , "ephemeral"    , "fales"},
 
 	{"search", "d"            , "https://duckduckgo.com/?q=%s"},
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
@@ -428,6 +430,7 @@ static void freeimg(Img *img)
 static gboolean historycb(Win *win)
 {
 	if (win && (
+		ephemeral ||
 		!isin(wins, win) ||
 		!webkit_web_view_get_uri(win->kit) ||
 		g_str_has_prefix(URI(win), APP":") ||
@@ -439,12 +442,14 @@ static gboolean historycb(Win *win)
 	static gint currenti = -1;
 	static gint logsize = 0;
 
-	if (!logdir ||
-			!g_file_test(logdir, G_FILE_TEST_EXISTS))
+	if (!logdir || (!ephemeral &&
+			!g_file_test(logdir, G_FILE_TEST_EXISTS)))
 	{
 		if (!logdir)
 			logdir = g_build_filename(
 				g_get_user_cache_dir(), fullname, "history", NULL);
+
+		if (ephemeral) return false;
 
 		_mkdirif(logdir, false);
 
@@ -4118,11 +4123,13 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
 	if (!ctx) {
+		ephemeral = g_key_file_get_boolean(conf, "boot", "ephemeral", NULL);
 		gchar *data  = g_build_filename(g_get_user_data_dir() , fullname, NULL);
 		gchar *cache = g_build_filename(g_get_user_cache_dir(), fullname, NULL);
 		WebKitWebsiteDataManager * mgr = webkit_website_data_manager_new(
 				"base-data-directory" , data,
-				"base-cache-directory", cache, NULL);
+				"base-cache-directory", cache,
+				"is-ephemeral", ephemeral, NULL);
 		g_free(data);
 		g_free(cache);
 
@@ -4132,11 +4139,14 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 		WebKitCookieManager *cookiemgr =
 			webkit_website_data_manager_get_cookie_manager(mgr);
 
-		//we assume cookies are conf
-		gchar *cookiefile = path2conf("cookies");
-		webkit_cookie_manager_set_persistent_storage(cookiemgr,
-				cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
-		g_free(cookiefile);
+		if (!ephemeral)
+		{
+			//we assume cookies are conf
+			gchar *cookiefile = path2conf("cookies");
+			webkit_cookie_manager_set_persistent_storage(cookiemgr,
+					cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
+			g_free(cookiefile);
+		}
 
 		webkit_cookie_manager_set_accept_policy(cookiemgr,
 				WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
