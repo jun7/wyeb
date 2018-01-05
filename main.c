@@ -547,7 +547,6 @@ static void removehistory()
 		remove(tmp);
 		g_free(tmp);
 	}
-	GFA(logdir, NULL)
 }
 
 static guint msgfunc = 0;
