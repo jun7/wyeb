@@ -429,28 +429,19 @@ static void freeimg(Img *img)
 }
 static gboolean historycb(Win *win)
 {
-	if (win && (
-		ephemeral ||
+	if (ephemeral ||
 		!isin(wins, win) ||
 		!webkit_web_view_get_uri(win->kit) ||
 		g_str_has_prefix(URI(win), APP":") ||
 		webkit_web_view_is_loading(win->kit)
-	)) return false;
+	) return false;
 
 #define MAXSIZE 22222
 	static gchar *current = NULL;
 	static gint currenti = -1;
 	static gint logsize = 0;
-
-	if (!logdir || (!ephemeral &&
-			!g_file_test(logdir, G_FILE_TEST_EXISTS)))
+	if (!current || !g_file_test(logdir, G_FILE_TEST_EXISTS))
 	{
-		if (!logdir)
-			logdir = g_build_filename(
-				g_get_user_cache_dir(), fullname, "history", NULL);
-
-		if (ephemeral) return false;
-
 		_mkdirif(logdir, false);
 
 		currenti = -1;
@@ -470,8 +461,6 @@ static gboolean historycb(Win *win)
 				break;
 		}
 	}
-
-	if (!win) return false;
 
 	gchar tstr[99];
 	time_t t = time(NULL);
@@ -552,7 +541,6 @@ static void addhistory(Win *win)
 }
 static void removehistory()
 {
-	historycb(NULL);
 	for (gchar **file = logs; *file; file++)
 	{
 		gchar *tmp = g_build_filename(logdir, *file, NULL);
@@ -2935,7 +2923,6 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 //@uri scheme
 static gchar *histdata()
 {
-	historycb(NULL);
 	GSList *hist = NULL;
 	gint start = 0;
 	gint num = 0;
@@ -4402,6 +4389,8 @@ int main(int argc, char **argv)
 	g_free(sendstr);
 
 	//start main
+	logdir = g_build_filename(
+			g_get_user_cache_dir(), fullname, "history", NULL);
 	gtk_init(NULL, NULL);
 	checkconf(false);
 
