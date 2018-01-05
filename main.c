@@ -337,7 +337,7 @@ static gchar *mainmdstr =
 "**b**: Add title and URI of a page opened to this page;\n"
 "\n"
 "If **e**,**E**,**c** don't work, open 'main.conf' in\n"
-"config directory/'"APPNAME"' and edit '"MIMEOPEN"' values.\n"
+"config directory/'"DIRNAME"' and edit '"MIMEOPEN"' values.\n"
 "If you haven't any gui editor or filer, set them like 'xterm -e nano %s'.\n"
 "\n"
 "For other keys, see [help]("APP":help) assigned '**:**'.\n"
@@ -355,7 +355,7 @@ static gchar *mainmdstr =
 "</style>\n"
 "<div class=links style=line-height:1.4;>\n"
 "\n"
-"["APPNAME"](https://github.com/jun7/"APP")\n"
+"["APP"](https://github.com/jun7/"APP")\n"
 "["APP"adblock](https://github.com/jun7/"APP"adblock)\n"
 "[Arch Linux](https://www.archlinux.org/)\n"
 "[dwb - ArchWiki](https://wiki.archlinux.org/index.php/dwb)\n"
@@ -4361,8 +4361,9 @@ int main(int argc, char **argv)
 		!strcmp(suffix,  envsuf) ? g_getenv("WINID") : NULL;
 	if (!winid || !*winid) winid = "0";
 
-
-	fullname = g_strconcat(APPNAME, suffix, NULL);
+	fullname = g_strconcat(OLDNAME, suffix, NULL);
+	if (!g_file_test(path2conf(NULL), G_FILE_TEST_EXISTS))
+		GFA(fullname, g_strconcat(DIRNAME, suffix, NULL));
 
 	gchar *exarg = "";
 	if (argc > 4)

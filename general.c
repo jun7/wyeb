@@ -24,7 +24,8 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <glib/gstdio.h>
 #include <regex.h>
 
-#define APPNAME  "wyebrowser"
+#define OLDNAME  "wyebrowser"
+#define DIRNAME  "wyeb."
 #define APP      "wyeb"
 
 #define HINTKEYS "fsedagwrvxqcz"

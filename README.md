@@ -1,7 +1,11 @@
 ## Changes
+The directorys' name is changed from 'wyebrowser' to 'wyeb.' because it was too long.
+wyeb uses old name if old conf dir is found though.
+Changing the name loses the cache and local storage what webkit has saved.
+See ~/.cache and ~/.local/share to keep it by rename or cleanup.
+
 $SUFFIX's default value is changed from "" to "/" though "" in the args is still accepted.
 So the double-quotations of $SUFFIX are no longer required.
-
 
 mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use it.
 
