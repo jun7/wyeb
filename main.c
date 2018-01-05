@@ -265,7 +265,7 @@ Conf dconf[] = {
 	{DSET    , "hjkl2arrowkeys"   , "false",
 		"hjkl's default are scrolls, not arrow keys"},
 	{DSET    , "linkformat"       , "[%.40s](%s)"},
-	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon\n"},
+	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "hintrangemax"     , "9"},
