@@ -1450,6 +1450,8 @@ void ipccb(const gchar *line)
 	default:
 		D(extension gets unknown command %s, line)
 	}
+
+	g_strfreev(args);
 }
 
 
