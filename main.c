@@ -228,7 +228,7 @@ Conf dconf[] = {
 	{"boot"  , "multiwebprocs", "false"},
 	{"boot"  , "ephemeral"    , "false"},
 
-	{"search", "d"            , "https://duckduckgo.com/?q=%s"},
+	{"search", "b"            , "https://bing.com/?q=%s"},
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
