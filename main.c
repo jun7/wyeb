@@ -2871,7 +2871,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	gtk_window_set_title(win->win, "DL : Waiting for a response.");
 	gtk_window_set_default_size(win->win, 400, -1);
 	SIGW(win->wino, "destroy"         , dldestroycb, win);
-	SIGW(win->wino, "key-press-event" , dlkeycb    , win);
+	SIG( win->wino, "key-press-event" , dlkeycb    , win);
 
 	win->boxw = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_container_add(GTK_CONTAINER(win->win), win->boxw);
