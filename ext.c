@@ -1103,15 +1103,15 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 		{
 			if (!ret && !strcmp(key, ipkeys))
 			{
-				webkit_dom_element_focus(te);
+				ret = true;
+				send(page, "tonormal", NULL);
 
+				webkit_dom_element_focus(te);
 				if (type == Cclick)
 				{
 					bool isi = isinput(te);
 					if (isi)
 						send(page, "toinsert", NULL);
-					else
-						send(page, "tonormal", NULL);
 
 #if NEWV
 					if (page->script && !isi)
