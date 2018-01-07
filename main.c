@@ -923,10 +923,6 @@ static void setprops(Win *win, GKeyFile *kf, gchar *group)
 		g_object_set_data_full(win->seto, key, *val ? val : NULL, g_free);
 	}
 }
-static void getkitprops(GObject *obj, GKeyFile *kf, gchar *group)
-{
-	_kitprops(false, obj, kf, group);
-}
 static bool _seturiconf(Win *win, const gchar* uri)
 {
 	bool ret = false;
@@ -999,27 +995,38 @@ static void resetconf(Win *win, bool force)
 			reloadlast();
 	}
 }
-static void getdconf(GKeyFile *kf, bool isnew)
+static void initconf(GKeyFile *kf)
 {
+	if (conf) g_key_file_free(conf);
+	conf = kf ?: g_key_file_new();
+
 	gint len = sizeof(dconf) / sizeof(*dconf);
 	for (int i = 0; i < len; i++)
 	{
 		Conf c = dconf[i];
 
-		if (!isnew)
+		if (g_key_file_has_key(conf, c.group, c.key, NULL)) continue;
+		if (kf)
 		{
 			if (!strcmp(c.group, "search")) continue;
 			if (g_str_has_prefix(c.group, "set:")) continue;
 		}
 
-		if (!g_key_file_has_key(kf, c.group, c.key, NULL))
-			g_key_file_set_value(kf, c.group, c.key, c.val);
-
-		if (isnew && c.desc)
+		g_key_file_set_value(conf, c.group, c.key, c.val);
+		if (c.desc)
 			g_key_file_set_comment(conf, c.group, c.key, c.desc, NULL);
 	}
 
-	if (!isnew) return;
+	//fill vals not set
+	if (LASTWIN)
+		_kitprops(false, LASTWIN->seto, conf, DSET);
+	else {
+		WebKitSettings *set = webkit_settings_new();
+		_kitprops(false, (GObject *)set, conf, DSET);
+		g_object_unref(set);
+	}
+
+	if (kf) return;
 
 	//sample and comment
 	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's.", NULL);
@@ -1043,14 +1050,6 @@ static void getdconf(GKeyFile *kf, bool isnew)
 	g_key_file_set_comment(conf, sample, "sets",
 			"include other sets." , NULL);
 
-	//fill vals not set
-	if (LASTWIN)
-		getkitprops(LASTWIN->seto, kf, DSET);
-	else {
-		WebKitSettings *set = webkit_settings_new();
-		getkitprops((GObject *)set, kf, DSET);
-		g_object_unref(set);
-	}
 }
 
 void checkconf(bool frommonitor)
@@ -1087,10 +1086,8 @@ void checkconf(bool frommonitor)
 	{
 		if (frommonitor) return;
 		if (!conf)
-		{
-			conf = g_key_file_new();
-			getdconf(conf, true);
-		}
+			initconf(NULL);
+
 		mkdirif(confpath);
 		g_key_file_save_to_file(conf, confpath, NULL);
 		newfile = true;
@@ -1113,17 +1110,11 @@ void checkconf(bool frommonitor)
 			g_error_free(err);
 
 			if (!conf)
-			{
-				conf = g_key_file_new();
-				getdconf(conf, true);
-			}
+				initconf(NULL);
 		}
 		else
 		{
-			getdconf(new, false);
-
-			if (conf) g_key_file_free(conf);
-			conf = new;
+			initconf(new);
 
 			if (ctx)
 				webkit_web_context_set_tls_errors_policy(ctx,
@@ -2548,7 +2539,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("showmainpage", openuri(win, APP":main"))
 
 	Z("clearallwebsitedata",
-			WebKitWebsiteDataManager * mgr =
+			WebKitWebsiteDataManager *mgr =
 				webkit_web_context_get_website_data_manager(ctx);
 			webkit_website_data_manager_clear(mgr,
 				WEBKIT_WEBSITE_DATA_ALL, 0, NULL, NULL, NULL);
@@ -4112,7 +4103,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 		ephemeral = g_key_file_get_boolean(conf, "boot", "ephemeral", NULL);
 		gchar *data  = g_build_filename(g_get_user_data_dir() , fullname, NULL);
 		gchar *cache = g_build_filename(g_get_user_cache_dir(), fullname, NULL);
-		WebKitWebsiteDataManager * mgr = webkit_website_data_manager_new(
+		WebKitWebsiteDataManager *mgr = webkit_website_data_manager_new(
 				"base-data-directory" , data,
 				"base-cache-directory", cache,
 				"is-ephemeral", ephemeral, NULL);
