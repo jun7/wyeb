@@ -830,7 +830,7 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 		g_value_unset(&gv);
 	}
 }
-static void checkconf(bool monitor); //declaration
+static void checkcss(bool monitor); //declaration
 static gchar *addcss(const gchar *name)
 {
 	gchar *path = path2conf(name);
@@ -852,7 +852,7 @@ static gchar *addcss(const gchar *name)
 		csslist  = g_slist_prepend(csslist,  g_strdup(name));
 		csstimes = g_slist_prepend(csstimes, time);
 
-		monitor(path, checkconf);
+		monitor(path, checkcss);
 	}
 	if (!exists)
 		GFA(path, NULL)
@@ -1052,12 +1052,11 @@ static void initconf(GKeyFile *kf)
 
 }
 
-void checkconf(bool frommonitor)
+static void checkmd(bool frommonitor)
 {
-	//mainmd
 	if (mdpath && wins->len && g_file_test(mdpath, G_FILE_TEST_EXISTS))
 	{
-		if (getctime(mdpath, &mdtime))
+		if (getctime(mdpath, &mdtime) || frommonitor)
 			for (int i = 0; i < wins->len; i++)
 			{
 				Win *win = wins->pdata[i];
@@ -1065,20 +1064,59 @@ void checkconf(bool frommonitor)
 					webkit_web_view_reload(win->kit);
 			}
 	}
-
-	//accels
+}
+static void checkaccels(bool frommonitor)
+{
 	if (
 		accelp &&
 		g_file_test(accelp, G_FILE_TEST_EXISTS) &&
-		getctime(accelp, &accelt)
+		(getctime(accelp, &accelt) || frommonitor)
 	)
 		gtk_accel_map_load(accelp);
+}
+void checkcss(bool frommonitor)
+{
+	if (!wins) return;
 
-	//conf
+	gchar *path = NULL;
+	    GSList *nt   = csstimes;
+	for(GSList *next = csslist ; next; next = next->next, nt = nt->next)
+	{
+		__time_t *time = nt->data;
+		gchar *name = next->data;
+
+		GFA(path, path2conf(name))
+
+		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
+		if (!exists && *time == 0) continue;
+		*time = 0;
+
+		if (exists && !getctime(path, time)) continue;
+
+		for (int i = 0; i < wins->len; i++)
+		{
+			Win *lw = wins->pdata[i];
+			gchar *us = getset(lw, "usercss");
+			if (!us) continue;
+
+			if (!exists || g_strrstr(us, name))
+				setcss(lw, us);
+		}
+	}
+	g_free(path);
+}
+static void checkconfs(bool frommonitor)
+{
+	if (!frommonitor)
+	{
+		checkmd(false);
+		checkaccels(false);
+	}
+
 	if (!confpath)
 	{
 		confpath = path2conf("main.conf");
-		monitor(confpath, checkconf);
+		monitor(confpath, checkconfs);
 	}
 
 	bool newfile = false;
@@ -1093,10 +1131,8 @@ void checkconf(bool frommonitor)
 		newfile = true;
 	}
 
-	bool changed = getctime(confpath, &conftime);
-
+	bool changed = getctime(confpath, &conftime) || frommonitor;
 	if (newfile) return;
-
 	if (changed)
 	{
 		GKeyFile *new = g_key_file_new();
@@ -1128,42 +1164,13 @@ void checkconf(bool frommonitor)
 		}
 	}
 
-	//css
-	if (!changed && wins)
-	{
-		gchar *path = NULL;
-
-		    GSList *nt   = csstimes;
-		for(GSList *next = csslist ; next; next = next->next, nt = nt->next)
-		{
-			__time_t *time = nt->data;
-			gchar *name = next->data;
-
-			GFA(path, path2conf(name))
-
-			bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
-			if (!exists && *time == 0) continue;
-			*time = 0;
-
-			if (exists && !getctime(path, time)) continue;
-
-			for (int i = 0; i < wins->len; i++)
-			{
-				Win *lw = wins->pdata[i];
-				gchar *us = getset(lw, "usercss");
-				if (!us) continue;
-
-				if (!exists || g_strrstr(us, name))
-					setcss(lw, us);
-			}
-		}
-		g_free(path);
-	}
+	if (!frommonitor && !changed)
+		checkcss(false);
 }
 
 static void preparemd()
 {
-	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkconf);
+	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkmd);
 }
 
 
@@ -2052,7 +2059,7 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 		append(mdpath, NULL);
 
 	showmsg(win, "Added");
-	checkconf(false);
+	checkmd(false);
 }
 
 static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
@@ -2610,7 +2617,7 @@ static gboolean focuscb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
-	checkconf(false);
+	checkconfs(false);
 	if (!webkit_web_view_is_loading(win->kit) &&
 			webkit_web_view_get_uri(win->kit))
 	{
@@ -3904,7 +3911,7 @@ void makemenu(WebKitContextMenu *menu)
 		g_object_unref(gf);
 
 		accelp = path2conf("accels");
-		monitor(accelp, checkconf);
+		monitor(accelp, checkaccels);
 	}
 
 	if (g_file_test(accelp, G_FILE_TEST_EXISTS))
@@ -4383,7 +4390,7 @@ int main(int argc, char **argv)
 	logdir = g_build_filename(
 			g_get_user_cache_dir(), fullname, "history", NULL);
 	gtk_init(NULL, NULL);
-	checkconf(false);
+	checkconfs(false);
 
 	ipcwatch("main");
 

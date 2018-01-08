@@ -104,11 +104,32 @@ static gchar *path2conf(const gchar *name)
 			g_get_user_config_dir(), fullname, name, NULL);
 }
 
+static GSList *mqueue   = NULL;
+static GSList *mqueuedo = NULL;
+static gboolean mqueuecb(gpointer func)
+{
+	mqueue = g_slist_remove(mqueue, func);
+	if (g_slist_find(mqueuedo, func))
+	{
+		mqueuedo = g_slist_remove(mqueuedo, func);
+		((void (*)(bool))func)(true);
+	}
+	return false;
+}
 static void monitorcb(
 		GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e, void (*func)(bool))
 {
-	if (e == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT)
-		func(true);
+	if (e != G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT) return;
+	if (g_slist_find(mqueue, func))
+	{
+		if (!g_slist_find(mqueuedo, func))
+			mqueuedo = g_slist_prepend(mqueuedo, func);
+		return;
+	}
+
+	func(true);
+	mqueue = g_slist_prepend(mqueue, func);
+	g_idle_add(mqueuecb, func);
 }
 static void monitor(gchar *path, void (*func)(bool))
 {
