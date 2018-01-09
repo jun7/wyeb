@@ -28,6 +28,8 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define DIRNAME  "wyeb."
 #define APP      "wyeb"
 
+#define DSET "set;"
+#define MIMEOPEN "mimeopen -n %s"
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
 
@@ -49,15 +51,21 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 	g_signal_connect_after(o, n, G_CALLBACK(c), u)
 #define SIGW(o, n, c, u) \
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
+#define GFA(p, v) {g_free(p); p = v;}
 
 static gchar *fullname = "";
 static bool shared = true;
+static GKeyFile *conf = NULL;
+static gchar *confpath = NULL;
+
+typedef struct _WP WP;
 
 typedef enum {
+	Cload   = 'L',
+	Coverset= 'O',
 	Cstart  = 's',
 	Con     = 'o',
 
-	Cstyle  = 'C',
 	Ckey    = 'k',
 	Cclick  = 'c',
 	Clink   = 'l',
@@ -76,6 +84,135 @@ typedef enum {
 
 	Cfree   = 'F',
 } Coms;
+
+
+//@conf
+typedef struct {
+	gchar *group;
+	gchar *key;
+	gchar *val;
+	gchar *desc;
+} Conf;
+Conf dconf[] = {
+	{"all"   , "editor"       , MIMEOPEN,
+		"editor=xterm -e nano %s\n"
+		"editor=gvim --servername "APP" --remote-silent \"%s\""
+	},
+	{"all"   , "mdeditor"     , ""},
+	{"all"   , "diropener"    , MIMEOPEN},
+	{"all"   , "generator"    , "markdown -f -style %s"},
+
+	{"all"   , "hintkeys"     , HINTKEYS},
+	{"all"   , "keybindswaps" , "",
+		"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
+
+	{"all"   , "winwidth"     , "1000"},
+	{"all"   , "winheight"    , "1000"},
+	{"all"   , "zoom"         , "1.000"},
+
+	{"all"   , "dlwinback"    , "false"},
+	{"all"   , "dlwinclosemsec","3000"},
+	{"all"   , "msgmsec"      , "600"},
+	{"all"   , "ignoretlserr" , "false"},
+	{"all"   , "histimgs"     , "66"},
+	{"all"   , "histimgsize"  , "222"},
+//	{"all"   , "configreload" , "true",
+//			"reload last window when whiteblack.conf or reldomain are changed"},
+
+	{"boot"  , "enablefavicon", "true"},
+	{"boot"  , "extensionargs", "adblock:true;"},
+	{"boot"  , "multiwebprocs", "false"},
+	{"boot"  , "ephemeral"    , "false"},
+
+	{"search", "b"            , "https://bing.com/?q=%s"},
+	{"search", "g"            , "https://www.google.com/search?q=%s"},
+	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
+	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
+
+	{"set:v"     , "enable-caret-browsing", "true"},
+	{"set:script", "enable-javascript"    , "false"},
+	{"set:image" , "auto-load-images"     , "true"},
+	{"set:image" , "linkformat"   , "[![](%s) %.40s](%s)"},
+	{"set:image" , "linkdata"     , "ftu"},
+
+	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
+	{DSET    , "usercss"          , "user.css"},
+//	{DSET    , "loadsightedimages", "false"},
+	{DSET    , "reldomaindataonly", "false"},
+	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
+	{DSET    , "showblocked"      , "false"},
+
+	{DSET    , "mdlbtnlinkaction" , "openback"},
+	{DSET    , "mdlbtnleft"       , "prevwin", "mdlbtnleft=winlist"},
+	{DSET    , "mdlbtnright"      , "nextwin"},
+	{DSET    , "mdlbtnup"         , "top"},
+	{DSET    , "mdlbtndown"       , "bottom"},
+	{DSET    , "pressscrollup"    , "top"},
+	{DSET    , "pressscrolldown"  , "bottom"},
+	{DSET    , "rockerleft"       , "back"},
+	{DSET    , "rockerright"      , "forward"},
+	{DSET    , "rockerup"         , "quitprev"},
+	{DSET    , "rockerdown"       , "quitnext"},
+
+	{DSET    , "multiplescroll"   , "0"},
+
+	{DSET    , "newwinhandle"     , "normal",
+		"newwinhandle=notnew | ignore | back | normal"},
+	{DSET    , "hjkl2arrowkeys"   , "false",
+		"hjkl's default are scrolls, not arrow keys"},
+	{DSET    , "linkformat"       , "[%.40s](%s)"},
+	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
+	{DSET    , "scriptdialog"     , "true"},
+	{DSET    , "hackedhint4js"    , "true"},
+	{DSET    , "hintrangemax"     , "9"},
+	{DSET    , "dlmimetypes"      , "",
+		"dlmimetypes=text/plain;video/;audio/;application/\n"
+		"dlmimetypes=*"},
+	{DSET    , "dlsubdir"         , ""},
+	{DSET    , "entrybgcolor"     , "true"},
+	{DSET    , "onstartmenu"      , "",
+		"onstartmenu spawns a shell in the menu dir when load started before redirect"},
+	{DSET    , "onloadmenu"       , "", "when load commited"},
+	{DSET    , "onloadedmenu"     , "", "when load finished"},
+	{DSET    , "spawnmsg"         , "false"},
+	{DSET    , "hintstyle"        , "",
+		"hintstyle=font-size: medium !important; -webkit-transform: rotate(-9deg);"},
+
+	//changes
+	//{DSET      , "auto-load-images" , "false"},
+	//{DSET      , "enable-plugins"   , "false"},
+	//{DSET      , "enable-java"      , "false"},
+	//{DSET      , "enable-fullscreen", "false"},
+};
+#ifdef MAINC
+static bool confbool(gchar *key)
+{ return g_key_file_get_boolean(conf, "all", key, NULL); }
+static gint confint(gchar *key)
+{ return g_key_file_get_integer(conf, "all", key, NULL); }
+static gdouble confdouble(gchar *key)
+{ return g_key_file_get_double(conf, "all", key, NULL); }
+#endif
+static gchar *confcstr(gchar *key)
+{//return is static string
+	static gchar *str = NULL;
+	GFA(str, g_key_file_get_string(conf, "all", key, NULL))
+	return str;
+}
+static gchar *getset(WP *wp, gchar *key)
+{//return is static string
+	static gchar *ret = NULL;
+	if (!wp)
+	{
+		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
+		return ret;
+	}
+	return g_object_get_data(wp->seto, key);
+}
+static bool getsetbool(WP *wp, gchar *key)
+{ return !g_strcmp0(getset(wp, key), "true"); }
+static int getsetint(WP *wp, gchar *key)
+{ return atoi(getset(wp, key) ?: "0"); }
+
 
 static void _mkdirif(gchar *path, bool isfile)
 {
@@ -182,6 +319,106 @@ static void prepareif(
 	if (ctime) getctime(*path, ctime);
 }
 
+
+static void setprops(WP *wp, GKeyFile *kf, gchar *group)
+{
+	//sets
+	static int deps = 0;
+	if (deps > 99) return;
+	gchar **sets = g_key_file_get_string_list(kf, group, "sets", NULL, NULL);
+	for (gchar **set = sets; set && *set; set++) {
+		gchar *setstr = g_strdup_printf("set:%s", *set);
+		deps++;
+		setprops(wp, kf, setstr);
+		deps--;
+		g_free(setstr);
+	}
+	g_strfreev(sets);
+
+	//D(set props group: %s, group)
+#ifdef MAINC
+	_kitprops(true, wp->seto, kf, group);
+#endif
+
+	//non webkit settings
+	int len = sizeof(dconf) / sizeof(*dconf);
+	for (int i = 0; i < len; i++) {
+		if (strcmp(dconf[i].group, DSET)) continue;
+		gchar *key = dconf[i].key;
+		if (!g_key_file_has_key(kf, group, key, NULL)) continue;
+
+		gchar *val = g_key_file_get_string(kf, group, key, NULL);
+
+#ifdef MAINC
+		if (!strcmp(key, "usercss") &&
+			g_strcmp0(g_object_get_data(wp->seto, key), val))
+		{
+			setcss(wp, val);
+		}
+#endif
+		g_object_set_data_full(wp->seto, key, *val ? val : NULL, g_free);
+	}
+}
+
+static bool _seturiconf(WP *wp, const gchar* uri)
+{
+	bool ret = false;
+	GFA(wp->lastreset, g_strdup(uri))
+
+	gchar **groups = g_key_file_get_groups(conf, NULL);
+	for (gchar **gl = groups; *gl; gl++)
+	{
+		gchar *g = *gl;
+		if (!g_str_has_prefix(g, "uri:")) continue;
+
+		gchar *tofree = NULL;
+		if (g_key_file_has_key(conf, g, "reg", NULL))
+		{
+			g = tofree = g_key_file_get_string(conf, g, "reg", NULL);
+		} else {
+			g += 4;
+		}
+
+		regex_t reg;
+		if (regcomp(&reg, g, REG_EXTENDED | REG_NOSUB))
+		{
+			g_free(tofree);
+			continue;
+		}
+
+		if (regexec(&reg, uri ?: "", 0, NULL, 0) == 0) {
+			setprops(wp, conf, *gl);
+			GFA(wp->lasturiconf, g_strdup(uri))
+			ret = true;
+		}
+
+		regfree(&reg);
+		g_free(tofree);
+	}
+
+	g_strfreev(groups);
+	return ret;
+}
+
+static void _resetconf(WP *wp, const gchar *uri, bool force)
+{
+	if (wp->lasturiconf || force)
+	{
+		GFA(wp->lasturiconf, NULL)
+		setprops(wp, conf, DSET);
+	}
+
+	_seturiconf(wp, uri);
+
+	if (wp->overset) {
+		gchar *setstr = g_strdup_printf("set:%s", wp->overset);
+		setprops(wp, conf, setstr);
+		g_free(setstr);
+	}
+}
+
+
+//@misc
 static gchar *escape(const gchar *str)
 {
 	gulong len = 0;
@@ -216,7 +453,7 @@ static gchar *escape(const gchar *str)
 }
 
 
-//ipc
+//@ipc
 static gchar *ipcpath(gchar *name)
 {
 	gchar *path = g_build_filename(g_get_user_runtime_dir(), fullname, name, NULL);
@@ -255,7 +492,6 @@ static bool ipcsend(gchar *name, gchar *str) {
 		(cpipe = open(path, O_WRONLY | O_NONBLOCK)))
 	{
 		//D(send start %s %s, name, str)
-
 		ret = true;
 		char *esc = g_strescape(str, "");
 		gchar *send = g_strconcat(esc, "\n", NULL);
@@ -269,14 +505,22 @@ static bool ipcsend(gchar *name, gchar *str) {
 	g_free(path);
 	return ret;
 }
-static void ipcwatch(gchar *name) {
+static GSource *_ipcwatch(gchar *name, GMainContext *ctx) {
 	gchar *path = ipcpath(name);
 
 	if (!g_file_test(path, G_FILE_TEST_EXISTS))
 		mkfifo(path, 0600);
 
-	g_io_add_watch(
-			g_io_channel_new_file(path, "r+", NULL), G_IO_IN, ipcgencb, NULL);
+	GIOChannel *io = g_io_channel_new_file(path, "r+", NULL);
+	GSource *watch = g_io_create_watch(io, G_IO_IN);
+	g_io_channel_unref(io);
+	g_source_set_callback(watch, (GSourceFunc)ipcgencb, NULL, NULL);
+	g_source_attach(watch, ctx);
 
 	g_free(path);
+	return watch;
+}
+static void ipcwatch(gchar *name)
+{
+	_ipcwatch(name, g_main_context_default());
 }

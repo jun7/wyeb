@@ -20,15 +20,13 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <ctype.h>
 #include <webkit2/webkit-web-extension.h>
 
-#include "general.c"
-
 #if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
 # define NEWV 1
 #else
 # define NEWV 0
 #endif
 
-typedef struct {
+typedef struct _WP {
 	WebKitWebPage *kit;
 	guint64        id;
 
@@ -36,19 +34,27 @@ typedef struct {
 	WebKitDOMNode *apnode;
 	gchar         *apkeys;
 
-	Coms           lasttype;
+	gchar          lasttype;
 	gchar         *lasthintkeys;
-	gchar         *hintstyle;
-	bool           relonly;
-	bool           showblocked;
-	gint           range;
 	WebKitDOMElement *rangestart; //not ref
 	bool           script;
-	gchar         *cutheads;
 	GSList        *black;
 	GSList        *white;
 	GSList        *emitters;
+
+	gint           pagereq;
+	bool           redirected;
+
+	//conf
+	GObject       *seto;
+	gchar         *lasturiconf;
+	gchar         *lastreset;
+	gchar         *overset;
+	GMainLoop     *sync;
 } Page;
+
+#include "general.c"
+
 
 static GPtrArray *pages = NULL;
 
@@ -57,12 +63,14 @@ static void freepage(Page *page)
 	g_slist_free(page->aplist);
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
-	g_free(page->hintstyle);
-	g_free(page->cutheads);
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
-
 	g_slist_free_full(page->emitters, g_object_unref);
+
+	g_object_unref(page->seto);
+	g_free(page->lasturiconf);
+	g_free(page->lastreset);
+	g_free(page->overset);
 
 	g_ptr_array_remove(pages, page);
 	g_free(page);
@@ -264,7 +272,7 @@ static gint checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
 static void addwhite(Page *page, const gchar *uri)
 {
 	//D(blocked %s, uri)
-	if (page->showblocked)
+	if (getsetbool(page, "showblocked"))
 		send(page, "blocked", uri);
 	page->white = g_slist_prepend(page->white, g_strdup(uri));
 }
@@ -503,12 +511,12 @@ static WebKitDOMElement *_makehintelm(
 
 	stylestr = center ?
 		g_strdup_printf(hintstyle,
-				opacity, pad, ".", offset, page->hintstyle,
+				opacity, pad, ".", offset, getset(page, "hintstyle"),
 				"background: linear-gradient(darkorange, red);")
 		:
 		g_strdup_printf(hintstyle,
-				opacity, pad, "-.", y > offset ? offset : y, page->hintstyle,
-				"");
+				opacity, pad, "-.", y > offset ? offset : y,
+				getset(page, "hintstyle"), "");
 
 	styledec = webkit_dom_element_get_style(hint);
 	webkit_dom_css_style_declaration_set_css_text(styledec, stylestr, NULL);
@@ -527,7 +535,6 @@ static WebKitDOMElement *makehintelm(Page *page,
 	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
 	bool center = isins(uritags, tag) && !isins(linktags, tag);
 	g_free(tag);
-
 
 #if NEWV
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
@@ -1025,7 +1032,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	bool ret = false;
 
 	bool rangein = false;
-	gint rangeleft = page->range;
+	gint rangeleft = getsetint(page, "hintrangemax");
 	WebKitDOMElement *rangeend = NULL;
 
 	//tab key
@@ -1078,7 +1085,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	GSList *rangeelms = NULL;
 	i = -1;
 	rangein = false;
-	rangeleft = page->range;
+	rangeleft = getsetint(page, "hintrangemax");
 	for (GSList *next = elms; next; next = next->next)
 	{
 		Elm *elm = (Elm *)next->data;
@@ -1348,6 +1355,17 @@ static void blur(Page *page)
 	g_object_unref(win);
 }
 
+static void loadconf()
+{
+	if (!confpath)
+		confpath = path2conf("main.conf");
+	else
+		g_key_file_free(conf);
+
+	conf = g_key_file_new();
+	g_key_file_load_from_file(conf, confpath,G_KEY_FILE_NONE, NULL);
+}
+
 
 //@ipccb
 void ipccb(const gchar *line)
@@ -1367,35 +1385,30 @@ void ipccb(const gchar *line)
 
 	gchar *ipkeys = NULL;
 	switch (type) {
+	case Cload:
+		loadconf();
+		break;
+	case Coverset:
+		GFA(page->overset, g_strdup(*arg ? arg : NULL))
+		_resetconf(page, webkit_web_page_get_uri(page->kit), true);
+		break;
 	case Cstart:
-		page->relonly     = arg[0] == 'y';
-		page->showblocked = arg[1] == 'y';
-		g_free(page->cutheads);
-		page->cutheads = g_strdup(arg + 2);
 		pagestart(page);
 		break;
 	case Con:
 		pageon(page);
 		break;
 
-	case Cstyle:
-
-		g_free(page->hintstyle);
-		page->hintstyle = g_strdup(arg);
-		break;
-
 	case Ckey:
 		{
 			gchar key[2] = {0};
 			key[0] = toupper(arg[0]);
-			arg = NULL;
-
 			ipkeys = page->apkeys ?
 				g_strconcat(page->apkeys, key, NULL) : g_strdup(key);
 
 			type = page->lasttype;
+			arg = NULL;
 		}
-
 	case Cclick:
 	case Clink:
 	case Curi:
@@ -1403,16 +1416,10 @@ void ipccb(const gchar *line)
 	case Crange:
 		if (arg)
 		{
-			gchar *rangestr = g_strndup(arg, 9);
-			page->range = atoi(rangestr);
-			g_free(rangestr);
 			page->rangestart = NULL;
-			arg = arg + 9;
-
-			page->script = *arg++ == 'y';
+			page->script = *arg == 'y';
 		}
-
-		if (!makehint(page, type, arg, ipkeys))
+		if (!makehint(page, type, confcstr("hintkeys"), ipkeys))
 			send(page, "tonormal", NULL);
 		break;
 
@@ -1449,19 +1456,18 @@ void ipccb(const gchar *line)
 
 	case Cfree:
 		freepage(page);
+		page = NULL;
 		break;
-
-	default:
-		D(extension gets unknown command %s, line)
 	}
 
 	g_strfreev(args);
+
+	if (page && page->sync)
+		g_main_loop_quit(page->sync);
 }
 
 
 //@page cbs
-static gint pagereq = 0;
-static bool redirected = false;
 static gboolean reqcb(
 		WebKitWebPage *p,
 		WebKitURIRequest *req,
@@ -1477,22 +1483,22 @@ static gboolean reqcb(
 		return true;
 	}
 
-	pagereq++;
+	page->pagereq++;
 
 	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
 	if (!head) return false; //scheme hasn't header
 	const gchar *ref = soup_message_headers_get_list(head, "Referer");
 	if (!ref) return false; //open page request
 
-	if (res && pagereq == 2) //redirect of page
-	{
+	if (res && page->pagereq == 2)
+	{//redirect. pagereq == 2 means it is a top level request
 		//in redirection we can't get current uri for reldomain check
-		pagereq = 1;
-		redirected = true;
+		page->pagereq = 1;
+		page->redirected = true;
 		return false;
 	}
 
-	if (check == 1 || !page->relonly)
+	if (check == 1 || !getsetbool(page, "reldomaindataonly"))
 	{
 		addblack(page, reqstr);
 		return false;
@@ -1510,7 +1516,8 @@ static gboolean reqcb(
 
 	if (phost)
 	{
-		gchar **cuts = g_strsplit(page->cutheads, ";", -1);
+		gchar **cuts = g_strsplit(
+				getset(page, "reldomaincutheads") ?: "", ";", -1);
 		for (gchar **cut = cuts; *cut; cut++)
 			if (g_str_has_prefix(phost, *cut))
 			{
@@ -1539,12 +1546,14 @@ static gboolean reqcb(
 static void uricb(Page* page)
 {
 	//workaround: when in redirect change uri delays
-	if (redirected)
-		pagereq = 1;
+	if (page->redirected)
+		page->pagereq = 1;
 	else
-		pagereq = 0;
+		page->pagereq = 0;
 
-	redirected = false;
+	page->redirected = false;
+
+	_resetconf(page, webkit_web_page_get_uri(page->kit), false);
 }
 
 static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
@@ -1552,15 +1561,31 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 	Page *page = g_new0(Page, 1);
 	page->kit = wp;
 	page->id = webkit_web_page_get_id(wp);
+	page->seto = g_object_new(G_TYPE_OBJECT, NULL);
 	g_ptr_array_add(pages, page);
 
 	setwblist(false);
+
+	gchar *name = NULL;
 	if (!shared)
 	{
-		gchar *tmp = g_strdup_printf("%"G_GUINT64_FORMAT, page->id);
-		ipcwatch(tmp);
-		g_free(tmp);
+		name = g_strdup_printf("%"G_GUINT64_FORMAT, page->id);
+		ipcwatch(name);
 	}
+	loadconf();
+	send(page, "setreq", NULL);
+
+	GMainContext *ctx = g_main_context_new();
+	page->sync = g_main_loop_new(ctx, true);
+	GSource *watch = _ipcwatch(shared ? "ext" : name, ctx);
+	g_free(name);
+
+	g_main_loop_run(page->sync);
+
+	g_source_destroy(watch);
+	g_main_context_unref(ctx);
+	g_main_loop_unref(page->sync);
+	page->sync = NULL;
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
 	SIG( page->kit, "send-request"            , reqcb    , page);

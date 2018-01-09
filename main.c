@@ -21,15 +21,8 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <JavaScriptCore/JSStringRef.h>
 #include <gdk/gdkx.h>
 
-#include "general.c"
-
-#define MIMEOPEN "mimeopen -n %s"
-
-#define DSET "set;"
-
 #define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
-#define GFA(p, v) {g_free(p); p = v;}
 
 typedef enum {
 	Mnormal    = 0,
@@ -52,7 +45,7 @@ typedef enum {
 	Mpointer   = 8192,
 } Modes;
 
-typedef struct {
+typedef struct _WP {
 	union {
 		GtkWindow *win;
 		GtkWidget *winw;
@@ -87,9 +80,9 @@ typedef struct {
 	Modes   lastmode;
 	Modes   mode;
 	bool    crashed;
+	bool    userreq;
 
 	//conf
-	bool    userreq;
 	gchar  *lasturiconf;
 	gchar  *lastreset;
 	gchar  *overset;
@@ -135,6 +128,12 @@ typedef struct {
 	bool cancelmdlr;
 } Win;
 
+static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group);
+static void setcss(Win *win, gchar *namesstr);
+#define MAINC
+#include "general.c"
+
+
 typedef struct {
 	union {
 		GtkWindow *win;
@@ -173,8 +172,6 @@ typedef struct {
 	gsize  size;
 } Img;
 
-static GKeyFile *conf = NULL;
-static gchar    *confpath = NULL;
 static gchar    *mdpath = NULL;
 static gchar    *accelp = NULL;
 static __time_t  conftime = 0;
@@ -191,129 +188,6 @@ static GtkAccelGroup *accelg = NULL;
 static WebKitWebContext *ctx = NULL;
 static bool ephemeral = false;
 
-typedef struct {
-	gchar *group;
-	gchar *key;
-	gchar *val;
-	gchar *desc;
-} Conf;
-Conf dconf[] = {
-	{"all"   , "editor"       , MIMEOPEN,
-		"editor=xterm -e nano %s\n"
-		"editor=gvim --servername "APP" --remote-silent \"%s\""
-	},
-	{"all"   , "mdeditor"     , ""},
-	{"all"   , "diropener"    , MIMEOPEN},
-	{"all"   , "generator"    , "markdown -f -style %s"},
-
-	{"all"   , "hintkeys"     , HINTKEYS},
-	{"all"   , "keybindswaps" , "",
-		"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
-
-	{"all"   , "winwidth"     , "1000"},
-	{"all"   , "winheight"    , "1000"},
-	{"all"   , "zoom"         , "1.000"},
-
-	{"all"   , "dlwinback"    , "false"},
-	{"all"   , "dlwinclosemsec","3000"},
-	{"all"   , "msgmsec"      , "600"},
-	{"all"   , "ignoretlserr" , "false"},
-	{"all"   , "histimgs"     , "66"},
-	{"all"   , "histimgsize"  , "222"},
-//	{"all"   , "configreload" , "true",
-//			"reload last window when whiteblack.conf or reldomain are changed"},
-
-	{"boot"  , "enablefavicon", "true"},
-	{"boot"  , "extensionargs", "adblock:true;"},
-	{"boot"  , "multiwebprocs", "false"},
-	{"boot"  , "ephemeral"    , "false"},
-
-	{"search", "b"            , "https://bing.com/?q=%s"},
-	{"search", "g"            , "https://www.google.com/search?q=%s"},
-	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
-	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
-
-	{"set:v"     , "enable-caret-browsing", "true"},
-	{"set:script", "enable-javascript"    , "false"},
-	{"set:image" , "auto-load-images"     , "true"},
-	{"set:image" , "linkformat"   , "[![](%s) %.40s](%s)"},
-	{"set:image" , "linkdata"     , "ftu"},
-
-	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
-	{DSET    , "usercss"          , "user.css"},
-//	{DSET    , "loadsightedimages", "false"},
-	{DSET    , "reldomaindataonly", "false"},
-	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
-	{DSET    , "showblocked"      , "false"},
-
-	{DSET    , "mdlbtnlinkaction" , "openback"},
-	{DSET    , "mdlbtnleft"       , "prevwin", "mdlbtnleft=winlist"},
-	{DSET    , "mdlbtnright"      , "nextwin"},
-	{DSET    , "mdlbtnup"         , "top"},
-	{DSET    , "mdlbtndown"       , "bottom"},
-	{DSET    , "pressscrollup"    , "top"},
-	{DSET    , "pressscrolldown"  , "bottom"},
-	{DSET    , "rockerleft"       , "back"},
-	{DSET    , "rockerright"      , "forward"},
-	{DSET    , "rockerup"         , "quitprev"},
-	{DSET    , "rockerdown"       , "quitnext"},
-
-	{DSET    , "multiplescroll"   , "0"},
-
-	{DSET    , "newwinhandle"     , "normal",
-		"newwinhandle=notnew | ignore | back | normal"},
-	{DSET    , "hjkl2arrowkeys"   , "false",
-		"hjkl's default are scrolls, not arrow keys"},
-	{DSET    , "linkformat"       , "[%.40s](%s)"},
-	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
-	{DSET    , "scriptdialog"     , "true"},
-	{DSET    , "hackedhint4js"    , "true"},
-	{DSET    , "hintrangemax"     , "9"},
-	{DSET    , "dlmimetypes"      , "",
-		"dlmimetypes=text/plain;video/;audio/;application/\n"
-		"dlmimetypes=*"},
-	{DSET    , "dlsubdir"         , ""},
-	{DSET    , "entrybgcolor"     , "true"},
-	{DSET    , "onstartmenu"      , "",
-		"onstartmenu spawns a shell in the menu dir when load started before redirect"},
-	{DSET    , "onloadmenu"       , "", "when load commited"},
-	{DSET    , "onloadedmenu"     , "", "when load finished"},
-	{DSET    , "spawnmsg"         , "false"},
-	{DSET    , "hintstyle"        , "",
-		"hintstyle=font-size: medium !important; -webkit-transform: rotate(-9deg);"},
-
-	//changes
-	//{DSET      , "auto-load-images" , "false"},
-	//{DSET      , "enable-plugins"   , "false"},
-	//{DSET      , "enable-java"      , "false"},
-	//{DSET      , "enable-fullscreen", "false"},
-};
-static bool confbool(gchar *key)
-{ return g_key_file_get_boolean(conf, "all", key, NULL); }
-static gint confint(gchar *key)
-{ return g_key_file_get_integer(conf, "all", key, NULL); }
-static gdouble confdouble(gchar *key)
-{ return g_key_file_get_double(conf, "all", key, NULL); }
-static gchar *confcstr(gchar *key)
-{//return is static string
-	static gchar *str = NULL;
-	GFA(str, g_key_file_get_string(conf, "all", key, NULL))
-	return str;
-}
-static gchar *getset(Win *win, gchar *key)
-{//return is static string
-	static gchar *ret = NULL;
-	if (!win)
-	{
-		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
-		return ret;
-	}
-	return g_object_get_data(win->seto, key);
-}
-static bool getsetbool(Win *win, gchar *key)
-{
-	return !g_strcmp0(getset(win, key), "true");
-}
 
 static gchar *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
@@ -360,7 +234,6 @@ static gchar *mainmdstr =
 "[Arch Linux](https://www.archlinux.org/)\n"
 "[dwb - ArchWiki](https://wiki.archlinux.org/index.php/dwb)\n"
 ;
-
 
 //@misc
 static bool isin(GPtrArray *ary, void *v)
@@ -739,7 +612,7 @@ static void textlinktry(Win *win)
 
 
 //@conf
-static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
+void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 {
 	//properties
 	guint len;
@@ -830,162 +703,23 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 		g_value_unset(&gv);
 	}
 }
-static void checkcss(bool monitor); //declaration
-static gchar *addcss(const gchar *name)
-{
-	gchar *path = path2conf(name);
-	bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
-	bool already = false;
 
-	for(GSList *next = csslist; next; next = next->next)
-		if (!strcmp(next->data, name))
-		{
-			already = true;
-			break;
-		}
-
-	if (!already)
-	{
-		__time_t *time = g_new0(__time_t, 1);
-		if (exists)
-			getctime(path, time);
-		csslist  = g_slist_prepend(csslist,  g_strdup(name));
-		csstimes = g_slist_prepend(csstimes, time);
-
-		monitor(path, checkcss);
-	}
-	if (!exists)
-		GFA(path, NULL)
-
-	return path;
-}
-static void setcss(Win *win, gchar *namesstr)
-{
-	gchar **names = g_strsplit(namesstr, ";", -1);
-
-	WebKitUserContentManager *cmgr =
-		webkit_web_view_get_user_content_manager(win->kit);
-	webkit_user_content_manager_remove_all_style_sheets(cmgr);
-
-	for (gchar **name = names; *name; name++)
-	{
-		gchar *path = addcss(*name);
-		if (!path) return;
-
-		gchar *str;
-		if (!g_file_get_contents (path, &str, NULL, NULL)) return;
-
-		WebKitUserStyleSheet *css =
-			webkit_user_style_sheet_new(str,
-					WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
-					WEBKIT_USER_STYLE_LEVEL_USER,
-					NULL, NULL);
-
-		webkit_user_content_manager_add_style_sheet(cmgr, css);
-
-		g_free(str);
-		g_free(path);
-	}
-	g_strfreev(names);
-}
-static void setprops(Win *win, GKeyFile *kf, gchar *group)
-{
-	//sets
-	static int deps = 0;
-	if (deps > 99) return;
-	gchar **sets = g_key_file_get_string_list(kf, group, "sets", NULL, NULL);
-	for (gchar **set = sets; set && *set; set++) {
-		gchar *setstr = g_strdup_printf("set:%s", *set);
-		deps++;
-		setprops(win, kf, setstr);
-		deps--;
-		g_free(setstr);
-	}
-	g_strfreev(sets);
-
-	//D(set props group: %s, group)
-	_kitprops(true, win->seto, kf, group);
-
-	//non webkit settings
-	int len = sizeof(dconf) / sizeof(*dconf);
-	for (int i = 0; i < len; i++) {
-		if (strcmp(dconf[i].group, DSET)) continue;
-		gchar *key = dconf[i].key;
-		if (!g_key_file_has_key(kf, group, key, NULL)) continue;
-
-		gchar *val = g_key_file_get_string(kf, group, key, NULL);
-
-		if (!strcmp(key, "usercss") &&
-			g_strcmp0(g_object_get_data(win->seto, key), val))
-		{
-			setcss(win, val);
-		}
-		g_object_set_data_full(win->seto, key, *val ? val : NULL, g_free);
-	}
-}
-static bool _seturiconf(Win *win, const gchar* uri)
-{
-	bool ret = false;
-	GFA(win->lastreset, g_strdup(uri))
-
-	gchar **groups = g_key_file_get_groups(conf, NULL);
-	for (gchar **gl = groups; *gl; gl++)
-	{
-		gchar *g = *gl;
-		if (!g_str_has_prefix(g, "uri:")) continue;
-
-		gchar *tofree = NULL;
-		if (g_key_file_has_key(conf, g, "reg", NULL))
-		{
-			g = tofree = g_key_file_get_string(conf, g, "reg", NULL);
-		} else {
-			g += 4;
-		}
-
-		regex_t reg;
-		if (regcomp(&reg, g, REG_EXTENDED | REG_NOSUB))
-		{
-			g_free(tofree);
-			continue;
-		}
-
-		if (regexec(&reg, uri, 0, NULL, 0) == 0) {
-			setprops(win, conf, *gl);
-			GFA(win->lasturiconf, g_strdup(uri))
-			ret = true;
-		}
-
-		regfree(&reg);
-		g_free(tofree);
-	}
-
-	g_strfreev(groups);
-	return ret;
-}
-static void resetconf(Win *win, bool force)
-{
+static void resetconf(Win *win, int type)
+{ //type: 0: uri, 1:force, 2:overset, 3:file
 //	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
 	gchar *checks[] = {"reldomaincutheads", NULL};
 	guint hash = 0;
-	if (force)
+	if (type && LASTWIN == win)
 		for (gchar **check = checks; *check; check++)
 			addhash(getset(win, *check), &hash);
 
-	if (win->lasturiconf || force)
-	{
-		GFA(win->lasturiconf, NULL)
-		setprops(win, conf, DSET);
-	}
+	_resetconf(win, URI(win), type);
+	if (type == 3)
+		send(win, Cload, NULL);
+	if (type >= 2)
+		send(win, Coverset, win->overset);
 
-	_seturiconf(win, URI(win));
-
-	if (win->overset) {
-		gchar *setstr = g_strdup_printf("set:%s", win->overset);
-		setprops(win, conf, setstr);
-		g_free(setstr);
-	}
-
-	if (force)
+	if (type && LASTWIN == win)
 	{
 		guint last = hash;
 		hash = 0;
@@ -1049,7 +783,6 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_string(conf, sample, "sets", "image;script");
 	g_key_file_set_comment(conf, sample, "sets",
 			"include other sets." , NULL);
-
 }
 
 static void checkmd(bool frommonitor)
@@ -1065,6 +798,11 @@ static void checkmd(bool frommonitor)
 			}
 	}
 }
+static void preparemd()
+{
+	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkmd);
+}
+
 static void checkaccels(bool frommonitor)
 {
 	if (
@@ -1074,7 +812,8 @@ static void checkaccels(bool frommonitor)
 	)
 		gtk_accel_map_load(accelp);
 }
-void checkcss(bool frommonitor)
+
+static void checkcss(bool frommonitor)
 {
 	if (!wins) return;
 
@@ -1105,6 +844,64 @@ void checkcss(bool frommonitor)
 	}
 	g_free(path);
 }
+static gchar *addcss(const gchar *name)
+{
+	gchar *path = path2conf(name);
+	bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
+	bool already = false;
+
+	for(GSList *next = csslist; next; next = next->next)
+		if (!strcmp(next->data, name))
+		{
+			already = true;
+			break;
+		}
+
+	if (!already)
+	{
+		__time_t *time = g_new0(__time_t, 1);
+		if (exists)
+			getctime(path, time);
+		csslist  = g_slist_prepend(csslist,  g_strdup(name));
+		csstimes = g_slist_prepend(csstimes, time);
+
+		monitor(path, checkcss);
+	}
+	if (!exists)
+		GFA(path, NULL)
+
+	return path;
+}
+void setcss(Win *win, gchar *namesstr)
+{
+	gchar **names = g_strsplit(namesstr, ";", -1);
+
+	WebKitUserContentManager *cmgr =
+		webkit_web_view_get_user_content_manager(win->kit);
+	webkit_user_content_manager_remove_all_style_sheets(cmgr);
+
+	for (gchar **name = names; *name; name++)
+	{
+		gchar *path = addcss(*name);
+		if (!path) return;
+
+		gchar *str;
+		if (!g_file_get_contents (path, &str, NULL, NULL)) return;
+
+		WebKitUserStyleSheet *css =
+			webkit_user_style_sheet_new(str,
+					WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+					WEBKIT_USER_STYLE_LEVEL_USER,
+					NULL, NULL);
+
+		webkit_user_content_manager_add_style_sheet(cmgr, css);
+
+		g_free(str);
+		g_free(path);
+	}
+	g_strfreev(names);
+}
+
 static void checkconfs(bool frommonitor)
 {
 	if (!frommonitor)
@@ -1160,17 +957,12 @@ static void checkconfs(bool frommonitor)
 
 			if (wins)
 				for (int i = 0; i < wins->len; i++)
-					resetconf(wins->pdata[i], true);
+					resetconf(wins->pdata[i], shared && i ? 1 : 3);
 		}
 	}
 
 	if (!frommonitor && !changed)
 		checkcss(false);
-}
-
-static void preparemd()
-{
-	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkmd);
 }
 
 
@@ -1304,17 +1096,11 @@ static void _modechanged(Win *win)
 			win->mode = Mnormal;
 		else
 		{
-			send(win, Cstyle, getset(win, "hintstyle") ?: "");
-
 			gboolean script = false; //dont use bool
 			if (getsetbool(win, "hackedhint4js"))
 				g_object_get(win->seto, "enable-javascript", &script, NULL);
 
-
-			gchar *arg = g_strdup_printf("%09d%c%s",
-					atoi(getset(win, "hintrangemax") ?: "0"),
-					script ? 'y' : 'n', confcstr("hintkeys"));
-
+			gchar *arg = g_strdup_printf("%c", script ? 'y' : 'n');
 			send(win, com, arg);
 			g_free(arg);
 		}
@@ -2305,6 +2091,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	if (win == NULL) return false;
 
 	//internal
+	Z("setreq" , send(win, Coverset, win->overset))
 	Z("textlinkon" , textlinkon(win))
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
@@ -2574,10 +2361,10 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 				GFA(win->overset, g_strdup(arg))
 			else
 				GFA(win->overset, NULL)
-			resetconf(win, true))
+			resetconf(win, 2))
 	Z("set2"        ,
 			GFA(win->overset, g_strdup(arg))
-			resetconf(win, true))
+			resetconf(win, 2))
 
 	Z("addwhitelist", send(win, Cwhite, "white"))
 	Z("addblacklist", send(win, Cwhite, "black"))
@@ -3572,7 +3359,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 			return true;
 		}
 
-	int times = atoi(getset(win, "multiplescroll") ?: "0");
+	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
 
 	GdkEvent *e = gdk_event_new(GDK_SCROLL);
@@ -3656,15 +3443,6 @@ static gboolean sdialogcb(Win *win)
 	showmsg(win, "Script dialog is blocked");
 	return true;
 }
-static void sendstart(Win *win)
-{
-	gchar head[3] = {0};
-	head[0] = getsetbool(win, "reldomaindataonly") ? 'y' : 'n';
-	head[1] = getsetbool(win, "showblocked"      ) ? 'y' : 'n';
-	gchar *args = g_strconcat(head, getset(win, "reldomaincutheads"),  NULL);
-	send(win, Cstart, args);
-	g_free(args);
-}
 static void setspawn(Win *win, gchar *key)
 {
 	gchar *fname = getset(win, key);
@@ -3694,15 +3472,15 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		if (win->userreq) {
 			win->userreq = false; //currently not used
 		}
-		resetconf(win, false);
-		sendstart(win);
+		resetconf(win, 0);
+		send(win, Cstart, NULL);
 
 		setspawn(win, "onstartmenu");
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
-		resetconf(win, false);
-		sendstart(win);
+		resetconf(win, 0);
+		send(win, Cstart, NULL);
 
 		break;
 	case WEBKIT_LOAD_COMMITTED:
@@ -3729,8 +3507,8 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 		if (g_strcmp0(win->lastreset, URI(win)))
 		{ //for load-failed before commit
-			resetconf(win, false);
-			sendstart(win);
+			resetconf(win, 0);
+			send(win, Cstart, NULL);
 		}
 		else if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
 		{
@@ -4290,6 +4068,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
+
 	g_ptr_array_add(wins, win);
 
 	if (!cbwin)
