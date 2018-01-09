@@ -1481,32 +1481,6 @@ static gboolean reqcb(
 {
 	page->pagereq++;
 	const gchar *reqstr = webkit_uri_request_get_uri(req);
-	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
-
-	if (head)
-	{
-		gchar *rmhdrs = getset(page, "removeheaders");
-		if (rmhdrs)
-		{
-			gchar **rms = g_strsplit(rmhdrs, ";", -1);
-			for (gchar **rm = rms; *rm; rm++)
-				soup_message_headers_remove(head, *rm);
-			g_strfreev(rms);
-		}
-	}
-
-	if (getsetbool(page, "stdoutheaders"))
-	{
-		if (res)
-		{
-			g_print("\nRESPONSE: %s\n", webkit_uri_response_get_uri(res));
-			soup_message_headers_foreach(
-					webkit_uri_response_get_http_headers(res), headerout, NULL);
-		}
-		g_print("\nREQUEST: %s\n", reqstr);
-		if (head)
-			soup_message_headers_foreach(head, headerout, NULL);
-	}
 
 	int check = checkwb(reqstr);
 	if (check == 0)
@@ -1515,22 +1489,23 @@ static gboolean reqcb(
 		return true;
 	}
 
-	if (!head) return false; //scheme hasn't header
+	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
+	if (!head) goto retfalse; //scheme hasn't header
 	const gchar *ref = soup_message_headers_get_list(head, "Referer");
-	if (!ref) return false; //open page request
+	if (!ref) goto retfalse; //open page request
 
 	if (res && page->pagereq == 2)
 	{//redirect. pagereq == 2 means it is a top level request
 		//in redirection we can't get current uri for reldomain check
 		page->pagereq = 1;
 		page->redirected = true;
-		return false;
+		goto retfalse;
 	}
 
 	if (check == 1 || !getsetbool(page, "reldomaindataonly"))
 	{
 		addblack(page, reqstr);
-		return false;
+		goto retfalse;
 	}
 
 
@@ -1569,8 +1544,35 @@ static gboolean reqcb(
 	soup_uri_free(puri);
 	soup_uri_free(ruri);
 
+	if (ret) return true;
 
-	return ret;
+retfalse:
+	if (head)
+	{
+		gchar *rmhdrs = getset(page, "removeheaders");
+		if (rmhdrs)
+		{
+			gchar **rms = g_strsplit(rmhdrs, ";", -1);
+			for (gchar **rm = rms; *rm; rm++)
+				soup_message_headers_remove(head, *rm);
+			g_strfreev(rms);
+		}
+	}
+
+	if (getsetbool(page, "stdoutheaders"))
+	{
+		if (res)
+		{
+			g_print("\nRESPONSE: %s\n", webkit_uri_response_get_uri(res));
+			soup_message_headers_foreach(
+					webkit_uri_response_get_http_headers(res), headerout, NULL);
+		}
+		g_print("\nREQUEST: %s\n", reqstr);
+		if (head)
+			soup_message_headers_foreach(head, headerout, NULL);
+	}
+
+	return false;
 }
 //static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
 //static void loadcb(WebKitWebPage *wp, gpointer p) {}
