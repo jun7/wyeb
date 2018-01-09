@@ -177,6 +177,9 @@ Conf dconf[] = {
 	{DSET    , "spawnmsg"         , "false"},
 	{DSET    , "hintstyle"        , "",
 		"hintstyle=font-size: medium !important; -webkit-transform: rotate(-9deg);"},
+	{DSET    , "stdoutheaders"    , "false"},
+	{DSET    , "removeheaders"    , "",
+		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},

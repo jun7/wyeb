@@ -1467,6 +1467,11 @@ void ipccb(const gchar *line)
 }
 
 
+static void headerout(const char *name, const char *value, gpointer p)
+{
+	g_print("%s : %s\n", name, value);
+}
+
 //@page cbs
 static gboolean reqcb(
 		WebKitWebPage *p,
@@ -1474,7 +1479,34 @@ static gboolean reqcb(
 		WebKitURIResponse *res,
 		Page *page)
 {
-	const gchar *reqstr =  webkit_uri_request_get_uri(req);
+	page->pagereq++;
+	const gchar *reqstr = webkit_uri_request_get_uri(req);
+	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
+
+	if (head)
+	{
+		gchar *rmhdrs = getset(page, "removeheaders");
+		if (rmhdrs)
+		{
+			gchar **rms = g_strsplit(rmhdrs, ";", -1);
+			for (gchar **rm = rms; *rm; rm++)
+				soup_message_headers_remove(head, *rm);
+			g_strfreev(rms);
+		}
+	}
+
+	if (getsetbool(page, "stdoutheaders"))
+	{
+		if (res)
+		{
+			g_print("\nRESPONSE: %s\n", webkit_uri_response_get_uri(res));
+			soup_message_headers_foreach(
+					webkit_uri_response_get_http_headers(res), headerout, NULL);
+		}
+		g_print("\nREQUEST: %s\n", reqstr);
+		if (head)
+			soup_message_headers_foreach(head, headerout, NULL);
+	}
 
 	int check = checkwb(reqstr);
 	if (check == 0)
@@ -1483,9 +1515,6 @@ static gboolean reqcb(
 		return true;
 	}
 
-	page->pagereq++;
-
-	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
 	if (!head) return false; //scheme hasn't header
 	const gchar *ref = soup_message_headers_get_list(head, "Referer");
 	if (!ref) return false; //open page request
@@ -1539,6 +1568,8 @@ static gboolean reqcb(
 
 	soup_uri_free(puri);
 	soup_uri_free(ruri);
+
+
 	return ret;
 }
 //static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
