@@ -3336,7 +3336,8 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 		gtk_widget_queue_draw(win->winw);
 
 		static GdkCursor *hand = NULL;
-		if (!hand) hand = gdk_cursor_new(GDK_HAND2);
+		if (!hand) hand = gdk_cursor_new_for_display(
+				gdk_display_get_default(), GDK_HAND2);
 		gdk_window_set_cursor(gtk_widget_get_window(win->winw),
 				winlist(win, 0, NULL) ? hand : NULL);
 
@@ -3523,26 +3524,25 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 //@contextmenu
 typedef struct {
-	GtkAction *action; //if dir this is NULL
+	GClosure  *gc; //if dir this is NULL
 	gchar     *path;
 	GSList    *actions;
 } AItem;
 static void clearai(gpointer p)
 {
 	AItem *a = p;
-	if (a->action)
+	if (a->gc)
 	{
 		g_free(a->path);
-		gtk_action_disconnect_accelerator(a->action);
-		g_object_unref(a->action);
+		gtk_accel_group_disconnect(accelg, a->gc);
 	}
 	else
 		g_slist_free_full(a->actions, clearai);
 	g_free(a);
 }
-static void actioncb(GtkAction *action, AItem *ai)
+static void actioncb(gchar *path)
 {
-	spawnwithenv(LASTWIN, NULL, ai->path, false, NULL, NULL, 0);
+	spawnwithenv(LASTWIN, NULL, path, false, NULL, NULL, 0);
 }
 static guint menuhash = 0;
 static GSList *dirmenu(
@@ -3550,16 +3550,14 @@ static GSList *dirmenu(
 		gchar *dir,
 		gchar *parentaccel)
 {
-	GDir *gd = g_dir_open(dir, 0, NULL);
 	GSList *ret = NULL;
-
 	GSList *names = NULL;
 
+	GDir *gd = g_dir_open(dir, 0, NULL);
 	const gchar *dn;
 	while (dn = g_dir_read_name(gd))
-	{
 		names = g_slist_insert_sorted(names, g_strdup(dn), (GCompareFunc)strcmp);
-	}
+	g_dir_close(gd);
 
 	for (GSList *next = names; next; next = next->next)
 	{
@@ -3571,15 +3569,13 @@ static GSList *dirmenu(
 			if (menu)
 				webkit_context_menu_append(menu,
 					webkit_context_menu_item_new_separator());
-			g_free(org);
 			continue;
 		}
-
 
 		AItem *ai = g_new0(AItem, 1);
 		bool nodata = false;
 
-		gchar *accel = g_strconcat(parentaccel, "/", name, NULL);
+		gchar *accelp = g_strconcat(parentaccel, "/", name, NULL);
 		gchar *path = g_build_filename(dir, org, NULL);
 
 		if (g_file_test(path, G_FILE_TEST_IS_DIR))
@@ -3588,7 +3584,7 @@ static GSList *dirmenu(
 			if (menu && *org != '.')
 				sub = webkit_context_menu_new();
 
-			ai->actions = dirmenu(sub, path, accel);
+			ai->actions = dirmenu(sub, path, accelp);
 			if (!ai->actions)
 				nodata = true;
 			else if (menu && *org != '.')
@@ -3597,32 +3593,29 @@ static GSList *dirmenu(
 
 			g_free(path);
 		} else {
-			ai->action = gtk_action_new(name, name, NULL, NULL);
 			ai->path = path;
 			addhash(path, &menuhash);
-			SIG(ai->action, "activate", actioncb, ai);
-
-			gtk_action_set_accel_group(ai->action, accelg);
-			gtk_action_set_accel_path(ai->action, accel);
-			gtk_action_connect_accelerator(ai->action);
+			ai->gc = g_cclosure_new_swap(G_CALLBACK(actioncb), path, NULL);
+			gtk_accel_group_connect_by_path(accelg, accelp, ai->gc);
 
 			if (menu && *org != '.')
+			{
+				GSimpleAction *gsa = g_simple_action_new (accelp, NULL);
+				SIGW(gsa, "activate", actioncb, path);
 				webkit_context_menu_append(menu,
-					webkit_context_menu_item_new(ai->action));
+						webkit_context_menu_item_new_from_gaction(
+							(GAction *)gsa, name, NULL));
+				g_object_unref(gsa);
+			}
 		}
 
-		g_free(accel);
+		g_free(accelp);
 		if (nodata)
 			g_free(ai);
 		else
 			ret = g_slist_append(ret, ai);
-
-		g_free(org);
 	}
-	g_slist_free(names);
-
-	g_dir_close(gd);
-
+	g_slist_free_full(names, g_free);
 	return ret;
 }
 static void makemenu(WebKitContextMenu *menu); //declaration
