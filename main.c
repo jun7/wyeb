@@ -3467,6 +3467,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		win->scheme = false;
 		setresult(win, NULL);
 		GFA(win->focusuri, NULL)
+		win->tlserr = 0;
 
 		if (win->mode == Minsert) send(win, Cblur, NULL); //clear im
 		tonormal(win);
@@ -3495,11 +3496,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		send(win, Con, NULL);
 
 		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
-		{
 			if (win->tlserr) showmsg(win, "TLS Error");
-		}
-		else
-			win->tlserr = 0;
 
 		setspawn(win, "onloadmenu");
 		break;
