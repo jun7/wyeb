@@ -770,7 +770,7 @@ static void initconf(GKeyFile *kf)
 
 	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
 	g_key_file_set_comment(conf, sample, NULL,
-			"After 'uri:' is regular expressions for 'set'.\n"
+			"After 'uri:' is regular expressions for the setting set.\n"
 			"preferential order of sections: Last > First > '"DSET"'"
 			, NULL);
 
@@ -778,7 +778,7 @@ static void initconf(GKeyFile *kf)
 
 	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
 	g_key_file_set_comment(conf, sample, "reg",
-			"Use reg if a regular expression has []."
+			"Use reg if the regular expression has []."
 			, NULL);
 
 	g_key_file_set_string(conf, sample, "sets", "image;script");
@@ -3591,7 +3591,7 @@ static GSList *dirmenu(
 
 			if (menu && *org != '.')
 			{
-				GSimpleAction *gsa = g_simple_action_new (accelp, NULL);
+				GSimpleAction *gsa = g_simple_action_new(accelp, NULL);
 				SIGW(gsa, "activate", actioncb, path);
 				webkit_context_menu_append(menu,
 						webkit_context_menu_item_new_from_gaction(
