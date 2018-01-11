@@ -711,7 +711,7 @@ static void resetconf(Win *win, int type)
 	guint hash = 0;
 	if (type && LASTWIN == win)
 		for (gchar **check = checks; *check; check++)
-			addhash(getset(win, *check), &hash);
+			addhash(getset(win, *check) ?: "", &hash);
 
 	_resetconf(win, URI(win), type);
 	if (type == 3)
@@ -724,7 +724,7 @@ static void resetconf(Win *win, int type)
 		guint last = hash;
 		hash = 0;
 		for (gchar **check = checks; *check; check++)
-			addhash(getset(win, *check), &hash);
+			addhash(getset(win, *check) ?: "", &hash);
 		if (last != hash)
 			reloadlast();
 	}
