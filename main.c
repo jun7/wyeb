@@ -3531,9 +3531,10 @@ static void clearai(gpointer p)
 		g_slist_free_full(a->actions, clearai);
 	g_free(a);
 }
-static void actioncb(gchar *path)
+static gboolean actioncb(gchar *path)
 {
 	spawnwithenv(LASTWIN, NULL, path, false, NULL, NULL, 0);
+	return true;
 }
 static guint menuhash = 0;
 static GSList *dirmenu(
