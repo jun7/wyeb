@@ -300,13 +300,12 @@ static void prepareif(
 	{
 		first = true;
 		*path = path2conf(name);
-		monitor(*path, monitorcb);
 	}
 
 	if (g_file_test(*path, G_FILE_TEST_EXISTS))
 	{
-		if (first && ctime) getctime(*path, ctime);
-		return;
+		if (first) goto outtime;
+		goto out;
 	}
 
 	GFile *gf = g_file_new_for_path(*path);
@@ -319,7 +318,12 @@ static void prepareif(
 
 	g_object_unref(gf);
 
+outtime:
 	if (ctime) getctime(*path, ctime);
+
+out:
+	if (first)
+		monitor(*path, monitorcb);
 }
 
 

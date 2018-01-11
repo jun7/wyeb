@@ -2893,16 +2893,21 @@ static void faviconcb(GObject *src, GAsyncResult *res, gpointer p)
 	g_object_unref(st);
 	g_object_unref(req);
 }
-static gboolean _schemecb(WebKitURISchemeRequest *req)
+static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 {
+	WebKitWebView *kit = webkit_uri_scheme_request_get_web_view(req);
+	Win *win = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
+	if (win) win->scheme = true;
+
 	const gchar *path = webkit_uri_scheme_request_get_path(req);
 
 	if (g_str_has_prefix(path, "f/"))
 	{
+		g_object_ref(req);
 		webkit_favicon_database_get_favicon(
 				webkit_web_context_get_favicon_database(ctx),
 				path + 2, NULL, faviconcb, req);
-		return false;
+		return;
 	}
 
 	gchar *type = NULL;
@@ -2946,18 +2951,6 @@ static gboolean _schemecb(WebKitURISchemeRequest *req)
 	GInputStream *st = g_memory_input_stream_new_from_data(data, len, g_free);
 	webkit_uri_scheme_request_finish(req, st, len, type);
 	g_object_unref(st);
-
-	g_object_unref(req);
-	return false;
-}
-static void schemecb(WebKitURISchemeRequest *req, gpointer p)
-{
-	WebKitWebView *kit = webkit_uri_scheme_request_get_web_view(req);
-	Win *win = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
-	if (win) win->scheme = true;
-
-	g_object_ref(req);
-	g_idle_add((GSourceFunc)_schemecb, req);
 }
 
 
