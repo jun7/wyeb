@@ -1227,12 +1227,12 @@ static void domfocusoutcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 { send(page, "focusuri", NULL); }
 //static void domactivatecb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 //{ DD(domactivate!) }
+//static void domloadcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page) {}
 static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 {
 	if (page->apnode)
 		makehint(page, page->lasttype, NULL, NULL);
 }
-
 
 //@misc com funcs
 static void pagestart(Page *page)
@@ -1258,6 +1258,8 @@ static void frameon(Page *page, WebKitDOMDocument *doc)
 			"DOMFocusOut", G_CALLBACK(domfocusoutcb), false, page);
 //	webkit_dom_event_target_add_event_listener(emitter,
 //			"DOMActivate", G_CALLBACK(domactivatecb), false, page);
+//	webkit_dom_event_target_add_event_listener(emitter,
+//			"DOMContentLoaded", G_CALLBACK(domloadcb), false, page);
 
 	//for refresh hint
 	webkit_dom_event_target_add_event_listener(emitter,
@@ -1575,7 +1577,7 @@ retfalse:
 	return false;
 }
 //static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
-//static void loadcb(WebKitWebPage *wp, gpointer p) {}
+//static void loadcb(WebKitWebPage *wp, Page *page) {}
 static void uricb(Page* page)
 {
 	//workaround: when in redirect change uri delays
@@ -1622,7 +1624,7 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
 	SIG( page->kit, "send-request"            , reqcb    , page);
-//	SIG( page->kit, "document-loaded"         , loadcb   , NULL);
+//	SIG( page->kit, "document-loaded"         , loadcb   , page);
 	SIGW(page->kit, "notify::uri"             , uricb    , page);
 //	SIG( page->kit, "form-controls-associated", formcb   , NULL);
 }
