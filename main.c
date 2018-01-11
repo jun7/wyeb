@@ -219,6 +219,7 @@ static gchar *mainmdstr =
 "usage is similar to them,\n"
 "\n"
 "<style>\n"
+" body{overflow-y:scroll} /*workaround for the delaying of the context-menu*/\n"
 " .links a{\n"
 "  background: linear-gradient(to right top, #ddf, white, white);\n"
 "  color: #109; padding: 0 .3em; border-radius: .2em;\n"
