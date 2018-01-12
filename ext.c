@@ -1505,7 +1505,9 @@ static gboolean reqcb(
 		goto retfalse;
 	}
 
-	if (check == 1 || !getsetbool(page, "reldomaindataonly"))
+	if (check == 1 || !getsetbool(page, "reldomaindataonly") ||
+		!head || !soup_message_headers_get_list(head, "Referer")) //historical
+		//but the purpose of the reldomain is adblock, so non ref is not ad
 	{
 		addblack(page, reqstr);
 		goto retfalse;
@@ -1534,7 +1536,7 @@ static gboolean reqcb(
 		g_strfreev(cuts);
 
 		const gchar *rhost = soup_uri_get_host(ruri);
-		if (!g_str_has_suffix(rhost, phost))
+		if (rhost && !g_str_has_suffix(rhost, phost))
 		{
 			addwhite(page, reqstr);
 			ret = true;

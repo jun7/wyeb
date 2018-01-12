@@ -1182,6 +1182,7 @@ static gchar *getsearch(gchar *pkey)
 	g_strfreev(kv);
 	return ret;
 }
+
 static void _openuri(Win *win, const gchar *str, Win *caller)
 {
 	win->userreq = true;
@@ -1214,7 +1215,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	{
 		gchar *search = getsearch(stra[0]);
 		if (search) {
-			char *esc = g_uri_escape_string(stra[1], NULL, true);
+			char *esc = g_uri_escape_string(stra[1], NULL, false);
 			uri = g_strdup_printf(search, esc);
 			g_free(esc);
 
@@ -1236,7 +1237,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	if (regexec(url, str, 0, NULL, 0) == 0) {
 		uri = g_strdup_printf("http://%s", str);
 	} else if (dsearch = getset(caller ?: win, "search")) {
-		char *esc = g_uri_escape_string(str, NULL, true);
+		char *esc = g_uri_escape_string(str, NULL, false);
 		uri = g_strdup_printf(getsearch(dsearch) ?: dsearch, esc);
 		g_free(esc);
 
