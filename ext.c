@@ -50,6 +50,8 @@ typedef struct _WP {
 	gchar         *lasturiconf;
 	gchar         *lastreset;
 	gchar         *overset;
+	bool           setagent;
+	bool           setagentprev;
 	GMainLoop     *sync;
 } Page;
 
@@ -1554,6 +1556,10 @@ static gboolean reqcb(
 retfalse:
 	if (head)
 	{
+		if (page->pagereq == 1 && (page->setagent || page->setagentprev))
+			soup_message_headers_replace(head, "User-Agent",
+					getset(page, "user-agent") ?: "");
+
 		gchar *rmhdrs = getset(page, "removeheaders");
 		if (rmhdrs)
 		{
@@ -1568,13 +1574,15 @@ retfalse:
 	{
 		if (res)
 		{
-			g_print("\nRESPONSE: %s\n", webkit_uri_response_get_uri(res));
+			g_print("RESPONSE: %s\n", webkit_uri_response_get_uri(res));
 			soup_message_headers_foreach(
 					webkit_uri_response_get_http_headers(res), headerout, NULL);
+			g_print("\n");
 		}
-		g_print("\nREQUEST: %s\n", reqstr);
+		g_print("REQUEST: %s\n", reqstr);
 		if (head)
 			soup_message_headers_foreach(head, headerout, NULL);
+		g_print("\n");
 	}
 
 	return false;

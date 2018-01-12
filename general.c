@@ -326,9 +326,9 @@ out:
 		monitor(*path, monitorcb);
 }
 
-static void setprop(WP *wp, GKeyFile *kf, gchar *group, gchar *key)
+static bool setprop(WP *wp, GKeyFile *kf, gchar *group, gchar *key)
 {
-	if (!g_key_file_has_key(kf, group, key, NULL)) return;
+	if (!g_key_file_has_key(kf, group, key, NULL)) return false;
 	gchar *val = g_key_file_get_string(kf, group, key, NULL);
 #ifdef MAINC
 	if (!strcmp(key, "usercss") &&
@@ -338,6 +338,7 @@ static void setprop(WP *wp, GKeyFile *kf, gchar *group, gchar *key)
 	}
 #endif
 	g_object_set_data_full(wp->seto, key, *val ? val : NULL, g_free);
+	return true;
 }
 static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 {
@@ -357,6 +358,9 @@ static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 	//D(set props group: %s, group)
 #ifdef MAINC
 	_kitprops(true, wp->seto, kf, group);
+#else
+	if (setprop(wp, kf, group, "user-agent") && strcmp(group, DSET))
+		wp->setagent = true;
 #endif
 
 	//non webkit settings
@@ -408,6 +412,11 @@ static bool _seturiconf(WP *wp, const gchar* uri)
 
 static void _resetconf(WP *wp, const gchar *uri, bool force)
 {
+#ifndef MAINC
+	wp->setagentprev = wp->setagent && !force;
+	wp->setagent = false;
+#endif
+
 	if (wp->lasturiconf || force)
 	{
 		GFA(wp->lasturiconf, NULL)
