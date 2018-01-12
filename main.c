@@ -2072,6 +2072,7 @@ static gchar *ke2name(GdkEventKey *ke)
 static Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back);
 static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *exarg)
 {
+	//D(action %s, action)
 	if (action == NULL) return false;
 	gchar **retv = NULL; //hintret
 

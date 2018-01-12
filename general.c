@@ -326,7 +326,19 @@ out:
 		monitor(*path, monitorcb);
 }
 
-
+static void setprop(WP *wp, GKeyFile *kf, gchar *group, gchar *key)
+{
+	if (!g_key_file_has_key(kf, group, key, NULL)) return;
+	gchar *val = g_key_file_get_string(kf, group, key, NULL);
+#ifdef MAINC
+	if (!strcmp(key, "usercss") &&
+		g_strcmp0(g_object_get_data(wp->seto, key), val))
+	{
+		setcss(wp, val);
+	}
+#endif
+	g_object_set_data_full(wp->seto, key, *val ? val : NULL, g_free);
+}
 static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 {
 	//sets
@@ -349,22 +361,9 @@ static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 
 	//non webkit settings
 	int len = sizeof(dconf) / sizeof(*dconf);
-	for (int i = 0; i < len; i++) {
-		if (strcmp(dconf[i].group, DSET)) continue;
-		gchar *key = dconf[i].key;
-		if (!g_key_file_has_key(kf, group, key, NULL)) continue;
-
-		gchar *val = g_key_file_get_string(kf, group, key, NULL);
-
-#ifdef MAINC
-		if (!strcmp(key, "usercss") &&
-			g_strcmp0(g_object_get_data(wp->seto, key), val))
-		{
-			setcss(wp, val);
-		}
-#endif
-		g_object_set_data_full(wp->seto, key, *val ? val : NULL, g_free);
-	}
+	for (int i = 0; i < len; i++)
+		if (!strcmp(dconf[i].group, DSET))
+			setprop(wp, kf, group, dconf[i].key);
 }
 
 static bool _seturiconf(WP *wp, const gchar* uri)

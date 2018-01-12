@@ -1484,6 +1484,10 @@ static gboolean reqcb(
 	page->pagereq++;
 	const gchar *reqstr = webkit_uri_request_get_uri(req);
 
+	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
+	if (!head && g_str_has_prefix(reqstr, APP":"))
+		return false;
+
 	int check = checkwb(reqstr);
 	if (check == 0)
 	{
@@ -1491,14 +1495,11 @@ static gboolean reqcb(
 		return true;
 	}
 
-	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
-	if (!head) goto retfalse; //scheme hasn't header
-	const gchar *ref = soup_message_headers_get_list(head, "Referer");
-	if (!ref) goto retfalse; //open page request
-
+	if (page->pagereq == 1) goto retfalse; //open page request
 	if (res && page->pagereq == 2)
 	{//redirect. pagereq == 2 means it is a top level request
-		//in redirection we can't get current uri for reldomain check
+		//in redirection we don't get yet current uri
+		_resetconf(page, reqstr, false);
 		page->pagereq = 1;
 		page->redirected = true;
 		goto retfalse;
@@ -1584,11 +1585,11 @@ static void uricb(Page* page)
 	if (page->redirected)
 		page->pagereq = 1;
 	else
+	{
 		page->pagereq = 0;
-
+		_resetconf(page, webkit_web_page_get_uri(page->kit), false);
+	}
 	page->redirected = false;
-
-	_resetconf(page, webkit_web_page_get_uri(page->kit), false);
 }
 
 static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
