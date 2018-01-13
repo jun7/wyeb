@@ -1395,6 +1395,8 @@ void ipccb(const gchar *line)
 	case Coverset:
 		GFA(page->overset, g_strdup(*arg ? arg : NULL))
 		_resetconf(page, webkit_web_page_get_uri(page->kit), true);
+		if (page->apnode)
+			makehint(page, page->lasttype, NULL, g_strdup(page->apkeys));
 		break;
 	case Cstart:
 		pagestart(page);

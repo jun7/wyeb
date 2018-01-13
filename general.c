@@ -134,6 +134,8 @@ Conf dconf[] = {
 	{"set:image" , "auto-load-images"     , "true"},
 	{"set:image" , "linkformat"   , "[![](%s) %.40s](%s)"},
 	{"set:image" , "linkdata"     , "ftu"},
+	{"set:image" , "hintstyle"    ,
+		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
 	{DSET    , "usercss"          , "user.css"},
@@ -175,8 +177,7 @@ Conf dconf[] = {
 	{DSET    , "onloadmenu"       , "", "when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
 	{DSET    , "spawnmsg"         , "false"},
-	{DSET    , "hintstyle"        , "",
-		"hintstyle=font-size: medium !important; -webkit-transform: rotate(-9deg);"},
+	{DSET    , "hintstyle"        , ""},
 	{DSET    , "stdoutheaders"    , "false"},
 	{DSET    , "removeheaders"    , "",
 		"removeheaders=Upgrade-Insecure-Requests;Referer;"},

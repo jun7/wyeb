@@ -3071,7 +3071,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		return false;
 	}
 
-	if (win->mode & Mhint)
+	if (win->mode & Mhint && ek->keyval < 128 && !(ek->state & GDK_CONTROL_MASK))
 	{
 		gchar key[2] = {0};
 		*key = ek->keyval;
