@@ -3725,7 +3725,7 @@ void enticon(Win *win, const gchar *name)
 	if (!name)
 		switch (win->mode) {
 		case Mfind   : name = "edit-find"    ; break;
-		case Mopen   : name = "document-open"; break;
+		case Mopen   : name = "go-jump"      ; break;
 		case Mopennew: name = "window-new"   ; break;
 		default:
 			break;
