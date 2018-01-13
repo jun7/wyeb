@@ -494,7 +494,7 @@ static WebKitDOMElement *_makehintelm(
 		"z-index: 2147483647;"
 		"font-size: large !important;"
 		"font-family: monospace !important;"
-		"background: linear-gradient(#649, #203);"
+		"background: linear-gradient(%s);"
 		"color: white;"
 //		"border: 1px solid indigo;"
 		"border-radius: .3em;"
@@ -508,16 +508,17 @@ static WebKitDOMElement *_makehintelm(
 		"%s"
 		;
 
-	const gchar *opacity = head ? "9" : "6";
+	const gchar *opacity = head ? "9" : "4";
+	const gchar *bg      = head ? "#649, #203" : "#203, #203";
 	const gint offset = 6;
 
 	stylestr = center ?
 		g_strdup_printf(hintstyle,
-				opacity, pad, ".", offset, getset(page, "hintstyle"),
+				bg, opacity, pad, ".", offset, getset(page, "hintstyle"),
 				"background: linear-gradient(darkorange, red);")
 		:
 		g_strdup_printf(hintstyle,
-				opacity, pad, "-.", y > offset ? offset : y,
+				bg, opacity, pad, "-.", y > offset ? offset : y,
 				getset(page, "hintstyle"), "");
 
 	styledec = webkit_dom_element_get_style(hint);
@@ -1155,7 +1156,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					else
 					{
 						if (webkit_dom_element_has_attribute(te, "TARGET"))
-							send(page, "showmsg", "the element has target, may have to type the enter key");
+							send(page, "showmsg", "The element has target, may have to type the enter key.");
 
 						WebKitDOMEvent *ce =
 							webkit_dom_document_create_event(doc, "MouseEvent", NULL);
