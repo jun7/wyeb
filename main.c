@@ -970,30 +970,22 @@ static void checkconfs(bool frommonitor)
 //@context
 static void settitle(Win *win, const gchar *pstr)
 {
-	if (pstr)
-	{
-		gtk_window_set_title(win->win, pstr);
-		return;
-	}
-	if (win->crashed)
+	if (!pstr && win->crashed)
 	{
 		settitle(win, "!! Web Process Crashed !!");
 		return;
 	}
-
-	const gchar *uri = URI(win);
 	const gchar *wtitle = webkit_web_view_get_title(win->kit) ?: "";
-
-	gchar *title = g_strdup_printf("%s%s%s%s%s%s - %s",
+	gchar *title = pstr ? NULL : g_strconcat(
 		win->tlserr ? "!TLS has errors! " : "",
 		suffix            , *suffix      ? "| " : "",
 		win->overset ?: "", win->overset ? "| " : "",
-		wtitle, uri);
+		wtitle, " - ", URI(win), NULL);
 
-	gtk_window_set_title(win->win, title);
+	gtk_window_set_title(win->win, pstr ?: title);
 	g_free(title);
 }
-static void setbg(Win *win, int color); //declaration
+static void enticon(Win *win, const gchar *name); //declaration
 static void pmove(Win *win, guint key); //declaration
 static bool winlist(Win *win, guint type, cairo_t *cr); //declaration
 static void _modechanged(Win *win)
@@ -1010,8 +1002,6 @@ static void _modechanged(Win *win)
 		GFA(win->lastfind, g_strdup(gtk_entry_get_text(win->ent)))
 	case Mopen:
 	case Mopennew:
-		setbg(win, 0);
-
 		gtk_widget_hide(win->entw);
 		gtk_widget_grab_focus(win->kitw);
 		break;
@@ -1054,13 +1044,15 @@ static void _modechanged(Win *win)
 		}
 		gtk_entry_set_text(win->ent, win->lastfind ?: "");
 		GFA(win->lastfind, NULL)
+
 	case Mopen:
 	case Mopennew:
+		enticon(win, NULL);
 		if (win->mode != Mfind)
 		{
 			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
 			if (g_strcmp0(setstr, getset(win, "search")))
-				setbg(win, 2);
+				enticon(win, "system-search");
 			g_free(setstr);
 		}
 
@@ -3728,30 +3720,17 @@ static gboolean contextcb(WebKitWebView *web_view,
 
 
 //@entry
-void setbg(Win *win, int color)
+void enticon(Win *win, const gchar *name)
 {
-	static const gchar *colors[] = {"red", "skyblue"};
-	static GtkStyleProvider *cps[2] = {NULL};
-	if (!cps[0]) for (int i = 0; i < 2; i++)
-		{
-			GtkCssProvider *cssp = gtk_css_provider_new();
-			gchar *sstr = g_strdup_printf("entry {background-color: %s}", colors[i]);
-			gtk_css_provider_load_from_data(cssp, sstr, -1, NULL);
-
-			cps[i] = (void *)cssp;
-			g_free(sstr);
+	if (!name)
+		switch (win->mode) {
+		case Mfind   : name = "edit-find"    ; break;
+		case Mopen   : name = "document-open"; break;
+		case Mopennew: name = "window-new"   ; break;
+		default:
+			break;
 		}
-
-	GtkStyleContext *sctx = gtk_widget_get_style_context(win->entw);
-	if (win->sp)
-		gtk_style_context_remove_provider(sctx, win->sp);
-
-	win->sp = NULL;
-	if (color < 1) return;
-	if (!getsetbool(win, "entrybgcolor")) return;
-
-	gtk_style_context_add_provider(sctx, win->sp = cps[color - 1],
-			GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	gtk_entry_set_icon_from_icon_name(win->ent, GTK_ENTRY_ICON_PRIMARY, name);
 }
 static gboolean focusincb(Win *win)
 {
@@ -3815,25 +3794,25 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 static gboolean textcb(Win *win)
 {
 	if (win->mode == Mfind && gtk_widget_get_visible(win->entw)) {
-		setbg(win, 0);
-
 		const gchar *text = gtk_entry_get_text(win->ent);
 		if (strlen(text) > 2)
 			run(win, "find", text);
 		else
+		{
+			enticon(win, NULL);
 			webkit_find_controller_search_finish(win->findct);
+		}
 	}
 	return false;
 }
 static void findfailedcb(Win *win)
 {
+	enticon(win, "dialog-warning");
 	showmsg(win, "Not found");
-
-	if (win->mode == Mfind)
-		setbg(win, 1);
 }
 static void foundcb(Win *win)
 {
+	enticon(win, NULL);
 	_showmsg(win, NULL, false); //clear
 }
 static gboolean detachcb(GtkWidget * w)
