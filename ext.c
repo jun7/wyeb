@@ -1358,8 +1358,6 @@ static void loadconf()
 {
 	if (!confpath)
 		confpath = path2conf("main.conf");
-	else
-		g_key_file_free(conf);
 
 	GKeyFile *new = g_key_file_new();
 	g_key_file_load_from_file(new, confpath,G_KEY_FILE_NONE, NULL);
