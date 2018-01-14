@@ -22,7 +22,7 @@ depends markdown -> discount: You have to add the flag '-f -style' to the genera
 ### Installation
 depends:
 
-- arch linux:'webkit2gtk' 'discount' 'perl-file-mimeinfo'
+- arch linux: 'webkit2gtk' 'discount' 'perl-file-mimeinfo'
 - debian 9.3: libwebkit2gtk-4.0-dev discount libfile-mimeinfo-perl
 
 'discount(markdown)' 'perl-file-mimeinfo' are used only in main.conf
