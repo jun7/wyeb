@@ -188,7 +188,7 @@ key:
 <hr>
 <pre>
 
-Copyright 2017 jun7
+Copyright 2017-2018 jun7
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
