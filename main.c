@@ -3586,12 +3586,20 @@ static GSList *dirmenu(
 
 			if (menu && *org != '.')
 			{
+#if NEWV
 				GSimpleAction *gsa = g_simple_action_new(accelp, NULL);
 				SIGW(gsa, "activate", actioncb, path);
 				webkit_context_menu_append(menu,
 						webkit_context_menu_item_new_from_gaction(
 							(GAction *)gsa, name, NULL));
 				g_object_unref(gsa);
+#else
+				GtkAction *action = gtk_action_new(name, name, NULL, NULL);
+				SIGW(action, "activate", actioncb, path);
+				webkit_context_menu_append(menu,
+						webkit_context_menu_item_new(action));
+				g_object_unref(action);
+#endif
 			}
 		}
 

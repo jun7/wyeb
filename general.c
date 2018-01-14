@@ -45,6 +45,14 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 # define DENUM(v, e) ;
 #endif
 
+
+#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
+# define NEWV 1
+#else
+# define NEWV 0
+#endif
+
+
 #define SIG(o, n, c, u) \
 	g_signal_connect(o, n, G_CALLBACK(c), u)
 #define SIGA(o, n, c, u) \

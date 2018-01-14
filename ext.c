@@ -20,12 +20,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <ctype.h>
 #include <webkit2/webkit-web-extension.h>
 
-#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
-# define NEWV 1
-#else
-# define NEWV 0
-#endif
-
 typedef struct _WP {
 	WebKitWebPage *kit;
 	guint64        id;
