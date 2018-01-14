@@ -1361,8 +1361,9 @@ static void loadconf()
 	else
 		g_key_file_free(conf);
 
-	conf = g_key_file_new();
-	g_key_file_load_from_file(conf, confpath,G_KEY_FILE_NONE, NULL);
+	GKeyFile *new = g_key_file_new();
+	g_key_file_load_from_file(new, confpath,G_KEY_FILE_NONE, NULL);
+	initconf(new);
 }
 
 

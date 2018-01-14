@@ -128,40 +128,6 @@ typedef struct _WP {
 	bool cancelmdlr;
 } Win;
 
-static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group);
-static void setcss(Win *win, gchar *namesstr);
-#define MAINC
-#include "general.c"
-
-
-typedef struct {
-	union {
-		GtkWindow *win;
-		GtkWidget *winw;
-		GObject   *wino;
-	};
-	union {
-		GtkProgressBar *prog;
-		GtkWidget      *progw;
-	};
-	union {
-		GtkBox    *box;
-		GtkWidget *boxw;
-	};
-	union {
-		GtkEntry  *ent;
-		GtkWidget *entw;
-	};
-	WebKitDownload *dl;
-	gchar  *name;
-	gchar  *dldir;
-	const gchar *dispname;
-	guint64 len;
-	bool    res;
-	bool    finished;
-} DLWin;
-
-
 //@global
 static gchar     *suffix = "";
 static GPtrArray *wins = NULL;
@@ -187,6 +153,13 @@ static gchar *logdir = NULL;
 static GtkAccelGroup *accelg = NULL;
 static WebKitWebContext *ctx = NULL;
 static bool ephemeral = false;
+
+
+//shared code
+static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group);
+static void setcss(Win *win, gchar *namesstr);
+#define MAINC
+#include "general.c"
 
 
 static gchar *usage =
@@ -729,61 +702,6 @@ static void resetconf(Win *win, int type)
 		if (last != hash)
 			reloadlast();
 	}
-}
-static void initconf(GKeyFile *kf)
-{
-	if (conf) g_key_file_free(conf);
-	conf = kf ?: g_key_file_new();
-
-	gint len = sizeof(dconf) / sizeof(*dconf);
-	for (int i = 0; i < len; i++)
-	{
-		Conf c = dconf[i];
-
-		if (g_key_file_has_key(conf, c.group, c.key, NULL)) continue;
-		if (kf)
-		{
-			if (!strcmp(c.group, "search")) continue;
-			if (g_str_has_prefix(c.group, "set:")) continue;
-		}
-
-		g_key_file_set_value(conf, c.group, c.key, c.val);
-		if (c.desc)
-			g_key_file_set_comment(conf, c.group, c.key, c.desc, NULL);
-	}
-
-	//fill vals not set
-	if (LASTWIN)
-		_kitprops(false, LASTWIN->seto, conf, DSET);
-	else {
-		WebKitSettings *set = webkit_settings_new();
-		_kitprops(false, (GObject *)set, conf, DSET);
-		g_object_unref(set);
-	}
-
-	if (kf) return;
-
-	//sample and comment
-	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's.", NULL);
-
-	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
-
-	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
-	g_key_file_set_comment(conf, sample, NULL,
-			"After 'uri:' is regular expressions for the setting set.\n"
-			"preferential order of sections: Last > First > '"DSET"'"
-			, NULL);
-
-	sample = "uri:^foo|a-zA-Z0-9|*";
-
-	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
-	g_key_file_set_comment(conf, sample, "reg",
-			"Use reg if the regular expression has []."
-			, NULL);
-
-	g_key_file_set_string(conf, sample, "sets", "image;script");
-	g_key_file_set_comment(conf, sample, "sets",
-			"include other sets." , NULL);
 }
 
 static void checkmd(bool frommonitor)
@@ -2477,6 +2395,32 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 
 
 //@download
+typedef struct {
+	union {
+		GtkWindow *win;
+		GtkWidget *winw;
+		GObject   *wino;
+	};
+	union {
+		GtkProgressBar *prog;
+		GtkWidget      *progw;
+	};
+	union {
+		GtkBox    *box;
+		GtkWidget *boxw;
+	};
+	union {
+		GtkEntry  *ent;
+		GtkWidget *entw;
+	};
+	WebKitDownload *dl;
+	gchar  *name;
+	gchar  *dldir;
+	const gchar *dispname;
+	guint64 len;
+	bool    res;
+	bool    finished;
+} DLWin;
 static void addlabel(DLWin *win, const gchar *str)
 {
 	GtkWidget *lbl = gtk_label_new(str);

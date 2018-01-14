@@ -440,6 +440,63 @@ static void _resetconf(WP *wp, const gchar *uri, bool force)
 		g_free(setstr);
 	}
 }
+static void initconf(GKeyFile *kf)
+{
+	if (conf) g_key_file_free(conf);
+	conf = kf ?: g_key_file_new();
+
+	gint len = sizeof(dconf) / sizeof(*dconf);
+	for (int i = 0; i < len; i++)
+	{
+		Conf c = dconf[i];
+
+		if (g_key_file_has_key(conf, c.group, c.key, NULL)) continue;
+		if (kf)
+		{
+			if (!strcmp(c.group, "search")) continue;
+			if (g_str_has_prefix(c.group, "set:")) continue;
+		}
+
+		g_key_file_set_value(conf, c.group, c.key, c.val);
+		if (c.desc)
+			g_key_file_set_comment(conf, c.group, c.key, c.desc, NULL);
+	}
+
+#ifdef MAINC
+	//fill vals not set
+	if (LASTWIN)
+		_kitprops(false, LASTWIN->seto, conf, DSET);
+	else {
+		WebKitSettings *set = webkit_settings_new();
+		_kitprops(false, (GObject *)set, conf, DSET);
+		g_object_unref(set);
+	}
+
+	if (kf) return;
+
+	//sample and comment
+	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's.", NULL);
+
+	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
+
+	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
+	g_key_file_set_comment(conf, sample, NULL,
+			"After 'uri:' is regular expressions for the setting set.\n"
+			"preferential order of sections: Last > First > '"DSET"'"
+			, NULL);
+
+	sample = "uri:^foo|a-zA-Z0-9|*";
+
+	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
+	g_key_file_set_comment(conf, sample, "reg",
+			"Use reg if the regular expression has []."
+			, NULL);
+
+	g_key_file_set_string(conf, sample, "sets", "image;script");
+	g_key_file_set_comment(conf, sample, "sets",
+			"include other sets." , NULL);
+#endif
+}
 
 
 //@misc
