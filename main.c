@@ -1279,6 +1279,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 			g_error_free(err);
 		}
 		g_io_channel_unref(io);
+		close(input);
 	}
 
 	g_spawn_close_pid(child_pid);
