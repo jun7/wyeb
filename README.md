@@ -1,4 +1,6 @@
 ## Changes
+Install dir /bin/ -> /usr/bin/
+
 The directorys' name is changed from 'wyebrowser' to 'wyeb.' because it was too long.
 wyeb uses old name if old conf dir is found though.
 Changing the name loses the cache and local storage what webkit has saved.
