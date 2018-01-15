@@ -136,6 +136,7 @@ static GQueue    *histimgs = NULL;
 typedef struct {
 	gchar *buf;
 	gsize  size;
+	guint64 id;
 } Img;
 
 static gchar    *mdpath = NULL;
@@ -344,6 +345,9 @@ static gboolean historycb(Win *win)
 					pix, ww * scale, wh * scale, GDK_INTERP_BILINEAR);
 
 			Img *img = g_new(Img, 1);
+			static guint64 unique = 1;
+			img->id = unique++;
+
 			gdk_pixbuf_save_to_buffer(scaled,
 					&img->buf, &img->size,
 					"jpeg", NULL, "quality", "77", NULL);
@@ -2719,7 +2723,7 @@ static gchar *histdata()
 	sv[num + 1] = NULL;
 
 	int i = 0;
-	static int unique = 0;
+	GList *il = g_queue_peek_head_link(histimgs);
 
 	for (GSList *next = hist; next; next = next->next)
 	{
@@ -2728,8 +2732,11 @@ static gchar *histdata()
 
 		if (imgs)
 		{
-			gchar *itag = i < histimgs->length ?
-				g_strdup_printf("<em><img src="APP":histimg/%d/%d></img></em>", i, unique++)
+			Img *img = il ? il->data : NULL;
+			if (il) il = il->next;
+			gchar *itag = img ?
+				g_strdup_printf("<em><img src="APP":histimg/%"
+						G_GUINT64_FORMAT"></img></em>", img->id)
 				: g_strdup("");
 
 			sv[++i] = g_strdup_printf(
@@ -2857,11 +2864,31 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 	gsize len = 0;
 	if (g_str_has_prefix(path, "histimg/"))
 	{
-		gchar **args = g_strsplit(path, "/", 3);
+		gchar **args = g_strsplit(path, "/", 2);
 		if (*(args + 1))
 		{
-			long i = atoi(args[1]);
-			Img *img = g_queue_peek_nth(histimgs, i);
+			guint64 id = g_ascii_strtoull(args[1], NULL, 0);
+			static guint64 lasthead = 0;
+			static GList *clp = NULL;
+			GList *cr = g_queue_peek_head_link(histimgs);
+			guint64 chead = cr && cr->data ? ((Img *)cr->data)->id : 0;
+			if (!chead || lasthead != chead)
+			{
+				lasthead = chead;
+				clp = cr;
+			}
+			else if (!clp || !clp->data || ((Img *)clp->data)->id < id)
+				clp = cr;
+
+			Img *img = NULL;
+			for (; clp; clp = clp->next)
+				if (clp->data && ((Img *)clp->data)->id == id)
+				{
+					img = clp->data;
+					clp = clp->next;
+					break;
+				}
+
 			if (img)
 			{
 				type = "image/jpeg";
