@@ -118,12 +118,14 @@ Conf dconf[] = {
 	{"all"   , "winheight"    , "1000"},
 	{"all"   , "zoom"         , "1.000"},
 
+	{"all"   , "keepfavicondb", "false"},
 	{"all"   , "dlwinback"    , "false"},
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "600"},
 	{"all"   , "ignoretlserr" , "false"},
 	{"all"   , "histimgs"     , "66"},
 	{"all"   , "histimgsize"  , "222"},
+
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
 

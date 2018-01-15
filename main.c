@@ -2255,8 +2255,9 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 				WEBKIT_WEBSITE_DATA_ALL, 0, NULL, NULL, NULL);
 
 			removehistory();
-			webkit_favicon_database_clear(
-				webkit_web_context_get_favicon_database(ctx));
+			if (!confbool("keepfavicondb"))
+				webkit_favicon_database_clear(
+					webkit_web_context_get_favicon_database(ctx));
 
 			showmsg(win, action);
 	)
