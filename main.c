@@ -1680,12 +1680,12 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		cairo_reset_clip(cr);
 		gdouble r   = 4 + th / 66.0;
 		gdouble deg = M_PI / 180.0;
-		cairo_new_sub_path (cr);
-		cairo_arc (cr, tr - r, ty + r, r, -90 * deg,   0 * deg);
-		cairo_arc (cr, tr - r, tb - r, r,   0 * deg,  90 * deg);
-		cairo_arc (cr, tx + r, tb - r, r,  90 * deg, 180 * deg);
-		cairo_arc (cr, tx + r, ty + r, r, 180 * deg, 270 * deg);
-		cairo_close_path (cr);
+		cairo_new_sub_path(cr);
+		cairo_arc(cr, tr - r, ty + r, r, -90 * deg,   0 * deg);
+		cairo_arc(cr, tr - r, tb - r, r,   0 * deg,  90 * deg);
+		cairo_arc(cr, tx + r, tb - r, r,  90 * deg, 180 * deg);
+		cairo_arc(cr, tx + r, ty + r, r, 180 * deg, 270 * deg);
+		cairo_close_path(cr);
 		if (pin)
 		{
 			cairo_set_source_rgba(cr, .9, .0, .4, .7);
