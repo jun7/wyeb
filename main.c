@@ -1103,6 +1103,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 		g_str_has_prefix(str, "https:") ||
 		g_str_has_prefix(str, APP":") ||
 		g_str_has_prefix(str, "file:") ||
+		g_str_has_prefix(str, "data:") ||
 		g_str_has_prefix(str, "about:")
 	) {
 		webkit_web_view_load_uri(win->kit, str);
@@ -1144,9 +1145,10 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	}
 
 	gchar *dsearch;
-	if (regexec(url, str, 0, NULL, 0) == 0) {
+	if (regexec(url, str, 0, NULL, 0) == 0)
 		uri = g_strdup_printf("http://%s", str);
-	} else if (dsearch = getset(caller ?: win, "search")) {
+	else if (dsearch = getset(caller ?: win, "search"))
+	{
 		char *esc = g_uri_escape_string(str, NULL, false);
 		uri = g_strdup_printf(getsearch(dsearch) ?: dsearch, esc);
 		g_free(esc);
