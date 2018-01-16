@@ -916,7 +916,6 @@ static void _modechanged(Win *win)
 	win->lastmode = win->mode;
 
 	switch (last) {
-	case Mnormal:
 	case Minsert:
 		break;
 
@@ -948,13 +947,14 @@ static void _modechanged(Win *win)
 	case Mhintspawn:
 	case Mhintrange:
 		send(win, Crm, NULL);
+	case Mnormal:
+		gtk_window_remove_accel_group(win->win, accelg);
 		break;
 	}
 
 	//into
 	Coms com = 0;
 	switch (win->mode) {
-	case Mnormal:
 	case Minsert:
 		break;
 
@@ -1019,7 +1019,8 @@ static void _modechanged(Win *win)
 			send(win, com, arg);
 			g_free(arg);
 		}
-
+	case Mnormal:
+		gtk_window_add_accel_group(win->win, accelg);
 		break;
 	}
 }
@@ -3038,10 +3039,10 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		return false;
 	}
 
-	if (win->mode & Mhint &&
-			(ek->keyval < 128 || ek->keyval == GDK_KEY_Tab) &&
-			!(ek->state & GDK_CONTROL_MASK))
-	{
+	if (win->mode & Mhint && !(ek->state & GDK_CONTROL_MASK) &&
+			(ek->keyval == GDK_KEY_Tab || ek->keyval == GDK_KEY_Return ||
+			 (ek->keyval < 128 && strchr(confcstr("hintkeys"), ek->keyval)))
+	) {
 		gchar key[2] = {0};
 		*key = ek->keyval;
 		send(win, Ckey, key);
