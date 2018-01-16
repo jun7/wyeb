@@ -488,6 +488,7 @@ static WebKitDOMElement *_makehintelm(
 		"z-index: 2147483647;"
 		"font-size: medium !important;"
 		"font-family: \"DejaVu Sans Mono\", monospace !important;"
+		"font-weight: bold;"
 		"background: linear-gradient(%s);"
 		"color: white;"
 //		"border: 1px solid indigo;"
@@ -496,7 +497,6 @@ static WebKitDOMElement *_makehintelm(
 		"display:inline-block;"
 		"padding: .1em %spx 0;"
 		"line-height: 1em;"
-//		"font-weight: normal;"
 		"top: %s%dem;"
 		"%s;" //user setting
 		"%s"
