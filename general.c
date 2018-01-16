@@ -146,7 +146,7 @@ Conf dconf[] = {
 	{"set:image" , "linkformat"   , "[![](%s) %.40s](%s)"},
 	{"set:image" , "linkdata"     , "ftu"},
 	{"set:image" , "hintstyle"    ,
-		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
+		"font-size:small !important;-webkit-transform:rotate(-9deg)"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
 	{DSET    , "usercss"          , "user.css"},

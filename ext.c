@@ -479,22 +479,22 @@ static WebKitDOMElement *_makehintelm(
 
 	gchar *ht = g_strdup_printf("%s", text + len);
 	webkit_dom_element_set_inner_html(hint, ht, NULL);
-	gchar *pad = strlen(ht) == 1 ? "1" : "04";
+	gchar *pad = strlen(ht) == 1 ? "2" : "1";
 	g_free(ht);
 
 	static const gchar *hintstyle =
 //		"-webkit-transform: rotate(-9deg);"
 		"position: relative;"
 		"z-index: 2147483647;"
-		"font-size: large !important;"
-		"font-family: monospace !important;"
+		"font-size: 1em !important;"
+		"font-family: \"DejaVu Sans Mono\", monospace !important;"
 		"background: linear-gradient(%s);"
 		"color: white;"
 //		"border: 1px solid indigo;"
 		"border-radius: .3em;"
 		"opacity: 0.%s;"
 		"display:inline-block;"
-		"padding: .03em .%sem;"
+		"padding: .1em %spx 0;"
 		"line-height: 1em;"
 //		"font-weight: normal;"
 		"top: %s%dem;"
