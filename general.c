@@ -89,6 +89,7 @@ typedef enum {
 	Cwhite  = 'w',
 	Ctlset  = 'T',
 	Ctlget  = 'g',
+	Cwref   = 'W',
 
 	Cfree   = 'F',
 } Coms;
@@ -178,6 +179,7 @@ Conf dconf[] = {
 	{DSET    , "scriptdialog"     , "true"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "hintrangemax"     , "9"},
+	{DSET    , "dlwithheaders"    , "false"},
 	{DSET    , "dlmimetypes"      , "",
 		"dlmimetypes=text/plain;video/;audio/;application/\n"
 		"dlmimetypes=*"},

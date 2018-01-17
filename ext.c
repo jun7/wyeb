@@ -38,6 +38,7 @@ typedef struct _WP {
 
 	gint           pagereq;
 	bool           redirected;
+	gchar        **refreq;
 
 	//conf
 	GObject       *seto;
@@ -62,6 +63,7 @@ static void freepage(Page *page)
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
 	g_slist_free_full(page->emitters, g_object_unref);
+	g_strfreev(page->refreq);
 
 	g_object_unref(page->seto);
 	g_free(page->lasturiconf);
@@ -969,12 +971,16 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 		webkit_dom_element_get_attribute(te, "ALT") ?:
 		webkit_dom_element_get_attribute(te, "TITLE");
 
+	WebKitDOMDocument *odoc = webkit_dom_node_get_owner_document((void *)te);
+	gchar *ouri = webkit_dom_document_get_document_uri(odoc);
+
 	gchar *suri = tofull(te, uri);
-	gchar *retstr = g_strdup_printf("%c%s %s", uritype, suri, label);
+	gchar *retstr = g_strdup_printf("%c%s %s %s", uritype, ouri, suri, label);
 	send(page, "hintret", retstr);
 
 	g_free(uri);
 	g_free(label);
+	g_free(ouri);
 	g_free(suri);
 	g_free(retstr);
 }
@@ -1396,6 +1402,9 @@ void ipccb(const gchar *line)
 		pagestart(page);
 		break;
 	case Con:
+		g_strfreev(page->refreq);
+		page->refreq = NULL;
+
 		pageon(page);
 		break;
 
@@ -1454,6 +1463,11 @@ void ipccb(const gchar *line)
 		textlinkset(page, arg);
 		break;
 
+	case Cwref:
+		g_strfreev(page->refreq);
+		page->refreq = g_strsplit(arg, " ", 2);
+		break;
+
 	case Cfree:
 		freepage(page);
 		page = NULL;
@@ -1486,21 +1500,23 @@ static gboolean reqcb(
 	if (!head && g_str_has_prefix(reqstr, APP":"))
 		return false;
 
+	bool ret = false;
 	int check = checkwb(reqstr);
 	if (check == 0)
 	{
 		addwhite(page, reqstr);
-		return true;
+		ret = true;
+		goto out;
 	}
 
-	if (page->pagereq == 1) goto retfalse; //open page request
+	if (page->pagereq == 1) goto out; //open page request
 	if (res && page->pagereq == 2)
 	{//redirect. pagereq == 2 means it is a top level request
 		//in redirection we don't get yet current uri
 		_resetconf(page, reqstr, false);
 		page->pagereq = 1;
 		page->redirected = true;
-		goto retfalse;
+		goto out;
 	}
 
 	if (check == 1 || !getsetbool(page, "reldomaindataonly") ||
@@ -1508,12 +1524,11 @@ static gboolean reqcb(
 		//but the purpose of the reldomain is adblock, so non ref is not ad
 	{
 		addblack(page, reqstr);
-		goto retfalse;
+		goto out;
 	}
 
 
 	//reldomain check
-	bool ret = false;
 	const gchar *uristr = webkit_web_page_get_uri(page->kit);
 
 	SoupURI *puri = soup_uri_new(uristr);
@@ -1547,10 +1562,8 @@ static gboolean reqcb(
 	soup_uri_free(puri);
 	soup_uri_free(ruri);
 
-	if (ret) return true;
-
-retfalse:
-	if (head)
+out:
+	if (!ret && head)
 	{
 		if (page->pagereq == 1 && (page->setagent || page->setagentprev))
 			soup_message_headers_replace(head, "User-Agent",
@@ -1566,7 +1579,15 @@ retfalse:
 		}
 	}
 
-	if (getsetbool(page, "stdoutheaders"))
+	if (page->refreq && !g_strcmp0(page->refreq[1], reqstr))
+	{
+		if (!ret && head)
+			soup_message_headers_append(head, "Referer", page->refreq[0]);
+		g_strfreev(page->refreq);
+		page->refreq = NULL;
+	}
+
+	if (!ret && getsetbool(page, "stdoutheaders"))
 	{
 		if (res)
 		{
@@ -1581,7 +1602,7 @@ retfalse:
 		g_print("\n");
 	}
 
-	return false;
+	return ret;
 }
 //static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
 //static void loadcb(WebKitWebPage *wp, Page *page) {}

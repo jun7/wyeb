@@ -122,6 +122,7 @@ typedef struct _WP {
 	gchar  *spawndir;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
+	GHashTable *dlbook;
 
 	bool cancelcontext;
 	bool cancelbtn1r;
@@ -2024,8 +2025,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	if (!strcmp(action, "hintret"))
 	{
 		const gchar *orgarg = arg;
-		retv = g_strsplit(arg, " ", 2);
-		arg = *retv + 1;
+		retv = g_strsplit(arg + 1, " ", 3);
+		arg = retv[1];
 
 		switch (win->mode) {
 		case Mhintopen:
@@ -2035,15 +2036,27 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		case Mhintback:
 			action = "openback"; break;
 		case Mhintdl:
-			action = "download"; break;
+			if (getsetbool(win, "dlwithheaders"))
+			{
+				if (!g_hash_table_contains(win->dlbook, arg))
+				{
+					g_hash_table_add(win->dlbook, g_strdup(arg));
+					action = "openwithref";
+				}
+				else
+					goto out;
+			}
+			else
+				action = "download";
+			break;
 		case Mhintbkmrk:
-			arg = orgarg + 1;
+			arg = strchr(orgarg, ' ') + 1;
 			action = "bookmark"; break;
 
 		case Mhintrange:
 		case Mhintspawn:
 			setresult(win, NULL);
-			win->linklabel = g_strdup(retv[1]);
+			win->linklabel = g_strdup(retv[2]);
 
 			switch (*orgarg) {
 			case 'l':
@@ -2083,14 +2096,20 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		//nokey
 		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, true))
 		Z("openwithref",
-			WebKitURIRequest *req = webkit_uri_request_new(arg);
-			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
-			if (hdrs) //scheme wyeb: returns NULL
-				soup_message_headers_append(hdrs, "Referer", URI(win));
-			webkit_web_view_load_request(win->kit, req);
-			g_object_unref(req);
+			const gchar *ref = retv ? retv[0] : URI(win);
+			gchar *nrml = soup_uri_normalize(arg, NULL);
+			if (!g_str_has_prefix(retv[0], APP":") &&
+				!g_str_has_prefix(retv[0], "file:"))
+			{
+				gchar *carg = g_strdup_printf("%s %s", ref, nrml);
+				send(win, Cwref, carg);
+				g_free(carg);
+			}
+			webkit_web_view_load_uri(win->kit, nrml);
+			g_free(nrml);
 		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
+
 		Z("showmsg" , showmsg(win, arg))
 		Z("click",
 			gchar **xy = g_strsplit(arg ?: "100:100", ":", 2);
@@ -2942,9 +2961,14 @@ static void destroycb(Win *win)
 	setresult(win, NULL);
 	g_free(win->focusuri);
 
+	g_slist_free_full(win->undo, g_free);
+	g_slist_free_full(win->redo, g_free);
+	g_free(win->lastfind);
+
 	g_free(win->spawn);
 	g_free(win->spawndir);
-	g_free(win->lastfind);
+	g_hash_table_destroy(win->dlbook);
+
 	g_free(win);
 }
 static void crashcb(Win *win)
@@ -3357,16 +3381,19 @@ static gboolean policycb(
 	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
 
 	WebKitResponsePolicyDecision *rdec = (void *)dec;
-//	WebKitURIRequest *req =
-//		webkit_response_policy_decision_get_request(rdec);
+	WebKitURIResponse *res = webkit_response_policy_decision_get_response(rdec);
+
+	if (g_hash_table_remove(win->dlbook, webkit_uri_response_get_uri(res)))
+	{
+		webkit_policy_decision_download(dec);
+		return true;
+	}
 
 	bool dl = false;
 	gchar *msr = getset(win, "dlmimetypes");
 	if (msr && *msr)
 	{
 		gchar **ms = g_strsplit(msr, ";", -1);
-		WebKitURIResponse *res =
-			webkit_response_policy_decision_get_response(rdec);
 		const gchar *mime = webkit_uri_response_get_mime_type(res);
 		for (gchar **m = ms; *m; m++)
 			if (**m && (!strcmp(*m, "*") || g_str_has_prefix(mime, *m)))
@@ -3459,6 +3486,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			break;
 		}
 
+		g_hash_table_remove_all(win->dlbook);
 		send(win, Con, NULL);
 
 		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
@@ -3834,6 +3862,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	//delayed init
 	if (!accelg) makemenu(NULL);
 	gtk_window_add_accel_group(win->win, accelg);
+	win->dlbook = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
 	SIGA(win->wino, "draw"           , drawcb, win);
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
