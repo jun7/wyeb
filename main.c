@@ -1990,7 +1990,7 @@ static gchar *ke2name(GdkEventKey *ke)
 	return NULL;
 }
 //declaration
-static Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back);
+static Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back);
 static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *exarg)
 {
 	//D(action %s, action)
@@ -1999,12 +1999,12 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 #define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
 	//nokey nowin
-	Z("new"         , win = newwin(arg, NULL, NULL, false))
+	Z("new"         , win = newwin(arg, NULL, NULL, 0))
 
 #define CLIP(clip) \
 		gchar *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
 			gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
-		win = newwin(uri, NULL, NULL, false); \
+		win = newwin(uri, NULL, NULL, 0); \
 		g_free(uri)
 	Z("newclipboard", CLIP(GDK_SELECTION_CLIPBOARD))
 	Z("newselection", CLIP(GDK_SELECTION_PRIMARY))
@@ -2078,7 +2078,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 					WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT))
 
 		Z("open"   , openuri(win, arg))
-		Z("opennew", newwin(arg, NULL, win, false))
+		Z("opennew", newwin(arg, NULL, win, 0))
 
 		Z("bookmark",
 			gchar **args = g_strsplit(arg, " ", 2);
@@ -2087,7 +2087,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		)
 
 		//nokey
-		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, true))
+		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
 		Z("openwithref",
 			const gchar *ref = retv ? retv[0] : URI(win);
 			gchar *nrml = soup_uri_normalize(arg, NULL);
@@ -2103,8 +2103,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
 		Z("dlwithheaders",
-			Win *dlw = newwin(NULL, win, NULL, false);
-			gtk_widget_hide(dlw->winw);
+			Win *dlw = newwin(NULL, win, win, 2);
 			dlw->fordl = true;
 
 			const gchar *ref = retv ? retv[0] : URI(win);
@@ -3433,9 +3432,9 @@ static GtkWidget *createcb(Win *win)
 	else if (!g_strcmp0(handle, "ignore"))
 		return NULL;
 	else if (!g_strcmp0(handle, "back"))
-		new = newwin(NULL, win, win, true);
+		new = newwin(NULL, win, win, 1);
 	else
-		new = newwin(NULL, win, win, false);
+		new = newwin(NULL, win, win, 0);
 
 	return new->kitw;
 }
@@ -3851,7 +3850,7 @@ static gboolean detachcb(GtkWidget * w)
 gchar *arg0 = NULL;
 #endif
 //@newwin
-Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
+Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
 	win->userreq = true;
@@ -4059,14 +4058,12 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
 	g_ptr_array_add(wins, win);
-	if (!caller && cbwin) return win; //dlwithheader
+	if (back == 2) return win;
 
 	gtk_widget_show_all(win->winw);
 	gtk_widget_hide(win->entw);
 	gtk_widget_hide(win->progw);
-
 	gtk_widget_grab_focus(win->kitw);
-
 	gtk_window_present(
 			back && LASTWIN ? LASTWIN->win : win->win);
 
