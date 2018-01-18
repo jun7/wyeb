@@ -2103,7 +2103,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
 		Z("dlwithheaders",
-			Win *dlw = newwin(NULL, win, win, false);
+			Win *dlw = newwin(NULL, win, NULL, false);
 			gtk_widget_hide(dlw->winw);
 			dlw->fordl = true;
 
@@ -4056,6 +4056,11 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	gtk_container_add(GTK_CONTAINER(ol), boxw);
 	gtk_container_add(GTK_CONTAINER(win->win), olw);
 
+	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
+			webkit_web_view_get_page_id(win->kit));
+	g_ptr_array_add(wins, win);
+	if (!caller && cbwin) return win; //dlwithheader
+
 	gtk_widget_show_all(win->winw);
 	gtk_widget_hide(win->entw);
 	gtk_widget_hide(win->progw);
@@ -4064,11 +4069,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 
 	gtk_window_present(
 			back && LASTWIN ? LASTWIN->win : win->win);
-
-	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
-			webkit_web_view_get_page_id(win->kit));
-
-	g_ptr_array_add(wins, win);
 
 	if (!cbwin)
 		_openuri(win, uri, caller);
