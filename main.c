@@ -122,7 +122,7 @@ typedef struct _WP {
 	gchar  *spawndir;
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
-	GHashTable *dlbook;
+	bool    fordl;
 
 	bool cancelcontext;
 	bool cancelbtn1r;
@@ -1943,12 +1943,13 @@ static Keybind dkeys[]= {
 	{"tohintopen"    , 0, 0, "not click but open uri as opennew/back"},
 
 	{"openback"      , 0, 0},
-	{"openwithref"   , 0, 0, "current uri is sent as Referer"},
+	{"openwithref"   , 0, 0, "Current uri is sent as Referer"},
 	{"download"      , 0, 0},
+	{"dlwithheaders" , 0, 0, "Current uri is sent as Referer. Also cookies"},
 	{"showmsg"       , 0, 0},
 	{"click"         , 0, 0, "x:y"},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
-	{"jscallback"    , 0, 0, "run script of arg1 and arg2 is called with $JSRESULT"},
+	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $JSRESULT"},
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint."},
 	{"tohintrange"   , 0, 0, "Same as tohintcallback but range."},
@@ -2037,15 +2038,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			action = "openback"; break;
 		case Mhintdl:
 			if (getsetbool(win, "dlwithheaders"))
-			{
-				if (!g_hash_table_contains(win->dlbook, arg))
-				{
-					g_hash_table_add(win->dlbook, g_strdup(arg));
-					action = "openwithref";
-				}
-				else
-					goto out;
-			}
+				action = "dlwithheaders";
 			else
 				action = "download";
 			break;
@@ -2098,8 +2091,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("openwithref",
 			const gchar *ref = retv ? retv[0] : URI(win);
 			gchar *nrml = soup_uri_normalize(arg, NULL);
-			if (!g_str_has_prefix(retv[0], APP":") &&
-				!g_str_has_prefix(retv[0], "file:"))
+			if (!g_str_has_prefix(ref, APP":") &&
+				!g_str_has_prefix(ref, "file:"))
 			{
 				gchar *carg = g_strdup_printf("%s %s", ref, nrml);
 				send(win, Cwref, carg);
@@ -2109,6 +2102,22 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			g_free(nrml);
 		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
+		Z("dlwithheaders",
+			Win *dlw = newwin(NULL, win, win, false);
+			gtk_widget_hide(dlw->winw);
+			dlw->fordl = true;
+
+			const gchar *ref = retv ? retv[0] : URI(win);
+			WebKitURIRequest *req = webkit_uri_request_new(arg);
+			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
+			if (hdrs && //scheme wyeb: returns NULL
+				!g_str_has_prefix(ref, APP":") &&
+				!g_str_has_prefix(ref, "file:"))
+				soup_message_headers_append(hdrs, "Referer", ref);
+			//load request lacks cookies except policy download at nav action
+			webkit_web_view_load_request(dlw->kit, req);
+			g_object_unref(req);
+		)
 
 		Z("showmsg" , showmsg(win, arg))
 		Z("click",
@@ -2616,8 +2625,8 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	win->dl    = pdl;
 
 	WebKitWebView *kit = webkit_download_get_web_view(pdl);
-	if (kit)
-		win->dldir = g_strdup(dldir(g_object_get_data(G_OBJECT(kit), "win")));
+	Win *mainwin = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
+	win->dldir   = kit ? g_strdup(dldir(mainwin)) : NULL;
 
 	win->winw  = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(win->win, "DL : Waiting for a response.");
@@ -2668,6 +2677,9 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 	addlabel(win, webkit_uri_request_get_uri(webkit_download_get_request(pdl)));
 	g_ptr_array_insert(dlwins, 0, win);
+
+	if (mainwin && mainwin->fordl)
+		run(mainwin, "quit", NULL);
 }
 
 
@@ -2967,7 +2979,6 @@ static void destroycb(Win *win)
 
 	g_free(win->spawn);
 	g_free(win->spawndir);
-	g_hash_table_destroy(win->dlbook);
 
 	g_free(win);
 }
@@ -3378,16 +3389,18 @@ static gboolean policycb(
 		WebKitPolicyDecisionType type,
 		Win *win)
 {
+	if (win->fordl && type == WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION)
+	{
+		//webkit_policy_decision_download in nav is illegal but sends cookies.
+		//it changes uri of wins and can't recover.
+		webkit_policy_decision_download(dec);
+		return true;
+	}
+
 	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
 
 	WebKitResponsePolicyDecision *rdec = (void *)dec;
 	WebKitURIResponse *res = webkit_response_policy_decision_get_response(rdec);
-
-	if (g_hash_table_remove(win->dlbook, webkit_uri_response_get_uri(res)))
-	{
-		webkit_policy_decision_download(dec);
-		return true;
-	}
 
 	bool dl = false;
 	gchar *msr = getset(win, "dlmimetypes");
@@ -3486,7 +3499,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			break;
 		}
 
-		g_hash_table_remove_all(win->dlbook);
 		send(win, Con, NULL);
 
 		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
@@ -3862,7 +3874,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, bool back)
 	//delayed init
 	if (!accelg) makemenu(NULL);
 	gtk_window_add_accel_group(win->win, accelg);
-	win->dlbook = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
 	SIGA(win->wino, "draw"           , drawcb, win);
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
