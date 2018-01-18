@@ -3468,7 +3468,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	case WEBKIT_LOAD_STARTED:
 		//D(WEBKIT_LOAD_STARTED %s, URI(win))
 		if (tlwin == win) tlwin = NULL;
-		win->px = win->py = 0;
 		win->scheme = false;
 		setresult(win, NULL);
 		GFA(win->focusuri, NULL)
