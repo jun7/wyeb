@@ -481,6 +481,9 @@ static void initconf(GKeyFile *kf)
 	if (kf) return;
 
 	//sample and comment
+	g_key_file_set_comment(conf, "all", NULL, APP" doesn't cut spaces."
+			" Also true is only 'true' not 'True'", NULL);
+
 	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's.", NULL);
 
 	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
