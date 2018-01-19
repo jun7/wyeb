@@ -373,6 +373,7 @@ static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 #ifdef MAINC
 	_kitprops(true, wp->seto, kf, group);
 #else
+	setprop(wp, kf, group, "javascript-can-open-windows-automatically");
 	if (setprop(wp, kf, group, "user-agent") && strcmp(group, DSET))
 		wp->setagent = true;
 #endif

@@ -1155,7 +1155,8 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					}
 					else
 					{
-						if (webkit_dom_element_has_attribute(te, "TARGET"))
+						if (webkit_dom_element_has_attribute(te, "TARGET") &&
+								!getsetbool(page, "javascript-can-open-windows-automatically"))
 							send(page, "showmsg", "The element has target, may have to type the enter key.");
 
 						WebKitDOMEvent *ce =
