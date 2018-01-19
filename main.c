@@ -1012,11 +1012,8 @@ static void _modechanged(Win *win)
 			win->mode = Mnormal;
 		else
 		{
-			gboolean script = false; //dont use bool
-			if (getsetbool(win, "hackedhint4js"))
-				g_object_get(win->seto, "enable-javascript", &script, NULL);
-
-			gchar *arg = g_strdup_printf("%c", script ? 'y' : 'n');
+			gchar *arg = g_strdup_printf("%c",
+					getsetbool(win, "hackedhint4js") ? 'y' : 'n');
 			send(win, com, arg);
 			g_free(arg);
 		}
