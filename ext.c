@@ -253,7 +253,7 @@ void setwblist(bool monitor)
 	if (monitor)
 		send(*pages->pdata, "reloadlast", NULL);
 }
-static gint checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
+static int checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
 {
 	if (!wblist) return -1;
 
