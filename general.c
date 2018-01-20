@@ -150,7 +150,7 @@ Conf dconf[] = {
 		"font-size:small !important;-webkit-transform:rotate(-9deg)"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
-	{DSET    , "usercss"          , "user.css"},
+	{DSET    , "usercss"          , "user.css;u2.css;u3.css"},
 //	{DSET    , "loadsightedimages", "false"},
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
