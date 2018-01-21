@@ -124,7 +124,8 @@ Conf dconf[] = {
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "600"},
 	{"all"   , "ignoretlserr" , "false"},
-	{"all"   , "histimgs"     , "66"},
+	{"all"   , "histviewsize" , "99"},
+	{"all"   , "histimgs"     , "99"},
 	{"all"   , "histimgsize"  , "222"},
 
 //	{"all"   , "configreload" , "true",

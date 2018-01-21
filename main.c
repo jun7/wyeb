@@ -2680,12 +2680,13 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 
 //@uri scheme
-static gchar *histdata()
+static gchar *histdata(bool rest, bool all)
 {
 	GSList *hist = NULL;
 	gint start = 0;
 	gint num = 0;
 	__time_t mtime = 0;
+	gint size = all ? 0 : confint("histviewsize");
 
 	bool imgs = confint("histimgs");
 
@@ -2748,29 +2749,51 @@ static gchar *histdata()
 		"}\n"
 		"</style>\n"
 		, confint("histimgsize"));
-	sv[num + 1] = NULL;
 
+	int resti = 0;
 	int i = 0;
-	GList *il = g_queue_peek_head_link(histimgs);
-
+	GList *il = imgs ? g_queue_peek_head_link(histimgs) : NULL;
 	for (GSList *next = hist; next; next = next->next)
 	{
+		if (size)
+		{
+			if (rest)
+			{
+				if (resti++ < size)
+				{
+					if (il) il = il->next;
+					continue;
+				}
+			}
+			else if (size == i)
+			{
+				if (num > size)
+					sv[++i] = g_strdup(
+							"<h4><i>"
+							"<a href="APP":history/rest>Show Rest</a>"
+							"&nbsp|&nbsp;"
+							"<a href="APP":history/all>Show All</a>"
+							"</i></h4>");
+				break;
+			}
+		}
+
 		gchar **stra = next->data;
 		gchar *escpd = g_markup_escape_text(stra[2] ?: stra[1], -1);
 
-		if (imgs)
+		if (il)
 		{
 			Img *img = il ? il->data : NULL;
 			if (il) il = il->next;
 			gchar *itag = img ?
 				g_strdup_printf("<em><img src="APP":histimg/%"
 						G_GUINT64_FORMAT"></img></em>", img->id)
-				: g_strdup("");
+				: NULL;
 
 			sv[++i] = g_strdup_printf(
 					"<p><a href=%s>%s"
-					"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a></p>\n",
-					stra[1], itag, escpd, stra[1], stra[0]);
+					"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a>\n",
+					stra[1], itag ?: "", escpd, stra[1], stra[0]);
 			g_free(itag);
 		} else
 			sv[++i] = g_strdup_printf(
@@ -2779,12 +2802,13 @@ static gchar *histdata()
 					stra[1], stra[0], escpd, stra[1]);
 
 		g_free(escpd);
-		g_strfreev(stra);
 	}
-	g_slist_free(hist);
+	sv[i + 1] = NULL;
+
+	g_slist_free_full(hist, (GDestroyNotify)g_strfreev);
 
 	gchar *allhist = g_strjoinv("", sv);
-	for (int j = 0; j <= num; j++)
+	for (int j = 0; sv[j]; j++)
 		g_free(sv[j]);
 
 	return allhist;
@@ -2937,7 +2961,9 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 			g_free(cmd);
 		}
 		else if (g_str_has_prefix(path, "history"))
-			data = histdata();
+			data = histdata(
+					g_str_has_prefix(path + 7, "/rest"),
+					g_str_has_prefix(path + 7, "/all"));
 		else if (g_str_has_prefix(path, "help"))
 			data = helpdata();
 		if (!data)
