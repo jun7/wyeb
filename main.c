@@ -3873,9 +3873,6 @@ static gboolean detachcb(GtkWidget * w)
 	return false;
 }
 
-#if DEBUG
-gchar *arg0 = NULL;
-#endif
 //@newwin
 Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
@@ -3949,12 +3946,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		g_free(udata);
 
 #if DEBUG
-		gchar *cdir = g_get_current_dir();
-		gchar *binpath = g_build_filename(cdir, arg0, NULL);
-		gchar *extdir = g_path_get_dirname(binpath);
+		gchar *extdir = g_get_current_dir();
 		webkit_web_context_set_web_extensions_directory(ctx, extdir);
-		g_free(cdir);
-		g_free(binpath);
 		g_free(extdir);
 #else
 		webkit_web_context_set_web_extensions_directory(ctx, EXTENSION_DIR);
@@ -4138,7 +4131,6 @@ int main(int argc, char **argv)
 {
 #if DEBUG
 	g_log_set_always_fatal(G_LOG_LEVEL_CRITICAL);
-	arg0 = argv[0];
 #endif
 
 	if (argc == 2 && (
