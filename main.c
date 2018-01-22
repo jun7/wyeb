@@ -148,7 +148,7 @@ static __time_t  accelt = 0;
 static GSList   *csslist = NULL;
 static GSList   *csstimes = NULL;
 
-static gchar *logs[] = {"h1", "h2", "h3", "h4", NULL};
+static gchar *logs[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
 static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
 static gchar *logdir = NULL;
 
@@ -2690,7 +2690,7 @@ static gchar *histdata(bool rest, bool all)
 
 	bool imgs = confint("histimgs");
 
-	for (int j = 2; j > 0; j--) for (int i = 0; i < logfnum ;i++)
+	for (int j = 2; j > 0; j--) for (int i = logfnum - 1; i >= 0; i--)
 	{
 		gchar *path = g_build_filename(logdir, logs[i], NULL);
 		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
@@ -2700,28 +2700,29 @@ static gchar *histdata(bool rest, bool all)
 			{
 				struct stat info;
 				stat(path, &info);
-				if (mtime > info.st_mtime)
-					start++;
+				if (mtime && mtime <= info.st_mtime)
+					start = 1;
 				mtime = info.st_mtime;
-			} else {
-				start++;
 			}
 		} else start++;
 
 		if (!start) continue;
 		if (!exists) continue;
 		if (start > logfnum) break;
+		if (!rest && size && num >= size) break;
 
+		GSList *lf = NULL;
 		GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
 		gchar *line;
 		while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
 				== G_IO_STATUS_NORMAL)
 		{
-			hist = g_slist_prepend(hist, g_strsplit(line, " ", 3));
+			lf = g_slist_prepend(lf, g_strsplit(line, " ", 3));
 			num++;
 
 			g_free(line);
 		}
+		if (lf) hist = g_slist_append(hist, lf);
 		g_io_channel_unref(io);
 		g_free(path);
 	}
@@ -2753,7 +2754,8 @@ static gchar *histdata(bool rest, bool all)
 	int resti = 0;
 	int i = 0;
 	GList *il = imgs ? g_queue_peek_head_link(histimgs) : NULL;
-	for (GSList *next = hist; next; next = next->next)
+	for (GSList *ns = hist; ns; ns = ns->next)
+		for (GSList *next = ns->data; next; next = next->next)
 	{
 		if (size)
 		{
@@ -2774,7 +2776,7 @@ static gchar *histdata(bool rest, bool all)
 							"&nbsp|&nbsp;"
 							"<a href="APP":history/all>Show All</a>"
 							"</i></h4>");
-				break;
+				goto loopout;
 			}
 		}
 
@@ -2803,9 +2805,12 @@ static gchar *histdata(bool rest, bool all)
 
 		g_free(escpd);
 	}
+loopout:
 	sv[i + 1] = NULL;
 
-	g_slist_free_full(hist, (GDestroyNotify)g_strfreev);
+	for (GSList *ns = hist; ns; ns = ns->next)
+		g_slist_free_full(ns->data, (GDestroyNotify)g_strfreev);
+	g_slist_free(hist);
 
 	gchar *allhist = g_strjoinv("", sv);
 	for (int j = 0; sv[j]; j++)
