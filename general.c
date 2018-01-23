@@ -59,7 +59,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 	g_signal_connect_after(o, n, G_CALLBACK(c), u)
 #define SIGW(o, n, c, u) \
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
-#define GFA(p, v) {g_free(p); p = v;}
+#define GFA(p, v) {void *__b = p; p = v; g_free(__b);}
 
 static gchar *fullname = "";
 static bool shared = true;
@@ -443,9 +443,14 @@ static void _resetconf(WP *wp, const gchar *uri, bool force)
 	_seturiconf(wp, uri);
 
 	if (wp->overset) {
-		gchar *setstr = g_strdup_printf("set:%s", wp->overset);
-		setprops(wp, conf, setstr);
-		g_free(setstr);
+		gchar **sets = g_strsplit(wp->overset, "/", -1);
+		for (gchar **set = sets; *set; set++)
+		{
+			gchar *setstr = g_strdup_printf("set:%s", *set);
+			setprops(wp, conf, setstr);
+			g_free(setstr);
+		}
+		g_strfreev(sets);
 	}
 }
 static void initconf(GKeyFile *kf)

@@ -1942,6 +1942,8 @@ static Keybind dkeys[]= {
 //nokey
 	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf. This toggles"},
 	{"set2"          , 0, 0, "Not toggle"},
+	{"setstack"      , 0, 0,
+		"arg == NULL ? remove last : add set without checking duplicate, "},
 	{"new"           , 0, 0},
 	{"newclipboard"  , 0, 0, "Open [arg + ' ' +] clipboard text in a new window."},
 	{"newselection"  , 0, 0, "Open [arg + ' ' +] selection ..."},
@@ -2322,6 +2324,15 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			resetconf(win, 2))
 	Z("set2"        ,
 			GFA(win->overset, g_strdup(arg))
+			resetconf(win, 2))
+	Z("setstack"    ,
+			gchar **os = &win->overset;
+			if (arg)
+				GFA(*os, g_strconcat(*os ?: arg, *os ? "/" : NULL, arg, NULL))
+			else if (*os && strrchr(*os, '/'))
+				*(strrchr(*os, '/')) = '\0';
+			else if (*os)
+				GFA(*os, NULL)
 			resetconf(win, 2))
 
 	Z("addwhitelist", send(win, Cwhite, "white"))
