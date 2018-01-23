@@ -424,12 +424,13 @@ static WebKitDOMElement *_makehintelm(
 		Page *page,
 		WebKitDOMDocument *doc,
 		bool center ,glong y, glong x, glong h, glong w,
-		const gchar* text, gint len, bool head)
+		gchar *uri, const gchar* text, gint len, bool head)
 {
-	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
+	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "a", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
 
 	//ret
+	webkit_dom_element_set_attribute(ret, "TITLE", uri ?: "-", NULL);
 	static const gchar *retstyle =
 		"position: absolute;" //somehow if fixed web page crashes
 		"overflow: visible;"
@@ -535,6 +536,11 @@ static WebKitDOMElement *makehintelm(Page *page,
 	bool center = isins(uritags, tag) && !isins(linktags, tag);
 	g_free(tag);
 
+	gchar *uri =
+		webkit_dom_element_get_attribute(elm->elm, "ONCLICK") ?:
+		webkit_dom_element_get_attribute(elm->elm, "HREF") ?:
+		webkit_dom_element_get_attribute(elm->elm, "SRC");
+
 #if NEWV
 	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	static const gchar *retstyle =
@@ -571,7 +577,7 @@ static WebKitDOMElement *makehintelm(Page *page,
 				x + elm->fx + pagex,
 				h,
 				w,
-				text, len, i == 0);
+				uri, text, len, i == 0);
 
 		webkit_dom_node_append_child(
 				(WebKitDOMNode *)ret, (WebKitDOMNode *)hint, NULL);
@@ -583,8 +589,9 @@ static WebKitDOMElement *makehintelm(Page *page,
 
 	return _makehintelm(page, doc, center,
 			elm->y + elm->fy + pagey,
-			elm->x + elm->fx + pagex, elm->h, elm->w, text, len, true);
+			elm->x + elm->fx + pagex, elm->h, elm->w, uri, text, len, true);
 #endif
+	g_free(uri);
 }
 
 
