@@ -195,6 +195,7 @@ Conf dconf[] = {
 	{DSET    , "stdoutheaders"    , "false"},
 	{DSET    , "removeheaders"    , "",
 		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
+	{DSET    , "addressbar"           , "false"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},

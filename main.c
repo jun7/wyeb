@@ -64,10 +64,10 @@ typedef struct _WP {
 		WebKitSettings *set;
 		GObject        *seto;
 	};
-//	union {
-//		GtkLabel  *lbl;
-//		GtkWidget *lblw;
-//	};
+	union {
+		GtkLabel  *lbl;
+		GtkWidget *lblw;
+	};
 	union {
 		GtkEntry  *ent;
 		GtkWidget *entw;
@@ -707,6 +707,11 @@ static void resetconf(Win *win, int type)
 		if (last != hash)
 			reloadlast();
 	}
+
+	if (getsetbool(win, "addressbar"))
+		gtk_widget_show(win->lblw);
+	else
+		gtk_widget_hide(win->lblw);
 }
 
 static void checkmd(bool frommonitor)
@@ -898,14 +903,21 @@ static void settitle(Win *win, const gchar *pstr)
 		settitle(win, "!! Web Process Crashed !!");
 		return;
 	}
+	bool bar = getsetbool(win, "addressbar");
 	const gchar *wtitle = webkit_web_view_get_title(win->kit) ?: "";
-	gchar *title = pstr ? NULL : g_strconcat(
+	gchar *title = pstr && !bar ? NULL : g_strconcat(
 		win->tlserr ? "!TLS has errors! " : "",
 		suffix            , *suffix      ? "| " : "",
 		win->overset ?: "", win->overset ? "| " : "",
-		wtitle, " - ", URI(win), NULL);
+		wtitle, bar ? "" : " - ", bar && *wtitle ? NULL : URI(win), NULL);
 
-	gtk_window_set_title(win->win, pstr ?: title);
+	if (bar)
+	{
+		gtk_window_set_title(win->win, *title ? title : URI(win));
+		gtk_label_set_text(win->lbl, pstr ?: URI(win));
+	}
+	else
+		gtk_window_set_title(win->win, pstr ?: title);
 	g_free(title);
 }
 static void enticon(Win *win, const gchar *name); //declaration
@@ -4049,7 +4061,12 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	g_object_unref(cssp);
 
 	//label
-//	win->lblw = gtk_label_new("");
+	win->lblw = gtk_label_new("");
+	gtk_label_set_selectable(win->lbl, true);
+	gtk_label_set_ellipsize(win->lbl, PANGO_ELLIPSIZE_MIDDLE);
+	gtk_label_set_xalign(win->lbl, 0);
+//	gtk_label_set_line_wrap(win->lbl, true);
+//	gtk_label_set_line_wrap_mode(win->lbl, PANGO_WRAP_CHAR);
 //	<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>
 //	gtk_label_set_use_markup(win->lbl, TRUE);
 
@@ -4062,7 +4079,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	GtkWidget *box2w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	GtkBox    *box2  = (GtkBox *)box2w;
 
-	gtk_box_pack_start(box , win->kitw , true , true, 0);
+	gtk_box_pack_start(box , win->lblw , false, true, 0);
+	gtk_box_pack_end(  box , win->kitw , true , true, 0);
 	gtk_box_pack_end(  box2, win->entw , false, true, 0);
 	gtk_box_pack_end(  box2, win->progw, false, true, 0);
 	gtk_widget_set_valign(box2w, GTK_ALIGN_END);
@@ -4079,6 +4097,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	if (back == 2) return win;
 
 	gtk_widget_show_all(win->winw);
+	if (!getsetbool(win, "addressbar"))
+		gtk_widget_hide(win->lblw);
 	gtk_widget_hide(win->entw);
 	gtk_widget_hide(win->progw);
 	gtk_widget_grab_focus(win->kitw);
