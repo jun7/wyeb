@@ -2692,6 +2692,8 @@ static gchar *histdata(bool rest, bool all)
 
 	for (int j = 2; j > 0; j--) for (int i = logfnum - 1; i >= 0; i--)
 	{
+		if (!rest && size && num >= size) break;
+
 		gchar *path = g_build_filename(logdir, logs[i], NULL);
 		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
 
@@ -2709,7 +2711,6 @@ static gchar *histdata(bool rest, bool all)
 		if (!start) continue;
 		if (!exists) continue;
 		if (start > logfnum) break;
-		if (!rest && size && num >= size) break;
 
 		GSList *lf = NULL;
 		GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
