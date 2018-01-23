@@ -2772,11 +2772,11 @@ static gchar *histdata(bool rest, bool all)
 			{
 				if (num > size)
 					sv[++i] = g_strdup(
-							"<h4><i>"
+							"<h3><i>"
 							"<a href="APP":history/rest>Show Rest</a>"
 							"&nbsp|&nbsp;"
 							"<a href="APP":history/all>Show All</a>"
-							"</i></h4>");
+							"</i></h3>");
 				goto loopout;
 			}
 		}
