@@ -2315,7 +2315,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("setv"        , return run(win, "set", "v"))
 	Z("setscript"   , return run(win, "set", "script"))
 	Z("setimage"    , return run(win, "set", "image"))
-	Z("unset"       , return run(win, "set", NULL))
+	Z("unset"       , return run(win, "setstack", NULL))
 	Z("set"         ,
 			if (g_strcmp0(win->overset, arg))
 				GFA(win->overset, g_strdup(arg))
