@@ -706,18 +706,18 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	}
 #endif
 
+	gchar *zc = webkit_dom_css_style_declaration_get_property_value(dec, "z-index");
+	ret.zi = atoi(zc);
+	g_free(zc);
+
 	if (prect)
-		trim(&ret, prect);
+		trim(&ret, ret.zi > prect->zi ? frect : prect);
 
 	if (js && (ret.h < 1 || ret.w < 1))
 		goto retfalse;
 
 	if (js && notttag && !styleis(dec, "cursor", "pointer"))
 		goto retfalse;
-
-	gchar *zc = webkit_dom_css_style_declaration_get_property_value(dec, "z-index");
-	ret.zi = atoi(zc);
-	g_free(zc);
 
 	g_object_unref(dec);
 
@@ -790,6 +790,7 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 		WebKitDOMCSSStyleDeclaration *dec =
 			webkit_dom_dom_window_get_computed_style(win, te, NULL);
 		if (
+				elm.zi > prect->zi ||
 				styleis(dec, "overflow", "hidden") ||
 				styleis(dec, "overflow", "scroll") ||
 				styleis(dec, "overflow", "auto")
