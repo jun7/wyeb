@@ -686,7 +686,7 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 static void resetconf(Win *win, int type)
 { //type: 0: uri, 1:force, 2:overset, 3:file
 //	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
-	gchar *checks[] = {"reldomaincutheads", NULL};
+	gchar *checks[] = {"reldomaincutheads", "removeheaders", NULL};
 	guint hash = 0;
 	if (type && LASTWIN == win)
 		for (gchar **check = checks; *check; check++)
