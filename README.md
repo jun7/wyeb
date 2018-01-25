@@ -41,7 +41,7 @@ wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
 - [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
-- [Window thumbnails.](https://github.com/jun7/wyeb/wiki/img/windowlist.jpg)
+- [Window List.](https://github.com/jun7/wyeb/wiki/img/windowlist.jpg). Key **z**
 - No tab. But keys J/K/x/X or button actions.
 - Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
 Of course it is in the set, so we can set it by uri.
