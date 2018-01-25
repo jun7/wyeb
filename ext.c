@@ -426,7 +426,7 @@ static WebKitDOMElement *_makehintelm(
 		bool center ,glong y, glong x, glong h, glong w,
 		gchar *uri, const gchar* text, gint len, bool head)
 {
-	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "a", NULL);
+	WebKitDOMElement *ret = webkit_dom_document_create_element(doc, "div", NULL);
 	WebKitDOMElement *area = webkit_dom_document_create_element(doc, "div", NULL);
 
 	//ret
