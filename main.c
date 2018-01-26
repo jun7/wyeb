@@ -2632,9 +2632,11 @@ static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 	}
 	return true;
 }
-static gboolean dlkeycb(GtkWidget *w, GdkEventKey *ek, Win *win)
+static gboolean dlkeycb(GtkWidget *w, GdkEventKey *ek, DLWin *win)
 {
-	if (GDK_KEY_q == ek->keyval) gtk_widget_destroy(w);
+	if (GDK_KEY_q == ek->keyval &&
+			(!win->ent || !gtk_widget_has_focus(win->entw)))
+		gtk_widget_destroy(w);
 	return false;
 }
 static gboolean acceptfocuscb(GtkWindow *w)
