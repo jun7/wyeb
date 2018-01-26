@@ -2271,7 +2271,9 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			senddelay(win, Cfocus, NULL);
 			)
 #define CLIP(clip) \
-	run(win, "find", gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
+	gchar *val = gtk_clipboard_wait_for_text(gtk_clipboard_get(clip)); \
+	if (val) gtk_entry_set_text(win->ent, val); \
+	run(win, "find", val); \
 	senddelay(win, Cfocus, NULL);
 
 	Z("findselection", CLIP(GDK_SELECTION_PRIMARY))
