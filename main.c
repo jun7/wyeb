@@ -123,6 +123,7 @@ typedef struct _WP {
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
 	bool    fordl;
+	guint   msgfunc;
 
 	bool cancelcontext;
 	bool cancelbtn1r;
@@ -401,7 +402,6 @@ static void removehistory()
 	}
 }
 
-static guint msgfunc = 0;
 static gboolean clearmsgcb(Win *win)
 {
 	if (isin(wins, win))
@@ -410,15 +410,15 @@ static gboolean clearmsgcb(Win *win)
 		gtk_widget_queue_draw(win->winw);
 	}
 
-	msgfunc = 0;
+	win->msgfunc = 0;
 	return false;
 }
 static void _showmsg(Win *win, gchar *msg, bool small)
 {
-	if (msgfunc) g_source_remove(msgfunc);
+	if (win->msgfunc) g_source_remove(win->msgfunc);
 	GFA(win->msg, msg)
 	win->smallmsg = small;
-	msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
+	win->msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->winw);
 }
 static void showmsg(Win *win, const gchar *msg)
@@ -3580,6 +3580,23 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	}
 }
+static gboolean failcb(WebKitWebView *k, WebKitLoadEvent event,
+		gchar *uri, GError *err, Win *win)
+{
+	//D(failcb %d %d %s, err->domain, err->code, err->message)
+	// 2042 6 Unacceptable TLS certificate
+	// 2042 6 Error performing TLS handshake: An unexpected TLS packet was received.
+	static gchar *last = NULL;
+	if (err->code == 6 && confbool("ignoretlserr") && g_strcmp0(last, uri))
+	{
+		GFA(last, g_strdup(uri))
+		//webkit_web_view_reload(win->kit); //this reloads prev page
+		webkit_web_view_load_uri(win->kit, uri);
+		showmsg(win, "Reloaded by TLS error");
+		return true;
+	}
+	return false;
+}
 
 //@contextmenu
 typedef struct {
@@ -3780,7 +3797,7 @@ void makemenu(WebKitContextMenu *menu)
 
 	g_free(dir);
 }
-static gboolean contextcb(WebKitWebView *web_view,
+static gboolean contextcb(WebKitWebView *k,
 		WebKitContextMenu   *menu,
 		GdkEvent            *e,
 		WebKitHitTestResult *htr,
@@ -4048,6 +4065,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIGW(o, "close"                , closecb   , win);
 	SIGW(o, "script-dialog"        , sdialogcb , win);
 	SIG( o, "load-changed"         , loadcb    , win);
+	SIG( o, "load-failed"          , failcb    , win);
 
 	SIG( o, "context-menu"         , contextcb , win);
 
