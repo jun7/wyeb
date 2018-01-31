@@ -3160,6 +3160,8 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		Z("quit"     , winlist(win, 3, NULL))
 		Z("quitnext" , winlist(win, 3, NULL))
 		Z("quitprev" , winlist(win, 3, NULL))
+
+		Z("winlist"  , tonormal(win); return true;)
 #undef Z
 		switch (ek->keyval) {
 		case GDK_KEY_Down:
