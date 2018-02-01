@@ -1992,7 +1992,8 @@ static gchar *ke2name(GdkEventKey *ke)
 	g_strfreev(swaps);
 
 	guint mask = ke->state & (~GDK_SHIFT_MASK &
-			gdk_keymap_get_modifier_mask(gdk_keymap_get_default(),
+			gdk_keymap_get_modifier_mask(
+				gdk_keymap_get_for_display(gdk_display_get_default()),
 				GDK_MODIFIER_INTENT_DEFAULT_MOD_MASK));
 	static gint len = sizeof(dkeys) / sizeof(*dkeys);
 	for (int i = 0; i < len; i++) {
