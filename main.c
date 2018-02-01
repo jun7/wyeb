@@ -3598,8 +3598,17 @@ static gboolean failcb(WebKitWebView *k, WebKitLoadEvent event,
 	// 2042 6 Unacceptable TLS certificate
 	// 2042 6 Error performing TLS handshake: An unexpected TLS packet was received.
 	static gchar *last = NULL;
-	if (err->code == 6 && confbool("ignoretlserr") && g_strcmp0(last, uri))
+	if (err->code == 6 && confbool("ignoretlserr"))
 	{
+		static int count = 0;
+		if (g_strcmp0(last, uri))
+			count = 0;
+		else if (++count > 2) //three times
+		{
+			count = 0;
+			return false;
+		}
+
 		GFA(last, g_strdup(uri))
 		//webkit_web_view_reload(win->kit); //this reloads prev page
 		webkit_web_view_load_uri(win->kit, uri);
