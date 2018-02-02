@@ -3227,6 +3227,8 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				winlist(win, e->button, NULL))
 			return true;
 
+		if (e->button == 1)
+			win->cancelbtn1r = true;
 		tonormal(win);
 		return true;
 	}
