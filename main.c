@@ -3223,12 +3223,12 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	if (win->mode == Mlist)
 	{
 		win->cursorx = win->cursory = 0;
+		if (e->button == 1)
+			win->cancelbtn1r = true;
 		if ((e->button == 1 || e->button == 3) &&
 				winlist(win, e->button, NULL))
 			return true;
 
-		if (e->button == 1)
-			win->cancelbtn1r = true;
 		tonormal(win);
 		return true;
 	}
