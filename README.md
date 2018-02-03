@@ -30,7 +30,9 @@ depends:
 'discount(markdown)' 'perl-file-mimeinfo' are used only in main.conf
 
 	make
-	make install
+	sudo make install
+
+For arch linux: https://aur.archlinux.org/packages/wyeb-git/
 
 ### Features
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
