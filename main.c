@@ -21,7 +21,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <JavaScriptCore/JSStringRef.h>
 #include <gdk/gdkx.h>
 
-#define LASTWIN (wins ? (Win *)*wins->pdata : NULL)
+#define LASTWIN (wins && wins->len ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
 
 typedef enum {
