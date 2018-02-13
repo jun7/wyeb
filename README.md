@@ -1,7 +1,7 @@
 ## Changes
 Install dir /bin/ -> /usr/bin/
 
-The directorys' name is changed from 'wyebrowser' to 'wyeb.' because it was too long.
+The directorys' names are changed from 'wyebrowser' to 'wyeb.' because it was too long.
 wyeb uses old name if old conf dir is found though.
 Changing the name loses the cache and local storage what webkit has saved.
 See ~/.cache and ~/.local/share to keep it by rename or cleanup.
@@ -37,9 +37,9 @@ For arch linux: https://aur.archlinux.org/packages/wyeb-git/
 ### Features
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
-- Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor. As this all settings are thrown to editor.
+- Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor. As this all settings are thrown to editors.
 - Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it. And another thing, Ctrl + i/s and v switch setting set can be edited.
-- Open actions. Most of actions assigned to keys are also can be accessed by shell.
+- Open actions. Most of actions assigned to keys can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
 - [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
