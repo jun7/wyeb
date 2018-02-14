@@ -3424,12 +3424,15 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 {
 	if (pe->send_event) return false;
 
+	if (win->mode == Mlist)
+		return true;
+
 	if (pe->state & GDK_BUTTON2_MASK && (
 		((pe->direction == GDK_SCROLL_UP || pe->delta_y < 0) &&
 		 setact(win, "pressscrollup", URI(win))
 		) ||
 		((pe->direction == GDK_SCROLL_DOWN || pe->delta_y > 0) &&
-		setact(win, "pressscrolldown", URI(win))
+		 setact(win, "pressscrolldown", URI(win))
 		) )) {
 			win->cancelmdlr = true;
 			return true;
