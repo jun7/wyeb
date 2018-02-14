@@ -157,6 +157,9 @@ static GtkAccelGroup *accelg = NULL;
 static WebKitWebContext *ctx = NULL;
 static bool ephemeral = false;
 
+//for xembed
+#include <gtk/gtkx.h>
+static long plugto = 0;
 
 //shared code
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group);
@@ -2012,9 +2015,10 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	gchar **retv = NULL; //hintret
 
 #define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
+	//experimental
+	Z("plugto"      , plugto = atol(arg); if (plugto) return run(win, "new", NULL))
 	//nokey nowin
 	Z("new"         , win = newwin(arg, NULL, NULL, 0))
-
 #define CLIP(clip) \
 		gchar *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
 			gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
@@ -3948,7 +3952,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	Win *win = g_new0(Win, 1);
 	win->userreq = true;
 
-	win->winw = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+//	win->winw = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	win->winw = plugto ?
+		gtk_plug_new(plugto) : gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
 	gint w, h;
 	if (caller)
