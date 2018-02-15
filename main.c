@@ -3440,24 +3440,8 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 
 	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
-
-	GdkEvent *e = gdk_event_new(GDK_SCROLL);
-	GdkEventScroll *es = (void *)e;
-
-	es->window = gtk_widget_get_window(win->kitw);
-	g_object_ref(es->window);
-	es->send_event = true;
-	es->direction = pe->direction;
-	es->delta_x = pe->delta_x;
-	es->delta_y = pe->delta_y;
-	es->x = pe->x;
-	es->y = pe->y;
-	es->device = pe->device;
-
-	for (int i = 0; i < times; i++)
-		gdk_event_put(e);
-
-	gdk_event_free(e);
+	pe->delta_x *= times;
+	pe->delta_y *= times;
 	return false;
 }
 static gboolean policycb(
