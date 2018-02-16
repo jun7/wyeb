@@ -115,9 +115,14 @@ typedef struct _WP {
 	gchar  *lastfind;
 	GtkStyleProvider *sp;
 
-	//misc
+	//winlist
 	gint    cursorx;
 	gint    cursory;
+	gint    scrlcur;
+	gdouble scrlx;
+	gdouble scrly;
+
+	//misc
 	gchar  *spawn;
 	gchar  *spawndir;
 	bool    scheme;
@@ -410,7 +415,7 @@ static gboolean clearmsgcb(Win *win)
 	if (isin(wins, win))
 	{
 		GFA(win->msg, NULL)
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 	}
 
 	win->msgfunc = 0;
@@ -422,7 +427,7 @@ static void _showmsg(Win *win, gchar *msg, bool small)
 	GFA(win->msg, msg)
 	win->smallmsg = small;
 	win->msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
-	gtk_widget_queue_draw(win->winw);
+	gtk_widget_queue_draw(win->kitw);
 }
 static void showmsg(Win *win, const gchar *msg)
 { _showmsg(win, g_strdup(msg), false); }
@@ -944,14 +949,14 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mlist:
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 		gdk_window_set_cursor(gtk_widget_get_window(win->winw), NULL);
 //		gtk_widget_set_sensitive(win->kitw, true);
 		break;
 
 	case Mpointer:
 		win->pbtn = 1;
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 		break;
 
 	case Mhint:
@@ -1002,7 +1007,7 @@ static void _modechanged(Win *win)
 	case Mlist:
 //		gtk_widget_set_sensitive(win->kitw, false);
 		winlist(win, 2, NULL);
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 		break;
 
 	case Mpointer:
@@ -1367,7 +1372,7 @@ void pmove(Win *win, guint key)
 
 	win->lastdelta *= .9;
 	win->lastkey = key;
-	gtk_widget_queue_draw(win->winw);
+	gtk_widget_queue_draw(win->kitw);
 }
 static void sendkey(Win *win, guint key)
 {
@@ -1555,8 +1560,8 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		return false;
 	}
 
-	gdouble w = gtk_widget_get_allocated_width(win->winw);
-	gdouble h = gtk_widget_get_allocated_height(win->winw);
+	gdouble w = gtk_widget_get_allocated_width(win->kitw);
+	gdouble h = gtk_widget_get_allocated_height(win->kitw);
 
 	gdouble yrate = h / w;
 
@@ -1584,13 +1589,20 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 	}
 
 	switch (type) {
+	case GDK_KEY_Page_Up:
+	case GDK_KEY_Page_Down:
+		win->cursorx = win->cursory = 0;
+		break;
+
 	case GDK_KEY_Up:
 	case GDK_KEY_Down:
 	case GDK_KEY_Left:
 	case GDK_KEY_Right:
+		win->scrlcur = 0;
 		if (win->cursorx > 0 && win->cursory > 0)
 			break;
 	case 2:
+		win->scrlcur = 0;
 		win->cursorx = xunit / 2.0 - .5;
 		win->cursory = yunit / 2.0 - .5;
 		win->cursorx++;
@@ -1599,6 +1611,13 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			return true;
 	}
 	switch (type) {
+	case GDK_KEY_Page_Up:
+		if (--win->scrlcur < 1) win->scrlcur = len;
+		return true;
+	case GDK_KEY_Page_Down:
+		if (++win->scrlcur > len) win->scrlcur = 1;
+		return true;
+
 	case GDK_KEY_Up:
 		if (--win->cursory < 1) win->cursory = yunit;
 		return true;
@@ -1629,12 +1648,16 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 					gdk_display_get_default())),
 			&px, &py, NULL);
 
+	int count = 0;
 	bool ret = false;
 	GSList *crnt = actvs;
 	for (int yi = 0; yi < yunit; yi++) for (int xi = 0; xi < xunit; xi++)
 	{
 		if (!crnt) break;
 		Win *lw = crnt->data;
+		crnt = crnt->next;
+
+		if (win->scrlcur && ++count != win->scrlcur) continue;
 
 		bool issuf =
 			gtk_widget_get_visible(lw->kitw) &&
@@ -1652,6 +1675,14 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		gdouble ty = yi * uh + (uh - th) / 2;
 		gdouble tr = tx + tw;
 		gdouble tb = ty + th;
+
+		if (win->scrlcur)
+		{
+			scale = 1;
+			tx = ty = 1;
+			tr = w - 1;
+			tb = h - 1;
+		}
 
 		bool pin = win->cursorx + win->cursory == 0 ?
 			px > tx && px < tr && py > ty && py < tb :
@@ -1679,15 +1710,13 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 				{
 					run(lw, "quit", NULL);
 					if (len > 1)
-						gtk_widget_queue_draw(win->winw);
+						gtk_widget_queue_draw(win->kitw);
 					else
 						tonormal(win);
 				}
 				crnt = NULL;
 				break;
 			}
-
-			crnt = crnt->next;
 			continue;
 		}
 
@@ -1730,8 +1759,6 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			cairo_set_source_rgba(cr, .1, .0, .2, .4);
 			cairo_paint(cr);
 		}
-
-		crnt = crnt->next;
 	}
 
 	g_slist_free(actvs);
@@ -3162,6 +3189,11 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		Z("scrollleft"  , winlist(win, GDK_KEY_Left , NULL))
 		Z("scrollright" , winlist(win, GDK_KEY_Right, NULL))
 
+		Z("arrowdown"  , winlist(win, GDK_KEY_Page_Down , NULL))
+		Z("arrowright" , winlist(win, GDK_KEY_Page_Down , NULL))
+		Z("arrowup"    , winlist(win, GDK_KEY_Page_Up   , NULL))
+		Z("arrowleft"  , winlist(win, GDK_KEY_Page_Up   , NULL))
+
 		Z("quit"     , winlist(win, 3, NULL))
 		Z("quitnext" , winlist(win, 3, NULL))
 		Z("quitprev" , winlist(win, 3, NULL))
@@ -3169,6 +3201,8 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		Z("winlist"  , tonormal(win); return true;)
 #undef Z
 		switch (ek->keyval) {
+		case GDK_KEY_Page_Down:
+		case GDK_KEY_Page_Up:
 		case GDK_KEY_Down:
 		case GDK_KEY_Up:
 		case GDK_KEY_Left:
@@ -3186,7 +3220,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 			winlist(win, 3, NULL);
 			return true;
 		}
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 		return true;
 	}
 
@@ -3253,7 +3287,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	case 2:
 		win->lastx = e->x;
 		win->lasty = e->y;
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 
 	if (e->button == 1) break;
 	{
@@ -3330,7 +3364,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 	switch (e->button) {
 	case 1:
 		win->lastx = win->lasty = 0;
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 
 		if (win->cancelbtn1r) {
 			win->cancelbtn1r = false;
@@ -3380,7 +3414,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 				setact(win, "mdlbtndown", URI(win));
 		}
 
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 
 		return true;
 	}
@@ -3397,7 +3431,7 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 			win->lastx + win->lasty)
 	{
 		win->lastx = win->lasty = 0;
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 	}
 	update(win);
 
@@ -3407,8 +3441,14 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
 	if (win->mode == Mlist)
 	{
+		if (win->scrlcur &&
+				MAX(abs(e->x - win->scrlx), abs(e->y - win->scrly))
+				 < threshold(win))
+			return true;
+
+		win->scrlcur = 0;
 		win->cursorx = win->cursory = 0;
-		gtk_widget_queue_draw(win->winw);
+		gtk_widget_queue_draw(win->kitw);
 
 		static GdkCursor *hand = NULL;
 		if (!hand) hand = gdk_cursor_new_for_display(
@@ -3425,7 +3465,16 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	if (pe->send_event) return false;
 
 	if (win->mode == Mlist)
+	{
+		win->scrlx = pe->x;
+		win->scrly = pe->y;
+		winlist(win,
+			pe->direction == GDK_SCROLL_UP || pe->delta_y < 0 ?
+				GDK_KEY_Page_Up : GDK_KEY_Page_Down,
+			NULL);
+		gtk_widget_queue_draw(win->kitw);
 		return true;
+	}
 
 	if (pe->state & GDK_BUTTON2_MASK && (
 		((pe->direction == GDK_SCROLL_UP || pe->delta_y < 0) &&
@@ -3973,7 +4022,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	if (!accelg) makemenu(NULL);
 	gtk_window_add_accel_group(win->win, accelg);
 
-	SIGA(win->wino, "draw"           , drawcb, win);
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
@@ -4073,6 +4121,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 
 	GObject *o = win->kito;
+	SIGA(o, "draw"                 , drawcb, win);
 	SIGW(o, "destroy"              , destroycb , win);
 	SIGW(o, "web-process-crashed"  , crashcb   , win);
 	SIGW(o, "notify::title"        , notifycb  , win);
