@@ -118,6 +118,7 @@ typedef struct _WP {
 	//winlist
 	gint    cursorx;
 	gint    cursory;
+	bool    scrlf;
 	gint    scrlcur;
 	gdouble scrlx;
 	gdouble scrly;
@@ -1589,20 +1590,17 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 	}
 
 	switch (type) {
-	case GDK_KEY_Page_Up:
-	case GDK_KEY_Page_Down:
-		win->cursorx = win->cursory = 0;
-		break;
-
 	case GDK_KEY_Up:
 	case GDK_KEY_Down:
 	case GDK_KEY_Left:
 	case GDK_KEY_Right:
-		win->scrlcur = 0;
+		if (win->scrlf)
+			type = 0;
+		win->scrlf = false;
 		if (win->cursorx > 0 && win->cursory > 0)
 			break;
 	case 2:
-		win->scrlcur = 0;
+		win->scrlf = false;
 		win->cursorx = xunit / 2.0 - .5;
 		win->cursory = yunit / 2.0 - .5;
 		win->cursorx++;
@@ -1610,12 +1608,17 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		if (type == 2)
 			return true;
 	}
+
 	switch (type) {
 	case GDK_KEY_Page_Up:
-		if (--win->scrlcur < 1) win->scrlcur = len;
+		if ((win->scrlf || win->scrlcur == 0) &&
+				--win->scrlcur < 1) win->scrlcur = len;
+		win->scrlf = true;
 		return true;
 	case GDK_KEY_Page_Down:
-		if (++win->scrlcur > len) win->scrlcur = 1;
+		if ((win->scrlf || win->scrlcur == 0) &&
+				++win->scrlcur > len) win->scrlcur = 1;
+		win->scrlf = true;
 		return true;
 
 	case GDK_KEY_Up:
@@ -1656,8 +1659,13 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		if (!crnt) break;
 		Win *lw = crnt->data;
 		crnt = crnt->next;
-
-		if (win->scrlcur && ++count != win->scrlcur) continue;
+		count++;
+		if (win->scrlf)
+		{
+			if (count != win->scrlcur) continue;
+			win->cursorx = xi + 1;
+			win->cursory = yi + 1;
+		}
 
 		bool issuf =
 			gtk_widget_get_visible(lw->kitw) &&
@@ -1676,7 +1684,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		gdouble tr = tx + tw;
 		gdouble tb = ty + th;
 
-		if (win->scrlcur)
+		if (win->scrlf)
 		{
 			scale = 1;
 			tx = ty = 1;
@@ -1698,6 +1706,8 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 			win->cursorx = xi + 1;
 			win->cursory = yi + 1;
+
+			win->scrlcur = count;
 		}
 
 		if (!cr)
@@ -3190,9 +3200,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		Z("scrollright" , winlist(win, GDK_KEY_Right, NULL))
 
 		Z("arrowdown"  , winlist(win, GDK_KEY_Page_Down , NULL))
-		Z("arrowright" , winlist(win, GDK_KEY_Page_Down , NULL))
 		Z("arrowup"    , winlist(win, GDK_KEY_Page_Up   , NULL))
-		Z("arrowleft"  , winlist(win, GDK_KEY_Page_Up   , NULL))
 
 		Z("quit"     , winlist(win, 3, NULL))
 		Z("quitnext" , winlist(win, 3, NULL))
@@ -3441,11 +3449,12 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
 	if (win->mode == Mlist)
 	{
-		if (win->scrlcur &&
+		if (win->scrlf &&
 				MAX(abs(e->x - win->scrlx), abs(e->y - win->scrly))
 				 < threshold(win))
 			return true;
 
+		win->scrlf = false;
 		win->scrlcur = 0;
 		win->cursorx = win->cursory = 0;
 		gtk_widget_queue_draw(win->kitw);
