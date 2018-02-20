@@ -2814,11 +2814,11 @@ static gchar *histdata(bool rest, bool all)
 	sv[0] = g_strdup_printf(
 		"<html><meta charset=utf8>\n"
 		"<style>\n"
-		"p {margin:.7em 0; white-space:nowrap;}\n"
+		"p {margin:.6em 0 0 0; white-space:nowrap;}\n"
 		"a, a > * {display:inline-block; vertical-align:middle;}"
-		"a {color:inherit; text-decoration:none;}\n"
+		"a {padding:0 .2em .2em 0; color:inherit; text-decoration:none;}\n"
 		"time {font-family:monospace;}\n"
-		"a > span {padding:0 .6em; white-space:normal; word-wrap:break-word;}\n"
+		"a > span {padding:0 0 0 .6em; white-space:normal; word-wrap:break-word;}\n"
 		"i {font-size:.79em; color:#43a;}\n"
 		//for img
 		"em {min-width:%dpx;}\n"
