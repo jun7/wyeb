@@ -309,12 +309,9 @@ static gboolean historycb(Win *win)
 		{
 			currenti++;
 			GFA(current, g_build_filename(logdir, *file, NULL))
-
-			if (!g_file_test(current, G_FILE_TEST_EXISTS))
-				break;
-
 			struct stat info;
-			stat(current, &info);
+			if (stat(current, &info) == -1)
+				break; //first time. errno == ENOENT
 			logsize = info.st_size;
 			if (logsize < MAXSIZE)
 				break;
@@ -389,6 +386,7 @@ static gboolean historycb(Win *win)
 		fclose(f);
 		logsize = 0;
 	}
+
 	return false;
 }
 static void addhistory(Win *win)
@@ -2447,7 +2445,8 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
 	static guint csize = 0;
 	if (!csize) csize = gdk_display_get_default_cursor_size(
-					gtk_widget_get_display(win->winw));
+					gdk_display_get_default());
+
 
 	if (win->lastx || win->lastx || win->mode == Mpointer)
 	{
@@ -3359,7 +3358,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 					setact(win, "rockerdown", URI(win));
 			}
 		}
-		else if (win->crashed && e->button == 3)
+		else if (win->crashed)
 			run(win, "reload", NULL);
 
 		break;
