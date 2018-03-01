@@ -155,9 +155,9 @@ static __time_t  accelt = 0;
 static GSList   *csslist = NULL;
 static GSList   *csstimes = NULL;
 
-static gchar *logs[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
-static gint logfnum = sizeof(logs) / sizeof(*logs) - 1;
-static gchar *logdir = NULL;
+static gchar *hists[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
+static gint histfnum = sizeof(hists) / sizeof(*hists) - 1;
+static gchar *histdir = NULL;
 
 static GtkAccelGroup *accelg = NULL;
 static WebKitWebContext *ctx = NULL;
@@ -286,6 +286,8 @@ static void freeimg(Img *img)
 	g_free(img ? img->buf : NULL);
 	g_free(img);
 }
+static gchar *histfile = NULL;
+static gchar *lasthist = NULL;
 static gboolean historycb(Win *win)
 {
 	if (ephemeral ||
@@ -296,24 +298,23 @@ static gboolean historycb(Win *win)
 	) return false;
 
 #define MAXSIZE 22222
-	static gchar *current = NULL;
-	static gint currenti = -1;
-	static gint logsize = 0;
-	if (!current || !g_file_test(logdir, G_FILE_TEST_EXISTS))
+	static gint ci = -1;
+	static gint csize = 0;
+	if (!histfile || !g_file_test(histdir, G_FILE_TEST_EXISTS))
 	{
-		_mkdirif(logdir, false);
+		_mkdirif(histdir, false);
 
-		currenti = -1;
-		logsize = 0;
-		for (gchar **file = logs; *file; file++)
+		ci = -1;
+		csize = 0;
+		for (gchar **file = hists; *file; file++)
 		{
-			currenti++;
-			GFA(current, g_build_filename(logdir, *file, NULL))
+			ci++;
+			GFA(histfile, g_build_filename(histdir, *file, NULL))
 			struct stat info;
-			if (stat(current, &info) == -1)
+			if (stat(histfile, &info) == -1)
 				break; //first time. errno == ENOENT
-			logsize = info.st_size;
-			if (logsize < MAXSIZE)
+			csize = info.st_size;
+			if (csize < MAXSIZE)
 				break;
 		}
 	}
@@ -324,8 +325,7 @@ static gboolean historycb(Win *win)
 	gchar *str = g_strdup_printf("%s %s %s", tstr, URI(win),
 			webkit_web_view_get_title(win->kit) ?: "");
 
-	static gchar *last = NULL;
-	if (last && !strcmp(str + 18, last + 18))
+	if (lasthist && !strcmp(str + 18, lasthist + 18))
 	{
 		GFA(str, NULL);
 		freeimg(g_queue_pop_head(histimgs));
@@ -371,20 +371,20 @@ static gboolean historycb(Win *win)
 
 	if (!str) return false;
 
-	append(current, str);
-	GFA(last, str)
+	append(histfile, str);
+	GFA(lasthist, str)
 
-	logsize += strlen(str) + 1;
-	if (logsize > MAXSIZE)
+	csize += strlen(str) + 1;
+	if (csize > MAXSIZE)
 	{
-		currenti++;
-		if (currenti >= logfnum)
-			currenti = 0;
+		ci++;
+		if (ci >= histfnum)
+			ci = 0;
 
-		GFA(current, g_build_filename(logdir, logs[currenti], NULL))
-		FILE *f = fopen(current, "w");
+		GFA(histfile, g_build_filename(histdir, hists[ci], NULL))
+		FILE *f = fopen(histfile, "w");
 		fclose(f);
-		logsize = 0;
+		csize = 0;
 	}
 
 	return false;
@@ -401,12 +401,14 @@ static void addhistory(Win *win)
 }
 static void removehistory()
 {
-	for (gchar **file = logs; *file; file++)
+	for (gchar **file = hists; *file; file++)
 	{
-		gchar *tmp = g_build_filename(logdir, *file, NULL);
+		gchar *tmp = g_build_filename(histdir, *file, NULL);
 		remove(tmp);
 		g_free(tmp);
 	}
+	GFA(histfile, NULL)
+	GFA(lasthist, NULL)
 }
 
 static gboolean clearmsgcb(Win *win)
@@ -2768,11 +2770,11 @@ static gchar *histdata(bool rest, bool all)
 
 	bool imgs = confint("histimgs");
 
-	for (int j = 2; j > 0; j--) for (int i = logfnum - 1; i >= 0; i--)
+	for (int j = 2; j > 0; j--) for (int i = histfnum - 1; i >= 0; i--)
 	{
 		if (!rest && size && num >= size) break;
 
-		gchar *path = g_build_filename(logdir, logs[i], NULL);
+		gchar *path = g_build_filename(histdir, hists[i], NULL);
 		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
 
 		if (!start) {
@@ -2788,7 +2790,7 @@ static gchar *histdata(bool rest, bool all)
 
 		if (!start) continue;
 		if (!exists) continue;
-		if (start > logfnum) break;
+		if (start > histfnum) break;
 
 		GSList *lf = NULL;
 		GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
@@ -4323,7 +4325,7 @@ int main(int argc, char **argv)
 	g_free(sendstr);
 
 	//start main
-	logdir = g_build_filename(
+	histdir = g_build_filename(
 			g_get_user_cache_dir(), fullname, "history", NULL);
 	gtk_init(NULL, NULL);
 	checkconfs(false);
