@@ -28,6 +28,11 @@ install: all
 	install -Dm644 wyeb.png   $(DESTDIR)/usr/share/pixmaps/wyeb.png
 	install -Dm644 wyeb.desktop $(DESTDIR)/usr/share/applications/wyeb.desktop
 
+re: clean all
+nodebug:
+	DDEBUG=0
+full: nodebug re install
+
 uninstall:
 	rm -f  $(DESTDIR)/usr/bin/wyeb
 	rm -f  $(EXTENSION_DIR)/ext.so
