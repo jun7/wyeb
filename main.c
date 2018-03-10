@@ -1982,7 +1982,7 @@ static Keybind dkeys[]= {
 	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf. This toggles"},
 	{"set2"          , 0, 0, "Not toggle"},
 	{"setstack"      , 0, 0,
-		"arg == NULL ? remove last : add set without checking duplicate, "},
+		"arg == NULL ? remove last : add set without checking duplicate"},
 	{"new"           , 0, 0},
 	{"newclipboard"  , 0, 0, "Open [arg + ' ' +] clipboard text in a new window."},
 	{"newselection"  , 0, 0, "Open [arg + ' ' +] selection ..."},
@@ -2932,7 +2932,7 @@ static gchar *helpdata()
 		"  You can add your own keys to access context-menu items we added.\n"
 		"  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the\n"
 		"  last \"\" in the file 'accels' in the conf directory assigned 'c'\n"
-		"  key, and remove the ';' at the beginning of line. alt is &lt;Alt&gt;.\n"
+		"  key, and remove the ';' at the beginning of the line. alt is &lt;Alt&gt;.\n"
 		"\n"
 		"key:\n"
 		"#%d - is ctrl\n"

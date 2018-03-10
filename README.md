@@ -91,7 +91,7 @@ accels:
   You can add your own keys to access context-menu items we added.
   To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the
   last "" in the file 'accels' in the conf directory assigned 'c'
-  key, and remeve the ';' at the beginning of line. alt is &lt;Alt&gt;.
+  key, and remeve the ';' at the beginning of the line. alt is &lt;Alt&gt;.
 
 key:
 4 - is ctrl
@@ -164,8 +164,9 @@ key:
                                           and black list are added to whiteblack.conf
 0 - A          : addblacklist           : URIs loaded
 4 - e          : textlink               : For textarea in insert mode
-0 - (null)     : set                    : Use 'set:' + arg section of main.conf
+0 - (null)     : set                    : Use 'set:' + arg section of main.conf. This toggles
 0 - (null)     : set2                   : Not toggle
+0 - (null)     : setstack               : arg == NULL ? remove last : add set without checking duplicate
 0 - (null)     : new                    : 
 0 - (null)     : newclipboard           : Open [arg + ' ' +] clipboard text
                                           in a new window.
