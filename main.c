@@ -479,18 +479,15 @@ static Win *winbyid(const gchar *pageid)
 	return NULL;
 }
 
-static guint reloadfunc = 0;
-static gboolean reloadlastcb()
-{
-	reloadfunc = 0;
-	return false;
-}
 static void reloadlast()
 {
 //	if (!confbool("configreload")) return;
-	if (reloadfunc) return;
-	if (LASTWIN) webkit_web_view_reload(LASTWIN->kit);
-	reloadfunc = g_timeout_add(300, (GSourceFunc)reloadlastcb, NULL);
+	if (!LASTWIN) return;
+	static gint64 last = 0;
+	gint64 now = g_get_monotonic_time();
+	if (now - last < 300000) return;
+	last = now;
+	webkit_web_view_reload(LASTWIN->kit);
 }
 
 static void putbtne(Win* win, GdkEventType type, guint btn)
@@ -516,8 +513,9 @@ static void putbtne(Win* win, GdkEventType type, guint btn)
 static void addhash(gchar *str, guint *hash)
 {
 	if (*hash == 0) *hash = 5381;
-	while (*str++)
-		*hash = *hash * 33 + *str;
+	if (!*str) str = "\0";
+	do *hash = *hash * 33 + *str;
+	while (*++str);
 }
 
 static void setresult(Win *win, WebKitHitTestResult *htr)
@@ -550,10 +548,8 @@ static void setresult(Win *win, WebKitHitTestResult *htr)
 static void undo(Win *win, GSList **undo, GSList **redo)
 {
 	if (!*undo && redo != undo) return;
-	if (!*redo ||
-			strcmp((*redo)->data, gtk_entry_get_text(win->ent)))
-		*redo = g_slist_prepend(*redo,
-				g_strdup(gtk_entry_get_text(win->ent)));
+	if (!*redo || strcmp((*redo)->data, gtk_entry_get_text(win->ent)))
+		*redo = g_slist_prepend(*redo, g_strdup(gtk_entry_get_text(win->ent)));
 
 	if (redo == undo) return;
 	if (!strcmp((*undo)->data, gtk_entry_get_text(win->ent)))
@@ -1161,7 +1157,8 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	}
 
 	static regex_t *url = NULL;
-	if (!url) {
+	if (!url)
+	{
 		url = g_new(regex_t, 1);
 		regcomp(url,
 				"^([a-zA-Z0-9-]{2,256}\\.)+[a-z]{2,6}(/.*)?$",
@@ -1358,7 +1355,8 @@ void pmove(Win *win, guint key)
 		(key  == GDK_KEY_Up   && lkey == GDK_KEY_Down) ||
 		(lkey == GDK_KEY_Up   && key  == GDK_KEY_Down) ||
 		(key  == GDK_KEY_Left && lkey == GDK_KEY_Right) ||
-		(lkey == GDK_KEY_Left && key  == GDK_KEY_Right) )
+		(lkey == GDK_KEY_Left && key  == GDK_KEY_Right)
+	)
 		win->lastdelta /= 2;
 
 	if (win->lastdelta < 2) win->lastdelta = 2;
@@ -1431,7 +1429,8 @@ static void openconf(Win *win, bool shift)
 			path = mdpath;
 			editor = confcstr("mdeditor");
 		}
-	} else if (!shift && g_str_has_prefix(uri, APP":"))
+	}
+	else if (!shift && g_str_has_prefix(uri, APP":"))
 	{
 		showmsg(win, "No config");
 		return;
@@ -3436,8 +3435,8 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 { //for checking drag end with button1
 	if (
-			!(e->state & GDK_BUTTON1_MASK) &&
-			win->lastx + win->lasty)
+		!(e->state & GDK_BUTTON1_MASK) &&
+		win->lastx + win->lasty)
 	{
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
@@ -3492,10 +3491,11 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 		) ||
 		((pe->direction == GDK_SCROLL_DOWN || pe->delta_y > 0) &&
 		 setact(win, "pressscrolldown", URI(win))
-		) )) {
-			win->cancelmdlr = true;
-			return true;
-		}
+		) ))
+	{
+		win->cancelmdlr = true;
+		return true;
+	}
 
 	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
@@ -3564,20 +3564,11 @@ static GtkWidget *createcb(Win *win)
 	gchar *handle = getset(win, "newwinhandle");
 	Win *new = NULL;
 
-	if      (!g_strcmp0(handle, "notnew"))
-		return win->kitw;
-	else if (!g_strcmp0(handle, "ignore"))
-		return NULL;
-	else if (!g_strcmp0(handle, "back"))
-		new = newwin(NULL, win, win, 1);
-	else
-		new = newwin(NULL, win, win, 0);
-
+	if      (!g_strcmp0(handle, "notnew")) return win->kitw;
+	else if (!g_strcmp0(handle, "ignore")) return NULL;
+	else if (!g_strcmp0(handle, "back"  )) new = newwin(NULL, win, win, 1);
+	else                       /*normal*/  new = newwin(NULL, win, win, 0);
 	return new->kitw;
-}
-static void closecb(Win *win)
-{
-	gtk_widget_destroy(win->winw);
 }
 static gboolean sdialogcb(Win *win)
 {
@@ -3688,7 +3679,7 @@ static gboolean failcb(WebKitWebView *k, WebKitLoadEvent event,
 
 //@contextmenu
 typedef struct {
-	GClosure  *gc; //if dir this is NULL
+	GClosure  *gc; //when dir this is NULL
 	gchar     *path;
 	GSList    *actions;
 } AItem;
@@ -3889,19 +3880,15 @@ static gboolean contextcb(WebKitWebView *k,
 		WebKitContextMenu   *menu,
 		GdkEvent            *e,
 		WebKitHitTestResult *htr,
-		Win                 *win
-		)
+		Win                 *win)
 {
-	if (win->cancelcontext) {
+	if (win->cancelcontext)
+	{
 		win->cancelcontext = false;
 		return true;
 	}
-
 	setresult(win, htr);
 	makemenu(menu);
-
-	//GtkAction * webkit_context_menu_item_get_action(WebKitContextMenuItem *item);
-	//GtkWidget * gtk_action_create_menu_item(GtkAction *action);
 	return false;
 }
 
@@ -3956,9 +3943,8 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		break;
 
 	case GDK_KEY_Escape:
-		if (win->mode == Mfind) {
+		if (win->mode == Mfind)
 			webkit_find_controller_search_finish(win->findct);
-		}
 		tonormal(win);
 		break;
 
@@ -3980,7 +3966,8 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 }
 static gboolean textcb(Win *win)
 {
-	if (win->mode == Mfind && gtk_widget_get_visible(win->entw)) {
+	if (win->mode == Mfind && gtk_widget_get_visible(win->entw))
+	{
 		const gchar *text = gtk_entry_get_text(win->ent);
 		if (strlen(text) > 2)
 			run(win, "find", text);
@@ -4013,8 +4000,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
 	win->userreq = true;
-
-//	win->winw = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	win->winw = plugto ?
 		gtk_plug_new(plugto) : gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
@@ -4035,7 +4020,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
-	if (!ctx) {
+	if (!ctx)
+	{
 		ephemeral = g_key_file_get_boolean(conf, "boot", "ephemeral", NULL);
 		gchar *data  = g_build_filename(g_get_user_data_dir() , fullname, NULL);
 		gchar *cache = g_build_filename(g_get_user_cache_dir(), fullname, NULL);
@@ -4152,7 +4138,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	SIG( o, "decide-policy"        , policycb  , win);
 	SIGW(o, "create"               , createcb  , win);
-	SIGW(o, "close"                , closecb   , win);
+	SIGW(o, "close"                , gtk_widget_destroy, win->winw);
 	SIGW(o, "script-dialog"        , sdialogcb , win);
 	SIG( o, "load-changed"         , loadcb    , win);
 	SIG( o, "load-failed"          , failcb    , win);
