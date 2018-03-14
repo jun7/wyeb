@@ -489,7 +489,7 @@ static WebKitDOMElement *_makehintelm(
 //		"-webkit-transform: rotate(-9deg);"
 		"position: relative;"
 		"z-index: 2147483647;"
-		"font-size: medium !important;"
+		"font-size: small !important;"
 		"font-family: \"DejaVu Sans Mono\", monospace !important;"
 		"font-weight: bold;"
 		"background: linear-gradient(%s);"
