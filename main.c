@@ -3506,6 +3506,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	es->window = gtk_widget_get_window(win->kitw);
 	g_object_ref(es->window);
 	es->send_event = true;
+	es->state = pe->state;
 	es->direction = pe->direction;
 	es->delta_x = pe->delta_x;
 	es->delta_y = pe->delta_y;
