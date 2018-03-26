@@ -3126,14 +3126,17 @@ static gboolean delaymdlrcb(Win *win)
 		putbtne(win, GDK_BUTTON_RELEASE, 2);
 	return false;
 }
+static bool keyr = true;
 static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
 
+	keyr = true;
+
 	if (win->mode == Mpointer &&
 			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
-		putbtne(win, GDK_BUTTON_PRESS,  win->pbtn);
+		putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
 		if (win->pbtn == 2)
 			g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
 		else
@@ -3147,7 +3150,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	if (action && !strcmp(action, "tonormal"))
 	{
-		bool ret = win->mode & Mhint || win->mode == Mpointer;
+		keyr = !(win->mode & (Mnormal | Minsert));
 
 		if (win->mode == Mpointer)
 			win->px = win->py = 0;
@@ -3160,7 +3163,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		else
 			tonormal(win);
 
-		return ret;
+		return keyr;
 	}
 
 	if (win->mode == Minsert)
@@ -3178,7 +3181,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		if (action && !strcmp(action, "textlink"))
 			return run(win, action, NULL);
 
-		return false;
+		return keyr = false;
 	}
 
 	if (win->mode & Mhint && !(ek->state & GDK_CONTROL_MASK) &&
@@ -3235,7 +3238,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	win->userreq = true;
 
 	if (!action)
-		return false;
+		return keyr = false;
 
 	run(win, action, NULL);
 
@@ -3244,11 +3247,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 static gboolean keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
-	if (win->mode == Minsert) return false;
-	if (win->mode & Mhint) return true;
-	if (win->mode == Mlist) return true;
-	if (ke2name(ek)) return true;
-	return false;
+	return keyr;
 }
 static void targetcb(
 		WebKitWebView *w,

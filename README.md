@@ -27,7 +27,7 @@ depends:
 - arch linux: 'webkit2gtk' 'discount' 'perl-file-mimeinfo'
 - debian 9.3: libwebkit2gtk-4.0-dev discount libfile-mimeinfo-perl
 
-'discount(markdown)' 'perl-file-mimeinfo' are used only in main.conf
+'discount(markdown)' 'perl-file-mimeinfo' are used only in the main.conf
 
 	make
 	sudo make install
