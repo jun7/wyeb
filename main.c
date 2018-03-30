@@ -3817,6 +3817,7 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "1bookmark"        , APP" // bookmark "
 				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
 		addscript(dir, "1duplicate"       , APP" // opennew $URI");
+		addscript(dir, "1editLabelOrTitle", APP" // edituri \"$LABEL_OR_TITLE\"");
 		addscript(dir, "1history"         , APP" // showhistory \"\"");
 		addscript(dir, "1windowList"      , APP" // winlist \"\"");
 		addscript(dir, "2main"            , APP" // open "APP":main");
