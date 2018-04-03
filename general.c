@@ -133,7 +133,7 @@ Conf dconf[] = {
 
 	{"boot"  , "enablefavicon", "true"},
 	{"boot"  , "extensionargs", "adblock:true;"},
-	{"boot"  , "multiwebprocs", "false"},
+	{"boot"  , "multiwebprocs", "true"},
 	{"boot"  , "ephemeral"    , "false"},
 
 	{"search", "h"            , "http://%s"},
