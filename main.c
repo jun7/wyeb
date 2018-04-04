@@ -2649,6 +2649,8 @@ static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 		GFA(path, g_build_filename(base, name = "noname", NULL))
 	g_free(check);
 
+	mkdirif(path);
+
 	gchar *org = g_strdup(path);
 	for (int i = 2; g_file_test(path, G_FILE_TEST_EXISTS); i++)
 		GFA(path, g_strdup_printf("%s.%d", org, i))
