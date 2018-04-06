@@ -2732,7 +2732,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 				gtk_widget_get_window(LASTWIN->winw), NULL, &gy, NULL, NULL);
 		gint x, y;
 		gtk_window_get_position(LASTWIN->win, &x, &y);
-		gtk_window_move(win->win, MAX(0, x - gy * 2), MAX(0, y + gy));
+		gtk_window_move(win->win, MAX(0, x - 400), MAX(0, y + gy));
 	}
 
 	if (confbool("dlwinback") && LASTWIN &&
@@ -2747,7 +2747,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 //				false);
 //		gdk_window_lower();
 		gtk_window_present(LASTWIN->win);
-		g_timeout_add(200, (GSourceFunc)acceptfocuscb, win->win);
+		g_timeout_add(100, (GSourceFunc)acceptfocuscb, win->win);
 	} else {
 		gtk_widget_show_all(win->winw);
 	}

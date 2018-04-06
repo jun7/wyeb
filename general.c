@@ -120,7 +120,7 @@ Conf dconf[] = {
 	{"all"   , "zoom"         , "1.000"},
 
 	{"all"   , "keepfavicondb", "false"},
-	{"all"   , "dlwinback"    , "false"},
+	{"all"   , "dlwinback"    , "true"},
 	{"all"   , "dlwinclosemsec","3000"},
 	{"all"   , "msgmsec"      , "600"},
 	{"all"   , "ignoretlserr" , "false"},
