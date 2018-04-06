@@ -1213,7 +1213,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	for (GSList *next = rangeelms; next; next = next->next)
 	{
 		hintret(page, type, next->data);
-		g_usleep(99999);
+		g_usleep(getsetint(page, "rangeloopusec"));
 	}
 	g_slist_free(rangeelms);
 
