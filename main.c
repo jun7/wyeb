@@ -3470,6 +3470,22 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 	}
 	return false;
 }
+
+typedef struct {
+	int times;
+	GdkEvent *e;
+} Scrl;
+static gboolean multiscrlcb(Scrl *si)
+{
+	if (si->times--)
+	{
+		gdk_event_put(si->e);
+		return true;
+	}
+	gdk_event_free(si->e);
+	g_free(si);
+	return false;
+}
 static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 {
 	if (pe->send_event) return false;
@@ -3515,10 +3531,11 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	es->y = pe->y;
 	es->device = pe->device;
 
-	for (int i = 0; i < times; i++)
-		gdk_event_put(e);
+	Scrl *si = g_new0(Scrl, 1);
+	si->times = times;
+	si->e = e;
+	g_timeout_add(20, (GSourceFunc)multiscrlcb, si);
 
-	gdk_event_free(e);
 	return false;
 }
 static gboolean policycb(
