@@ -3534,7 +3534,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	Scrl *si = g_new0(Scrl, 1);
 	si->times = times;
 	si->e = e;
-	g_timeout_add(20, (GSourceFunc)multiscrlcb, si);
+	g_timeout_add(200 / (times + 4), (GSourceFunc)multiscrlcb, si);
 
 	return false;
 }
