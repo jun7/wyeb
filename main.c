@@ -1226,6 +1226,9 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
 	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
 	envp = g_environ_setenv(envp, "DLDIR"  , dldir(win), true);
+	gchar *confdir = path2conf(NULL);
+	envp = g_environ_setenv(envp, "CONFDIR", confdir, true);
+	g_free(confdir);
 
 	const gchar *title = webkit_web_view_get_title(win->kit);
 	if (!title) title = URI(win);
@@ -2926,8 +2929,8 @@ static gchar *helpdata()
 		"  the config dir, or click 'editMenu' in the context-menu. SUFFIX,\n"
 		"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 		"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
-		"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET and DLDIR\n"
-		"  are set as environment variables. Available\n"
+		"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET, DLDIR,\n"
+		"  and CONFDIR are set as environment variables. Available\n"
 		"  actions are in 'key:' section below. Of course it supports dir\n"
 		"  and '.'. '.' hides it from menu but still available in the accels.\n"
 		"accels:\n"
