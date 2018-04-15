@@ -146,6 +146,7 @@ typedef struct {
 	gsize  size;
 	guint64 id;
 } Img;
+static gchar *lastmsg = NULL;
 
 static gchar    *mdpath = NULL;
 static gchar    *accelp = NULL;
@@ -415,7 +416,8 @@ static gboolean clearmsgcb(Win *win)
 {
 	if (isin(wins, win))
 	{
-		GFA(win->msg, NULL)
+		GFA(lastmsg, win->msg)
+		win->msg = NULL;
 		gtk_widget_queue_draw(win->kitw);
 	}
 
@@ -1139,19 +1141,19 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	}
 
 	gchar *uri = NULL;
-
+	int checklen = 0;
 	gchar **stra = g_strsplit(str, " ", 2);
 
 	if (*stra && stra[1])
 	{
 		gchar *search = getsearch(stra[0]);
 		if (search) {
+			checklen = strlen(stra[1]);
 			char *esc = g_uri_escape_string(stra[1], NULL, false);
 			uri = g_strdup_printf(search, esc);
 			g_free(esc);
 
 			GFA(win->lastfind, g_strdup(stra[1]))
-
 			goto out;
 		}
 	}
@@ -1170,6 +1172,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 		uri = g_strdup_printf("http://%s", str);
 	else if (dsearch = getset(caller ?: win, "search"))
 	{
+		checklen = strlen(str);
 		char *esc = g_uri_escape_string(str, NULL, false);
 		uri = g_strdup_printf(getsearch(dsearch) ?: dsearch, esc);
 		g_free(esc);
@@ -1181,7 +1184,12 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 out:
 	g_strfreev(stra);
 
-	webkit_web_view_load_uri(win->kit, uri);
+	int max;
+	if (checklen && (max = confint("searchstrmax")) && checklen > max)
+		_showmsg(win, g_strdup_printf("Input Len(%d) > searchstrmax=%d",
+					checklen, max), false);
+	else
+		webkit_web_view_load_uri(win->kit, uri);
 	g_free(uri);
 }
 static void openuri(Win *win, const gchar *str)
@@ -2901,6 +2909,8 @@ static gchar *histdata(bool rest, bool all)
 
 		g_free(escpd);
 	}
+
+
 loopout:
 	sv[i + 1] = NULL;
 
@@ -2917,7 +2927,9 @@ loopout:
 static gchar *helpdata()
 {
 	gchar *data = g_strdup_printf(
-		"<pre style=\"font-size: large\">\n"
+		"<body style=margin:0>\n"
+		"<p style=padding:.3em;background-color:#ccc>Last MSG: %s</p>\n"
+		"<pre style=margin:.3em;font-size:large>\n"
 		"%s\n"
 		"mouse:\n"
 		"  rocker gesture:\n"
@@ -2954,7 +2966,7 @@ static gchar *helpdata()
 		"key:\n"
 		"#%d - is ctrl\n"
 		"#(null) is only for script\n"
-		, usage, GDK_CONTROL_MASK);
+		, lastmsg, usage, GDK_CONTROL_MASK);
 
 	for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
 	{

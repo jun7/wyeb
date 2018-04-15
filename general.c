@@ -127,6 +127,7 @@ Conf dconf[] = {
 	{"all"   , "histviewsize" , "99"},
 	{"all"   , "histimgs"     , "99"},
 	{"all"   , "histimgsize"  , "222"},
+	{"all"   , "searchstrmax" , "99"},
 
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},
