@@ -2372,12 +2372,14 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("setv"        , return run(win, "set", "v"))
 	Z("setscript"   , return run(win, "set", "script"))
 	Z("setimage"    , return run(win, "set", "image"))
-	Z("unset"       , return run(win, "setstack", NULL))
+	bool unset = false;
+	if (!strcmp(action, "unset"))
+		action = (unset = arg) ? "set" : "setstack";
 	Z("set"         ,
 			gchar **os = &win->overset;
 			gchar **ss = g_strsplit(*os ?: "", "/", -1);
 			GFA(*os, NULL)
-			bool add = true;
+			bool add = !unset;
 			if (arg) for (gchar **s = ss; *s; s++)
 				if (g_strcmp0(*s, arg))
 					GFA(*os, g_strconcat(*os ?: *s, *os ? "/" : NULL, *s, NULL))
