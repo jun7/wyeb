@@ -591,7 +591,6 @@ static bool ipcsend(gchar *name, gchar *str) {
 		(cpipe = open(path, O_WRONLY | O_NONBLOCK)))
 	{
 		//D(send start %s %s, name, str)
-		ret = true;
 		char *esc = g_strescape(str, "");
 		gchar *send = g_strconcat(esc, "\n", NULL);
 		ret = write(cpipe, send, strlen(send)) != -1;

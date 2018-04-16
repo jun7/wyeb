@@ -3375,7 +3375,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			{ //default
 				setact(win, "rockerleft", URI(win));
 			}
-			else if (abs(deltax) > abs(deltay)) {
+			else if (fabs(deltax) > fabs(deltay)) {
 				if (deltax < 0) //left
 					setact(win, "rockerleft", URI(win));
 				else //right
@@ -3438,7 +3438,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 			else if (gtk_window_is_active(win->win))
 				setact(win, "mdlbtnleft", URI(win));
 		}
-		else if (abs(deltax) > abs(deltay)) {
+		else if (fabs(deltax) > fabs(deltay)) {
 			if (deltax < 0) //left
 				setact(win, "mdlbtnleft", URI(win));
 			else //right
@@ -4316,7 +4316,7 @@ int main(int argc, char **argv)
 			!strcmp(argv[1], "-h") ||
 			!strcmp(argv[1], "--help"))
 	) {
-		g_print(usage);
+		g_print("%s", usage);
 		exit(0);
 	}
 
