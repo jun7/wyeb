@@ -153,7 +153,6 @@ Conf dconf[] = {
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
 	{DSET    , "usercss"          , "user.css;u2.css;u3.css"},
-//	{DSET    , "loadsightedimages", "false"},
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET    , "showblocked"      , "false"},
@@ -186,7 +185,6 @@ Conf dconf[] = {
 		"dlmimetypes=text/plain;video/;audio/;application/\n"
 		"dlmimetypes=*"},
 	{DSET    , "dlsubdir"         , ""},
-	{DSET    , "entrybgcolor"     , "true"},
 	{DSET    , "onstartmenu"      , "",
 		"onstartmenu spawns a shell in the menu dir when load started before redirect"},
 	{DSET    , "onloadmenu"       , "", "when load commited"},
