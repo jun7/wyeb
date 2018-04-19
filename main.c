@@ -4254,6 +4254,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	g_ptr_array_add(wins, win);
 	if (back == 2) return win;
 
+	if (caller)
+		webkit_web_view_set_zoom_level(win->kit,
+				webkit_web_view_get_zoom_level(caller->kit));
+
 	gtk_widget_show_all(win->winw);
 	if (!getsetbool(win, "addressbar"))
 		gtk_widget_hide(win->lblw);
