@@ -152,10 +152,49 @@ Conf dconf[] = {
 		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
-	{DSET    , "usercss"          , "user.css;u2.css;u3.css"},
+	{DSET    , "usercss"          , "user.css;user2.css"},
+	{DSET    , "addressbar"       , "false"},
+
+	//loading
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET    , "showblocked"      , "false"},
+	{DSET    , "stdoutheaders"    , "false"},
+	{DSET    , "removeheaders"    , "",
+		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
+
+	//event
+	{DSET    , "multiplescroll"   , "0"},
+	{DSET    , "newwinhandle"     , "normal",
+		"newwinhandle=notnew | ignore | back | normal"},
+	{DSET    , "scriptdialog"     , "true"},
+	{DSET    , "hjkl2arrowkeys"   , "false",
+		"hjkl's default are scrolls, not arrow keys"},
+
+	//link
+	{DSET    , "linkformat"       , "[%.40s](%s)"},
+	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
+
+	//hint
+	{DSET    , "hintstyle"        , ""},
+	{DSET    , "hackedhint4js"    , "true"},
+	{DSET    , "hintrangemax"     , "9"},
+	{DSET    , "rangeloopusec"    , "90000"},
+
+	//dl
+	{DSET    , "dlwithheaders"    , "false"},
+	{DSET    , "dlmimetypes"      , "",
+		"dlmimetypes=text/plain;video/;audio/;application/\n"
+		"dlmimetypes=*"},
+	{DSET    , "dlsubdir"         , ""},
+
+	//script
+	{DSET    , "spawnmsg"         , "false"},
+
+	{DSET    , "onstartmenu"      , "",
+		"onstartmenu spawns a shell in the menu dir when load started before redirect"},
+	{DSET    , "onloadmenu"       , "", "when load commited"},
+	{DSET    , "onloadedmenu"     , "", "when load finished"},
 
 	{DSET    , "mdlbtnlinkaction" , "openback"},
 	{DSET    , "mdlbtnleft"       , "prevwin", "mdlbtnleft=winlist"},
@@ -168,34 +207,6 @@ Conf dconf[] = {
 	{DSET    , "rockerright"      , "forward"},
 	{DSET    , "rockerup"         , "quitprev"},
 	{DSET    , "rockerdown"       , "quitnext"},
-
-	{DSET    , "multiplescroll"   , "0"},
-
-	{DSET    , "newwinhandle"     , "normal",
-		"newwinhandle=notnew | ignore | back | normal"},
-	{DSET    , "hjkl2arrowkeys"   , "false",
-		"hjkl's default are scrolls, not arrow keys"},
-	{DSET    , "linkformat"       , "[%.40s](%s)"},
-	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
-	{DSET    , "scriptdialog"     , "true"},
-	{DSET    , "hackedhint4js"    , "true"},
-	{DSET    , "hintrangemax"     , "9"},
-	{DSET    , "dlwithheaders"    , "false"},
-	{DSET    , "dlmimetypes"      , "",
-		"dlmimetypes=text/plain;video/;audio/;application/\n"
-		"dlmimetypes=*"},
-	{DSET    , "dlsubdir"         , ""},
-	{DSET    , "onstartmenu"      , "",
-		"onstartmenu spawns a shell in the menu dir when load started before redirect"},
-	{DSET    , "onloadmenu"       , "", "when load commited"},
-	{DSET    , "onloadedmenu"     , "", "when load finished"},
-	{DSET    , "spawnmsg"         , "false"},
-	{DSET    , "hintstyle"        , ""},
-	{DSET    , "stdoutheaders"    , "false"},
-	{DSET    , "removeheaders"    , "",
-		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
-	{DSET    , "addressbar"       , "false"},
-	{DSET    , "rangeloopusec"    , "90000"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
