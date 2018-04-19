@@ -3938,6 +3938,8 @@ static gboolean contextcb(WebKitWebView *k,
 	makemenu(menu);
 	return false;
 }
+//static void dragbcb(Win *win) { }
+//static void dragecb(Win *win) { }
 
 
 //@entry
@@ -4191,6 +4193,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIG( o, "load-failed"          , failcb    , win);
 
 	SIG( o, "context-menu"         , contextcb , win);
+
+//	SIGW(o, "drag-begin"           , dragbcb   , win);
+//	SIGW(o, "drag-end"             , dragecb   , win);
 
 	//for entry
 	SIGW(o, "focus-in-event"       , focusincb , win);
