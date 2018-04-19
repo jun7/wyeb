@@ -2754,7 +2754,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 				gtk_widget_get_window(LASTWIN->winw), NULL, &gy, NULL, NULL);
 		gint x, y;
 		gtk_window_get_position(LASTWIN->win, &x, &y);
-		gtk_window_move(win->win, MAX(0, x - 400), MAX(0, y + gy));
+		gtk_window_move(win->win, MAX(0, x - 400), y + gy);
 	}
 
 	if (confbool("dlwinback") && LASTWIN &&
