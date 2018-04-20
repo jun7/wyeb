@@ -492,6 +492,12 @@ static void reloadlast()
 	webkit_web_view_reload(LASTWIN->kit);
 }
 
+static GdkDevice *pointer()
+{ return gdk_seat_get_pointer(
+		gdk_display_get_default_seat(gdk_display_get_default())); }
+static GdkDevice *keyboard()
+{ return gdk_seat_get_keyboard(
+		gdk_display_get_default_seat(gdk_display_get_default())); }
 static void putbtne(Win* win, GdkEventType type, guint btn)
 {
 	GdkEvent *e = gdk_event_new(type);
@@ -500,10 +506,12 @@ static void putbtne(Win* win, GdkEventType type, guint btn)
 	eb->window = gtk_widget_get_window(win->kitw);
 	g_object_ref(eb->window);
 	eb->send_event = false; //true destroys the mdl btn hack
-
-	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
-	gdk_event_set_device(e, gdk_seat_get_pointer(seat));
-
+	gdk_event_set_device(e, pointer());
+	if (btn > 10)
+	{
+		btn -= 10;
+		eb->state = GDK_BUTTON1_MASK;
+	}
 	eb->x = win->px;
 	eb->y = win->py;
 	eb->button = btn;
@@ -1349,10 +1357,7 @@ static void scroll(Win *win, gint x, gint y)
 
 	es->delta_x = x;
 	es->delta_y = y;
-
-	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
-	gdk_event_set_device(e, gdk_seat_get_keyboard(seat));
-	//gdk_seat_get_pointer() //witch is good?
+	gdk_event_set_device(e, keyboard()); //or pointer()
 
 	gdk_event_put(e);
 	gdk_event_free(e);
@@ -1404,10 +1409,7 @@ static void sendkey(Win *win, guint key)
 //	ek->time   = GDK_CURRENT_TIME;
 	ek->keyval = key;
 //	ek->state  = ek->state & ~GDK_MODIFIER_MASK;
-
-	GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
-	gdk_event_set_device(e, gdk_seat_get_keyboard(seat));
-
+	gdk_event_set_device(e, keyboard());
 	gdk_event_put(e);
 	gdk_event_free(e);
 }
@@ -1665,10 +1667,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 	gdouble px, py;
 	gdk_window_get_device_position_double(
-			gtk_widget_get_window(win->kitw),
-			gdk_seat_get_pointer(gdk_display_get_default_seat(
-					gdk_display_get_default())),
-			&px, &py, NULL);
+			gtk_widget_get_window(win->kitw), pointer(), &px, &py, NULL);
 
 	int count = 0;
 	bool ret = false;
@@ -3367,6 +3366,16 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		if (e->state & GDK_BUTTON1_MASK) {
 			win->cancelcontext = win->cancelbtn1r = true;
 
+			static gdouble llx = 0, lly = 0;
+			if (win->lastx + win->lasty)
+			{
+				llx = win->lastx;
+				lly = win->lasty;
+			} else { //copy last pos of another window
+				win->lastx = llx;
+				win->lasty = lly;
+			}
+
 			gdouble
 				deltax = (e->x - win->lastx) ,
 				deltay = e->y - win->lasty;
@@ -3460,19 +3469,41 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	return false;
 }
+static bool dragcanceled = false;
+static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
+{
+	if (reason == GDK_DRAG_CANCEL_USER_CANCELLED)
+		//esc key.
+		dragcanceled = true;
+}
+static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
+{
+	dragcanceled = false;
+	SIG(ctx, "cancel", dragccb, win);
+}
+static void dragecb(GtkWidget *w, GdkDragContext *ctx, Win *win)
+{
+	GdkWindow *gw = gtk_widget_get_window(win->kitw);
+	GdkDevice *gd = gdk_drag_context_get_device(ctx);
+	GdkModifierType mask;
+	gdk_device_get_state(gd, gw, NULL, &mask);
+
+	if (!dragcanceled && mask & GDK_BUTTON1_MASK)
+	{ //we assume this is right click though also mdl or others
+		gdk_window_get_device_position_double(gw, gd, &win->px, &win->py, NULL);
+		putbtne(win, GDK_BUTTON_PRESS, 13);
+	}
+}
 static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 { //for checking drag end with button1
-	if (
-		!(e->state & GDK_BUTTON1_MASK) &&
-		win->lastx + win->lasty)
+	if (!(e->state & GDK_BUTTON1_MASK) && win->lastx + win->lasty)
 	{
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
-	update(win);
-
 	return false;
 }
+
 static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
 	if (win->mode == Mlist)
@@ -3938,8 +3969,6 @@ static gboolean contextcb(WebKitWebView *k,
 	makemenu(menu);
 	return false;
 }
-//static void dragbcb(Win *win) { }
-//static void dragecb(Win *win) { }
 
 
 //@entry
@@ -4181,6 +4210,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIG( o, "mouse-target-changed" , targetcb  , win);
 	SIG( o, "button-press-event"   , btncb     , win);
 	SIG( o, "button-release-event" , btnrcb    , win);
+	SIG( o, "drag-begin"           , dragbcb   , win);
+	SIG( o, "drag-end"             , dragecb   , win);
 	SIG( o, "enter-notify-event"   , entercb   , win);
 	SIG( o, "motion-notify-event"  , motioncb  , win);
 	SIG( o, "scroll-event"         , scrollcb  , win);
@@ -4193,9 +4224,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIG( o, "load-failed"          , failcb    , win);
 
 	SIG( o, "context-menu"         , contextcb , win);
-
-//	SIGW(o, "drag-begin"           , dragbcb   , win);
-//	SIGW(o, "drag-end"             , dragecb   , win);
 
 	//for entry
 	SIGW(o, "focus-in-event"       , focusincb , win);
