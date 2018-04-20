@@ -4370,6 +4370,7 @@ int main(int argc, char **argv)
 	histdir = g_build_filename(
 			g_get_user_cache_dir(), fullname, "history", NULL);
 	gtk_init(NULL, NULL);
+	g_set_prgname(fullname);
 	checkconfs(false);
 
 	ipcwatch("main");
