@@ -524,6 +524,16 @@ static void _putbtne(Win* win, GdkEventType type, guint btn, double x, double y)
 }
 static void putbtne(Win* win, GdkEventType type, guint btn)
 { _putbtne(win, type, btn, win->px, win->py); }
+static gboolean delaymdlrcb(Win *win)
+{
+	if (isin(wins, win))
+		putbtne(win, GDK_BUTTON_RELEASE, 2);
+	return false;
+}
+static void delaymdlr(Win * win)
+{
+	g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
+}
 
 static void addhash(gchar *str, guint *hash)
 {
@@ -2206,7 +2216,10 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			win->px = atof(*xy) * z;
 			win->py = atof(*(xy + 1)) * z;
 			putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
-			putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
+			if (win->pbtn == 2)
+				delaymdlr(win);
+			else
+				putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
 			g_strfreev(xy);
 		)
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
@@ -3160,12 +3173,6 @@ static void favcb(Win *win)
 	else
 		gtk_window_set_icon(win->win, NULL);
 }
-static gboolean delaymdlrcb(Win *win)
-{
-	if (isin(wins, win))
-		putbtne(win, GDK_BUTTON_RELEASE, 2);
-	return false;
-}
 static bool keyr = true;
 static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
@@ -3178,7 +3185,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	{
 		putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
 		if (win->pbtn == 2)
-			g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
+			delaymdlr(win);
 		else
 			putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
 
