@@ -967,11 +967,13 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mpointer:
-		win->pbtn = 1;
+		if (win->mode != Mhint)
+			win->pbtn = 1;
 		gtk_widget_queue_draw(win->kitw);
 		break;
 
 	case Mhint:
+		win->pbtn = 1;
 	case Mhintopen:
 	case Mhintnew:
 	case Mhintback:
@@ -1045,6 +1047,7 @@ static void _modechanged(Win *win)
 		else
 		{
 			gchar *arg = g_strdup_printf("%c",
+					win->pbtn > 1 ||
 					getsetbool(win, "hackedhint4js") ? 'y' : 'n');
 			send(win, com, arg);
 			g_free(arg);
@@ -2202,8 +2205,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			gdouble z = webkit_web_view_get_zoom_level(win->kit);
 			win->px = atof(*xy) * z;
 			win->py = atof(*(xy + 1)) * z;
-			putbtne(win, GDK_BUTTON_PRESS, 1);
-			putbtne(win, GDK_BUTTON_RELEASE, 1);
+			putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
+			putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
 			g_strfreev(xy);
 		)
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
@@ -4081,6 +4084,7 @@ static gboolean detachcb(GtkWidget * w)
 Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
+	win->pbtn = 1;
 	win->userreq = true;
 	win->winw = plugto ?
 		gtk_plug_new(plugto) : gtk_window_new(GTK_WINDOW_TOPLEVEL);
