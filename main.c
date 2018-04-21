@@ -501,7 +501,7 @@ static GdkDevice *pointer()
 static GdkDevice *keyboard()
 { return gdk_seat_get_keyboard(
 		gdk_display_get_default_seat(gdk_display_get_default())); }
-static void putbtne(Win* win, GdkEventType type, guint btn)
+static void _putbtne(Win* win, GdkEventType type, guint btn, double x, double y)
 {
 	GdkEvent *e = gdk_event_new(type);
 	GdkEventButton *eb = (GdkEventButton *)e;
@@ -515,13 +515,15 @@ static void putbtne(Win* win, GdkEventType type, guint btn)
 		btn -= 10;
 		eb->state = GDK_BUTTON1_MASK;
 	}
-	eb->x = win->px;
-	eb->y = win->py;
+	eb->x = x;
+	eb->y = y;
 	eb->button = btn;
 	eb->type = type;
 	gdk_event_put(e);
 	gdk_event_free(e);
 }
+static void putbtne(Win* win, GdkEventType type, guint btn)
+{ _putbtne(win, GDK_BUTTON_PRESS, 1, win->px, win->px); }
 
 static void addhash(gchar *str, guint *hash)
 {
@@ -3483,8 +3485,9 @@ static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
 
 	if (mask & GDK_BUTTON1_MASK || mask & GDK_BUTTON3_MASK)
 	{ //we assume this is right click though it only means a btn released
-		gdk_window_get_device_position_double(gw, gd, &win->px, &win->py, NULL);
-		putbtne(win, GDK_BUTTON_PRESS, 13);
+		double px, py;
+		gdk_window_get_device_position_double(gw, gd, &px, &py, NULL);
+		_putbtne(win, GDK_BUTTON_PRESS, 13, px, py);
 	}
 }
 static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
