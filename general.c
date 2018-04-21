@@ -164,7 +164,7 @@ Conf dconf[] = {
 		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
 
 	//event
-	{DSET    , "multiplescroll"   , "0"},
+	{DSET    , "multiplescroll"   , "2"},
 	{DSET    , "newwinhandle"     , "normal",
 		"newwinhandle=notnew | ignore | back | normal"},
 	{DSET    , "scriptdialog"     , "true"},
