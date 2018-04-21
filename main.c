@@ -3472,30 +3472,24 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	return false;
 }
-static bool dragcanceled = false;
 static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
 {
-	if (reason == GDK_DRAG_CANCEL_USER_CANCELLED)
-		//esc key.
-		dragcanceled = true;
-}
-static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
-{
-	dragcanceled = false;
-	SIG(ctx, "cancel", dragccb, win);
-}
-static void dragecb(GtkWidget *w, GdkDragContext *ctx, Win *win)
-{
+	if (reason != GDK_DRAG_CANCEL_NO_TARGET) return;
+
 	GdkWindow *gw = gtk_widget_get_window(win->kitw);
 	GdkDevice *gd = gdk_drag_context_get_device(ctx);
 	GdkModifierType mask;
 	gdk_device_get_state(gd, gw, NULL, &mask);
 
-	if (!dragcanceled && mask & GDK_BUTTON1_MASK)
-	{ //we assume this is right click though also mdl or others
+	if (mask & GDK_BUTTON1_MASK || mask & GDK_BUTTON3_MASK)
+	{ //we assume this is right click though it only means a btn released
 		gdk_window_get_device_position_double(gw, gd, &win->px, &win->py, NULL);
 		putbtne(win, GDK_BUTTON_PRESS, 13);
 	}
+}
+static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
+{
+	SIG(ctx, "cancel", dragccb, win);
 }
 static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 { //for checking drag end with button1
@@ -4214,7 +4208,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIG( o, "button-press-event"   , btncb     , win);
 	SIG( o, "button-release-event" , btnrcb    , win);
 	SIG( o, "drag-begin"           , dragbcb   , win);
-	SIG( o, "drag-end"             , dragecb   , win);
 	SIG( o, "enter-notify-event"   , entercb   , win);
 	SIG( o, "motion-notify-event"  , motioncb  , win);
 	SIG( o, "scroll-event"         , scrollcb  , win);
