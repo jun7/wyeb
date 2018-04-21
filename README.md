@@ -1,17 +1,12 @@
 ## Changes
 Install dir /bin/ -> /usr/bin/
 
-The directorys' names are changed from 'wyebrowser' to 'wyeb.' because it was too long.
+The directories' names are changed from 'wyebrowser' to 'wyeb.' because it was too long.
 wyeb uses old name if old conf dir is found though.
 Changing the name loses the cache and local storage what webkit has saved.
 See ~/.cache and ~/.local/share to keep it by rename or cleanup.
 
-$SUFFIX's default value is changed from "" to "/" though "" in the args is still accepted.
-So the double-quotations of $SUFFIX are no longer required.
-
 mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use it.
-
-depends markdown -> discount: You have to add the flag '-f -style' to the generator of the main.conf
 
 # WithYourEditorBrowser / wyeb
 
@@ -20,19 +15,6 @@ depends markdown -> discount: You have to add the flag '-f -style' to the genera
 / [ContextMenuInFileManager](https://github.com/jun7/wyeb/wiki/img/contextmenu.jpg)
 / [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.jpg)
-
-### Installation
-depends:
-
-- arch linux: 'webkit2gtk' 'discount' 'perl-file-mimeinfo'
-- debian 9.3: libwebkit2gtk-4.0-dev discount libfile-mimeinfo-perl
-
-'discount(markdown)' 'perl-file-mimeinfo' are used only in the main.conf
-
-	make
-	sudo make install
-
-For arch linux: https://aur.archlinux.org/packages/wyeb-git/
 
 ### Features
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
@@ -52,6 +34,19 @@ Of course it is in the set, so we can set it by uri.
 - Range hinting. See hidden files in the menu dir. You have to assign keys for it by use of the accels.
 - Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time though.
+
+### Installation
+depends:
+
+- arch linux: 'webkit2gtk' 'discount' 'perl-file-mimeinfo'
+- debian 9.3: libwebkit2gtk-4.0-dev discount libfile-mimeinfo-perl
+
+'discount(markdown)' 'perl-file-mimeinfo' are used only in the main.conf
+
+	make
+	sudo make install
+
+For arch linux: https://aur.archlinux.org/packages/wyeb-git/
 
 ### Usage:
 Also there are [Tips](https://github.com/jun7/wyeb/wiki)
