@@ -609,10 +609,9 @@ static gchar *makekey(gchar *keys, gint len, gint max, gint tnum, gint digit)
 	ret[digit] = '\0';
 
 	gint llen = len;
-	while (llen--) {
-		if (pow(llen, digit) < max)
-			break;
-	};
+	while (llen--)
+		if (pow(llen, digit) < max) break;
+
 	llen++;
 
 	gint tmp = tnum;
@@ -629,9 +628,9 @@ static void rmhint(Page *page)
 {
 	if (!page->apnode) return;
 
-	WebKitDOMDocument  *doc  = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMElement   *elm  = webkit_dom_document_get_document_element(doc);
-	WebKitDOMNode      *node = (WebKitDOMNode *)elm;
+	WebKitDOMDocument *doc  = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMElement  *elm  = webkit_dom_document_get_document_element(doc);
+	WebKitDOMNode     *node = (WebKitDOMNode *)elm;
 
 	for (GSList *next = page->aplist; next; next = next->next)
 	{
@@ -739,22 +738,21 @@ static bool addelm(Elm *pelm, GSList **elms)
 	if (!pelm->ok) return false;
 	Elm *elm = g_new(Elm, 1);
 	*elm = *pelm;
-	if (*elms)
+	if (*elms) for (GSList *next = *elms; next; next = next->next)
 	{
-		for (GSList *next = *elms; next; next = next->next) {
-			if (elm->zi >= ((Elm *)next->data)->zi)
-			{
-				*elms = g_slist_insert_before(*elms, next, elm);
-				break;
-			}
-
-			if (!next->next)
-			{
-				*elms = g_slist_append(*elms, elm);
-				break;
-			}
+		if (elm->zi >= ((Elm *)next->data)->zi)
+		{
+			*elms = g_slist_insert_before(*elms, next, elm);
+			break;
 		}
-	} else
+
+		if (!next->next)
+		{
+			*elms = g_slist_append(*elms, elm);
+			break;
+		}
+	}
+	else
 		*elms = g_slist_append(*elms, elm);
 
 	return true;
@@ -795,9 +793,8 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 				styleis(dec, "overflow", "scroll") ||
 				styleis(dec, "overflow", "auto")
 		)
-		{
 			crect = &elm;
-		}
+
 		g_object_unref(dec);
 
 		if (eachclick(win, ccl, type, elms, frect, crect))
@@ -1057,41 +1054,41 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	bool enter = page->rangestart && !g_strcmp0(enterkey, ipkeys);
 	if (type == Crange && (last || enter))
 		for (GSList *next = elms; next; next = next->next)
+	{
+		Elm *elm = (Elm *)next->data;
+		WebKitDOMElement *te = elm->elm;
+
+		rangein |= te == page->rangestart;
+
+		i++;
+		if (page->rangestart && !rangein)
+			continue;
+
+		if (enter)
 		{
-			Elm *elm = (Elm *)next->data;
-			WebKitDOMElement *te = elm->elm;
-
-			rangein |= te == page->rangestart;
-
-			i++;
-			if (page->rangestart && !rangein)
-				continue;
-
-			if (enter)
-			{
-				rangeend = te;
-				if (--rangeleft < 0) break;
-				continue;
-			}
-
-			gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
-			if (!strcmp(key, ipkeys))
-			{
-				ipkeys = NULL;
-				iplen = 0;
-				g_free(page->apkeys);
-				page->apkeys = NULL;
-
-				if (!page->rangestart)
-					page->rangestart = te;
-				else
-					rangeend = te;
-
-				g_free(key);
-				break;
-			}
-			g_free(key);
+			rangeend = te;
+			if (--rangeleft < 0) break;
+			continue;
 		}
+
+		gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
+		if (!strcmp(key, ipkeys))
+		{
+			ipkeys = NULL;
+			iplen = 0;
+			g_free(page->apkeys);
+			page->apkeys = NULL;
+
+			if (!page->rangestart)
+				page->rangestart = te;
+			else
+				rangeend = te;
+
+			g_free(key);
+			break;
+		}
+		g_free(key);
+	}
 
 	GSList *rangeelms = NULL;
 	i = -1;
@@ -1169,12 +1166,9 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 						WebKitDOMEvent *ce =
 							webkit_dom_document_create_event(doc, "MouseEvent", NULL);
-
 						webkit_dom_event_init_event(ce, "click", true, true);
-
 						webkit_dom_event_target_dispatch_event(
 							(WebKitDOMEventTarget *)te, ce, NULL);
-
 						g_object_unref(ce);
 					}
 				}
@@ -1301,8 +1295,8 @@ static void pageon(Page *page)
 
 static void mode(Page *page)
 {
-	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
+	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMElement  *te = webkit_dom_document_get_active_element(doc);
 
 	if (te)
 	{
@@ -1327,26 +1321,26 @@ static void focus(Page *page)
 
 	WebKitDOMNode *an = NULL;
 
-	an = webkit_dom_dom_selection_get_anchor_node(selection);
-	an = an ?: webkit_dom_dom_selection_get_focus_node(selection);
-	an = an ?: webkit_dom_dom_selection_get_base_node(selection);
-	an = an ?: webkit_dom_dom_selection_get_extent_node(selection);
+	an = webkit_dom_dom_selection_get_anchor_node(selection)
+	  ?: webkit_dom_dom_selection_get_focus_node(selection)
+	  ?: webkit_dom_dom_selection_get_base_node(selection)
+	  ?: webkit_dom_dom_selection_get_extent_node(selection);
 
-	if (an)
-		do {
-			WebKitDOMElement *elm = webkit_dom_node_get_parent_element(an);
-			if (!elm) continue;
-			gchar *tag = webkit_dom_element_get_tag_name(elm);
+	if (an) do
+	{
+		WebKitDOMElement *elm = webkit_dom_node_get_parent_element(an);
+		if (!elm) continue;
+		gchar *tag = webkit_dom_element_get_tag_name(elm);
 
-			if (isins(clicktags , tag))
-			{
-				webkit_dom_element_focus(elm);
-				g_free(tag);
-				break;
-			}
+		if (isins(clicktags , tag))
+		{
+			webkit_dom_element_focus(elm);
 			g_free(tag);
+			break;
+		}
+		g_free(tag);
 
-		} while (an = webkit_dom_node_get_parent_node(an));
+	} while (an = webkit_dom_node_get_parent_node(an));
 
 	g_object_unref(selection);
 	g_object_unref(win);
@@ -1418,15 +1412,15 @@ void ipccb(const gchar *line)
 		break;
 
 	case Ckey:
-		{
-			gchar key[2] = {0};
-			key[0] = toupper(arg[0]);
-			ipkeys = page->apkeys ?
-				g_strconcat(page->apkeys, key, NULL) : g_strdup(key);
+	{
+		gchar key[2] = {0};
+		key[0] = toupper(arg[0]);
+		ipkeys = page->apkeys ?
+			g_strconcat(page->apkeys, key, NULL) : g_strdup(key);
 
-			type = page->lasttype;
-			arg = NULL;
-		}
+		type = page->lasttype;
+		arg = NULL;
+	}
 	case Cclick:
 	case Clink:
 	case Curi:
