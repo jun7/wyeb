@@ -523,7 +523,7 @@ static void _putbtne(Win* win, GdkEventType type, guint btn, double x, double y)
 	gdk_event_free(e);
 }
 static void putbtne(Win* win, GdkEventType type, guint btn)
-{ _putbtne(win, GDK_BUTTON_PRESS, 1, win->px, win->px); }
+{ _putbtne(win, type, btn, win->px, win->py); }
 
 static void addhash(gchar *str, guint *hash)
 {
