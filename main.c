@@ -1918,8 +1918,8 @@ static Keybind dkeys[]= {
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 	{"topointer"     , 'p', 0, "pp resets damping"},
-	{"tomdlpointer"  , 'P', 0, "makes middle click"},
-	{"torightpointer", 'p', GDK_CONTROL_MASK, "right click"},
+	{"topointermdl"  , 'P', 0, "makes middle click"},
+	{"topointerright", 'p', GDK_CONTROL_MASK, "right click"},
 
 	{"tohint"        , 'f', 0},
 	{"tohintnew"     , 'F', 0},
@@ -2228,17 +2228,21 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("toinsert"    , win->mode = Minsert)
 	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, NULL))
 
-	if (!strcmp(action, "torightpointer"))
+
+	if (g_str_has_prefix(action, "topointer"))
 	{
-		action = "topointer";
-		win->pbtn = 3;
+		guint prevbtn = win->pbtn;
+		if (!strcmp(action, "topointerright"))
+			win->pbtn = 3;
+		else if (!strcmp(action, "topointermdl"))
+			win->pbtn = 2;
+		else
+			win->pbtn = 1;
+
+		win->mode = win->mode == Mpointer && prevbtn == win->pbtn ?
+			Mnormal : Mpointer;
+		goto out;
 	}
-	if (!strcmp(action, "tomdlpointer"))
-	{
-		action = "topointer";
-		win->pbtn = 2;
-	}
-	Z("topointer"   , win->mode = win->mode == Mpointer ? Mnormal : Mpointer)
 
 	Z("tohint"      , win->mode = Mhint)
 	Z("tohintopen"  , win->mode = Mhintopen)
