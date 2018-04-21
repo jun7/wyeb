@@ -1250,14 +1250,14 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	gchar *confdir = path2conf(NULL);
 	envp = g_environ_setenv(envp, "CONFDIR", confdir, true);
 	g_free(confdir);
-	gint X, Y, WIDTH, HEIGHT;
-	gtk_window_get_position(win->win, &X, &Y);
+	gint WINX, WINY, WIDTH, HEIGHT;
+	gtk_window_get_position(win->win, &WINX, &WINY);
 	gtk_window_get_size(win->win, &WIDTH, &HEIGHT);
 #define Z(x) \
 	snprintf(buf, 9, "%d", x); \
 	envp = g_environ_setenv(envp, #x, buf, true);
 
-	Z(X) Z(Y) Z(WIDTH) Z(HEIGHT)
+	Z(WINX) Z(WINY) Z(WIDTH) Z(HEIGHT)
 #undef Z
 
 	const gchar *title = webkit_web_view_get_title(win->kit);
@@ -2957,7 +2957,7 @@ static gchar *helpdata()
 		"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
 		"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
 		"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET, DLDIR,\n"
-		"  X, Y, WIDTH, HEIGHT and CONFDIR are set as environment variables.\n"
+		"  WINX, WINY, WIDTH, HEIGHT and CONFDIR are set as environment variables.\n"
 		"  Available actions are in the 'key:' section below.\n"
 		"  Of course it supports directories and '.'.\n"
 		"  '.' hides it from the menu but still available in the accels.\n"
