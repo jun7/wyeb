@@ -1679,7 +1679,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 	if (cr)
 	{
-		cairo_set_source_rgba(cr, .4, .4, .4, .6);
+		cairo_set_source_rgba(cr, .4, .4, .4, win->scrlf ? 1 : .6);
 		cairo_paint(cr);
 	}
 
@@ -1715,17 +1715,18 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		gdouble scale = MIN(uw / lww, uh / lwh) * (1.0 - 1.0/(yunit * xunit + 1));
 		gdouble tw = lww * scale;
 		gdouble th = lwh * scale;
-		gdouble tx = xi * uw + (uw - tw) / 2;
-		gdouble ty = yi * uh + (uh - th) / 2;
+		//pos is gdouble makes blur
+		int tx = xi * uw + (uw - tw) / 2;
+		int ty = yi * uh + (uh - th) / 2;
 		gdouble tr = tx + tw;
 		gdouble tb = ty + th;
 
 		if (win->scrlf)
 		{
 			scale = 1;
-			tx = ty = 1;
-			tr = w - 1;
-			tb = h - 1;
+			tx = ty = 2;
+			tr = w - 2;
+			tb = h - 2;
 		}
 
 		bool pin = win->cursorx + win->cursory == 0 ?
@@ -1791,6 +1792,13 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 				gtk_widget_get_window(lw->kitw), 0, 0, lww, lwh);
 			cairo_surface_t *suf =
 				gdk_cairo_surface_create_from_pixbuf(pix, 0, NULL);
+
+			if (win->scrlf)
+			{
+				tx = MAX(tx, (w - lww) / 2);
+				ty = MAX(ty, (h - lwh) / 2);
+			}
+
 			cairo_set_source_surface(cr, suf, tx / scale, ty / scale);
 
 			cairo_paint(cr);
