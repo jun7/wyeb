@@ -1215,7 +1215,16 @@ out:
 		_showmsg(win, g_strdup_printf("Input Len(%d) > searchstrmax=%d",
 					checklen, max), false);
 	else
+	{
 		webkit_web_view_load_uri(win->kit, uri);
+
+		SoupURI *suri = soup_uri_new(uri);
+		if (suri)
+			soup_uri_free(suri);
+		else
+			_showmsg(win, g_strdup_printf("Invalid URI: %s", uri), false);
+	}
+
 	g_free(uri);
 }
 static void openuri(Win *win, const gchar *str)
