@@ -2533,7 +2533,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	{
 		gint h;
 		gdk_window_get_geometry(
-				gtk_widget_get_window(LASTWIN->winw), NULL, NULL, NULL, &h);
+				gtk_widget_get_window(win->winw), NULL, NULL, NULL, &h);
 
 		if (win->smallmsg)
 			cairo_set_font_size(cr, csize * .6);
