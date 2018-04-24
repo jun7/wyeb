@@ -1900,7 +1900,6 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 		append(mdpath, NULL);
 
 	showmsg(win, "Added");
-	checkmd(NULL);
 }
 
 static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
