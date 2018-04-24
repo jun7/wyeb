@@ -150,11 +150,6 @@ static gchar *lastmsg = NULL;
 
 static gchar    *mdpath = NULL;
 static gchar    *accelp = NULL;
-static __time_t  conftime = 0;
-static __time_t  mdtime = 0;
-static __time_t  accelt = 0;
-static GSList   *csslist = NULL;
-static GSList   *csstimes = NULL;
 
 static gchar *hists[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
 static gint histfnum = sizeof(hists) / sizeof(*hists) - 1;
@@ -587,35 +582,74 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 	gtk_editable_set_position((void *)win->ent, -1);
 }
 
+//monitor
+static GSList *mqueue   = NULL;
+static GSList *mqueuedo = NULL;
+static gboolean mqueuecb(gpointer func)
+{
+	mqueue = g_slist_remove(mqueue, func);
+	if (g_slist_find(mqueuedo, func))
+	{
+		mqueuedo = g_slist_remove(mqueuedo, func);
+		((void (*)(bool))func)(true);
+	}
+	return false;
+}
+static void monitorcb(GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e,
+		void (*func)(const gchar *))
+{
+	if (e != G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT) return;
+	if (g_slist_find(mqueue, func))
+	{
+		if (!g_slist_find(mqueuedo, func))
+			mqueuedo = g_slist_prepend(mqueuedo, func);
+		return;
+	}
+
+	func(g_file_peek_path(f));
+	mqueue = g_slist_prepend(mqueue, func);
+	g_idle_add(mqueuecb, func);
+}
+static bool monitor(gchar *path, void (*func)(const gchar *))
+{
+	static GSList *monitored = NULL;
+	for(GSList *next = monitored; next; next = next->next)
+		if (!strcmp(next->data, path)) return false;
+	monitored = g_slist_prepend(monitored, g_strdup(path));
+
+	GFile *gf = g_file_new_for_path(path);
+	GFileMonitor *gm = g_file_monitor_file(
+			gf, G_FILE_MONITOR_NONE, NULL, NULL);
+	SIG(gm, "changed", monitorcb, func);
+
+	g_object_unref(gf);
+	return true;
+}
 
 static bool run(Win *win, gchar* action, const gchar *arg); //declaration
 
 //@textlink
 static gchar   *tlpath = NULL;
 static Win     *tlwin = NULL;
-static __time_t tltime = 0;
-static void textlinkcheck(bool monitor)
+static void textlinkcheck(const gchar *mp)
 {
 	if (!isin(wins, tlwin)) return;
-	if (!getctime(tlpath, &tltime)) return;
 	send(tlwin, Ctlset, tlpath);
 }
 static void textlinkon(Win *win)
 {
-	if (tltime == 0)
-		monitor(tlpath, textlinkcheck);
-
-	getctime(tlpath, &tltime);
 	run(win, "openeditor", tlpath);
 	tlwin = win;
 }
 static void textlinktry(Win *win)
 {
+	tlwin = NULL;
 	if (!tlpath)
+	{
 		tlpath = g_build_filename(
 			g_get_user_data_dir(), fullname, "textlink.txt", NULL);
-
-	tlwin = NULL;
+		monitor(tlpath, textlinkcheck);
+	}
 	send(win, Ctlget, tlpath);
 }
 
@@ -744,92 +778,104 @@ static void resetconf(Win *win, int type)
 		gtk_widget_hide(win->lblw);
 }
 
-static void checkmd(bool frommonitor)
+static void checkmd(const gchar *mp)
 {
 	if (mdpath && wins->len && g_file_test(mdpath, G_FILE_TEST_EXISTS))
+		for (int i = 0; i < wins->len; i++)
 	{
-		if (getctime(mdpath, &mdtime) || frommonitor)
-			for (int i = 0; i < wins->len; i++)
-			{
-				Win *win = wins->pdata[i];
-				if (g_str_has_prefix(URI(win), APP":main"))
-					webkit_web_view_reload(win->kit);
-			}
+		Win *win = wins->pdata[i];
+		if (g_str_has_prefix(URI(win), APP":main"))
+			webkit_web_view_reload(win->kit);
 	}
+}
+static void prepareif(
+		gchar **path,
+		gchar *name, gchar *initstr, void (*monitorcb)(const gchar *))
+{
+	bool first = false;
+	if (!*path)
+	{
+		first = true;
+		*path = path2conf(name);
+	}
+
+	if (g_file_test(*path, G_FILE_TEST_EXISTS))
+		goto out;
+
+	GFile *gf = g_file_new_for_path(*path);
+
+	GFileOutputStream *o = g_file_create(
+			gf, G_FILE_CREATE_PRIVATE, NULL, NULL);
+	g_output_stream_write((GOutputStream *)o,
+			initstr, strlen(initstr), NULL, NULL);
+	g_object_unref(o);
+
+	g_object_unref(gf);
+
+out:
+	if (first)
+		monitor(*path, monitorcb);
 }
 static void preparemd()
 {
-	prepareif(&mdpath, &mdtime, "mainpage.md", mainmdstr, checkmd);
+	prepareif(&mdpath, "mainpage.md", mainmdstr, checkmd);
 }
 
-static void checkaccels(bool frommonitor)
+static bool wbreload = true;
+static void checkwb(const gchar *mp)
 {
-	if (
-		accelp &&
-		g_file_test(accelp, G_FILE_TEST_EXISTS) &&
-		(getctime(accelp, &accelt) || frommonitor)
-	)
+	gchar *arg = wbreload ? "r" : "n";
+	if (wins->len)
+		if (shared)
+			send(LASTWIN, Cwhite, arg);
+		else for (int i = 0; i < wins->len; i++)
+			send(wins->pdata[i], Cwhite, arg);
+	wbreload = true;
+}
+static void preparewb()
+{
+	static gchar *wbpath = NULL;
+	prepareif(&wbpath, "whiteblack.conf",
+			"# First char is 'w':white list or 'b':black list.\n"
+			"# Second and following chars are regular expressions.\n"
+			"# Preferential order: bottom > top\n"
+			"# Keys 'a' and 'A' on "APP" add blocked or loaded list to this file.\n"
+			"\n"
+			"w^https?://([a-z0-9]+\\.)*githubusercontent\\.com/\n"
+			"\n"
+			, checkwb);
+}
+
+
+static void checkaccels(const gchar *mp)
+{
+	if (accelp && g_file_test(accelp, G_FILE_TEST_EXISTS))
 		gtk_accel_map_load(accelp);
 }
 
-static void checkcss(bool frommonitor)
+static void checkcss(const gchar *mp)
 {
 	if (!wins) return;
-
-	gchar *path = NULL;
-	    GSList *nt   = csstimes;
-	for(GSList *next = csslist ; next; next = next->next, nt = nt->next)
+	for (int i = 0; i < wins->len; i++)
 	{
-		__time_t *time = nt->data;
-		gchar *name = next->data;
+		Win *lw = wins->pdata[i];
+		gchar *us = getset(lw, "usercss");
+		if (!us) continue;
 
-		GFA(path, path2conf(name))
-
-		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
-		if (!exists && *time == 0) continue;
-		*time = 0;
-
-		if (exists && !getctime(path, time)) continue;
-
-		for (int i = 0; i < wins->len; i++)
+		bool changed = false;
+		gchar **names = g_strsplit(us, ";", -1);
+		for (gchar **name = names; *name; name++)
 		{
-			Win *lw = wins->pdata[i];
-			gchar *us = getset(lw, "usercss");
-			if (!us) continue;
-
-			if (!exists || g_strrstr(us, name))
-				setcss(lw, us);
+			gchar *path = path2conf(*name);
+			changed = !strcmp(mp, path);
+			g_free(path);
+			if (changed) break;
 		}
+		g_strfreev(names);
+
+		if (changed)
+			setcss(lw, us);
 	}
-	g_free(path);
-}
-static gchar *addcss(const gchar *name)
-{
-	gchar *path = path2conf(name);
-	bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
-	bool already = false;
-
-	for(GSList *next = csslist; next; next = next->next)
-		if (!strcmp(next->data, name))
-		{
-			already = true;
-			break;
-		}
-
-	if (!already)
-	{
-		__time_t *time = g_new0(__time_t, 1);
-		if (exists)
-			getctime(path, time);
-		csslist  = g_slist_prepend(csslist,  g_strdup(name));
-		csstimes = g_slist_prepend(csstimes, time);
-
-		monitor(path, checkcss);
-	}
-	if (!exists)
-		GFA(path, NULL)
-
-	return path;
 }
 void setcss(Win *win, gchar *namesstr)
 {
@@ -841,8 +887,13 @@ void setcss(Win *win, gchar *namesstr)
 
 	for (gchar **name = names; *name; name++)
 	{
-		gchar *path = addcss(*name);
-		if (!path) return;
+		gchar *path = path2conf(*name);
+		monitor(path, checkcss); //even not exists
+		if (!g_file_test(path, G_FILE_TEST_EXISTS))
+		{
+			g_free(path);
+			continue;
+		}
 
 		gchar *str;
 		if (!g_file_get_contents (path, &str, NULL, NULL)) return;
@@ -861,67 +912,48 @@ void setcss(Win *win, gchar *namesstr)
 	g_strfreev(names);
 }
 
-static void checkconfs(bool frommonitor)
+static void checkconf(const gchar *mp)
 {
-	if (!frommonitor)
-	{
-		checkmd(false);
-		checkaccels(false);
-	}
-
 	if (!confpath)
 	{
 		confpath = path2conf("main.conf");
-		monitor(confpath, checkconfs);
+		monitor(confpath, checkconf);
 	}
 
-	bool newfile = false;
 	if (!g_file_test(confpath, G_FILE_TEST_EXISTS))
 	{
-		if (frommonitor) return;
+		if (mp) return;
 		if (!conf)
 			initconf(NULL);
 
 		mkdirif(confpath);
 		g_key_file_save_to_file(conf, confpath, NULL);
-		newfile = true;
+		return;
 	}
 
-	bool changed = getctime(confpath, &conftime) || frommonitor;
-	if (newfile) return;
-	if (changed)
+	GKeyFile *new = g_key_file_new();
+	GError *err = NULL;
+	g_key_file_load_from_file(new, confpath, G_KEY_FILE_KEEP_COMMENTS, &err);
+	if (err)
 	{
-		GKeyFile *new = g_key_file_new();
-
-		GError *err = NULL;
-		g_key_file_load_from_file(
-				new, confpath, G_KEY_FILE_KEEP_COMMENTS, &err);
-		if (err)
-		{
-			alert(err->message);
-			g_error_free(err);
-
-			if (!conf)
-				initconf(NULL);
-		}
-		else
-		{
-			initconf(new);
-
-			if (ctx)
-				webkit_web_context_set_tls_errors_policy(ctx,
-						confbool("ignoretlserr") ?
-						WEBKIT_TLS_ERRORS_POLICY_IGNORE :
-						WEBKIT_TLS_ERRORS_POLICY_FAIL);
-
-			if (wins)
-				for (int i = 0; i < wins->len; i++)
-					resetconf(wins->pdata[i], shared && i ? 1 : 3);
-		}
+		alert(err->message);
+		g_error_free(err);
+		if (!conf)
+			initconf(NULL);
+		return;
 	}
 
-	if (!frommonitor && !changed)
-		checkcss(false);
+	initconf(new);
+
+	if (ctx)
+		webkit_web_context_set_tls_errors_policy(ctx,
+				confbool("ignoretlserr") ?
+				WEBKIT_TLS_ERRORS_POLICY_IGNORE :
+				WEBKIT_TLS_ERRORS_POLICY_FAIL);
+
+	if (wins)
+		for (int i = 0; i < wins->len; i++)
+			resetconf(wins->pdata[i], shared && i ? 1 : 3);
 }
 
 
@@ -1868,7 +1900,7 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 		append(mdpath, NULL);
 
 	showmsg(win, "Added");
-	checkmd(false);
+	checkmd(NULL);
 }
 
 static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
@@ -2451,6 +2483,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 				GFA(*os, NULL)
 			resetconf(win, 2))
 
+	Z("wbnoreload", wbreload = false) //internal
 	Z("addwhitelist", send(win, Cwhite, "white"))
 	Z("addblacklist", send(win, Cwhite, "black"))
 
@@ -2489,13 +2522,9 @@ static gboolean focuscb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
-	checkconfs(false);
 	if (!webkit_web_view_is_loading(win->kit) &&
 			webkit_web_view_get_uri(win->kit))
-	{
 		addhistory(win);
-		textlinkcheck(false);
-	}
 
 	return false;
 }
@@ -3978,10 +4007,7 @@ void makemenu(WebKitContextMenu *menu)
 		webkit_context_menu_remove(menu, sep);
 
 	if (lasthash != menuhash)
-	{
 		gtk_accel_map_save(accelp);
-		getctime(accelp, &accelt);
-	}
 
 	g_free(dir);
 }
@@ -4123,15 +4149,14 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		w = confint("winwidth"), h = confint("winheight");
 	gtk_window_set_default_size(win->win, w, h);
 
-	//delayed init
-	if (!accelg) makemenu(NULL);
-	gtk_window_add_accel_group(win->win, accelg);
-
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
 	if (!ctx)
 	{
+		makemenu(NULL);
+		preparewb();
+
 		ephemeral = g_key_file_get_boolean(conf, "boot", "ephemeral", NULL);
 		gchar *data  = g_build_filename(g_get_user_data_dir() , fullname, NULL);
 		gchar *cache = g_build_filename(g_get_user_cache_dir(), fullname, NULL);
@@ -4215,6 +4240,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	g_object_set_data(win->kito, "win", win);
 
+	gtk_window_add_accel_group(win->win, accelg);
 	//workaround. without get_inspector inspector doesen't work
 	//and have to grab forcus;
 	SIGW(webkit_web_view_get_inspector(win->kit),
@@ -4430,7 +4456,7 @@ int main(int argc, char **argv)
 			g_get_user_cache_dir(), fullname, "history", NULL);
 	g_set_prgname(fullname);
 	gtk_init(NULL, NULL);
-	checkconfs(false);
+	checkconf(NULL);
 
 	ipcwatch("main");
 

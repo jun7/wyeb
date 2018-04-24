@@ -194,36 +194,17 @@ static void clearwb(Wb *wb)
 	regfree(&wb->reg);
 	g_free(wb);
 }
-static GSList   *wblist = NULL;
-static gchar    *wbpath = NULL;
-static __time_t  wbtime = 0;
-static void setwblist(bool monitor); //declaration
-static void preparewb()
+static GSList *wblist = NULL;
+static gchar  *wbpath = NULL;
+static void setwblist(bool reload)
 {
-	prepareif(&wbpath, NULL, "whiteblack.conf",
-			"# First char is 'w':white list or 'b':black list.\n"
-			"# Second and following chars are regular expressions.\n"
-			"# Preferential order: bottom > top\n"
-			"# Keys 'a' and 'A' on "APP" add blocked or loaded list to this file.\n"
-			"\n"
-			"w^https?://([a-z0-9]+\\.)*githubusercontent\\.com/\n"
-			"\n"
-			, setwblist);
-
-	if (wbpath)
-		wbpath = path2conf("whiteblack.conf");
-}
-void setwblist(bool monitor)
-{
-	if (monitor && !g_file_test(wbpath, G_FILE_TEST_EXISTS))
+	if (!g_file_test(wbpath, G_FILE_TEST_EXISTS))
 	{
-		g_slist_free_full(wblist, (GDestroyNotify)clearwb);
+		if (wblist)
+			g_slist_free_full(wblist, (GDestroyNotify)clearwb);
 		return;
 	}
 
-	preparewb();
-
-	if (!getctime(wbpath, &wbtime)) return;
 	if (wblist)
 		g_slist_free_full(wblist, (GDestroyNotify)clearwb);
 	wblist = NULL;
@@ -250,7 +231,7 @@ void setwblist(bool monitor)
 	}
 	g_io_channel_unref(io);
 
-	if (monitor)
+	if (reload)
 		send(*pages->pdata, "reloadlast", NULL);
 }
 static int checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
@@ -266,7 +247,6 @@ static int checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
 
 	return -1;
 }
-
 static void addwhite(Page *page, const gchar *uri)
 {
 	//D(blocked %s, uri)
@@ -290,8 +270,10 @@ static void showwhite(Page *page, bool white)
 	FILE *f = fopen(wbpath, "a");
 	if (!f) return;
 
-	gchar   pre  = white ? 'w' : 'b';
+	if (white)
+		send(page, "wbnoreload", NULL);
 
+	gchar pre = white ? 'w' : 'b';
 	fprintf(f, "\n# %s in %s\n",
 			white ? "blocked" : "loaded",
 			webkit_web_page_get_uri(page->kit));
@@ -311,7 +293,6 @@ static void showwhite(Page *page, bool white)
 
 	fclose(f);
 
-	setwblist(false);
 	send(page, "openeditor", wbpath);
 }
 
@@ -1244,8 +1225,6 @@ static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 //@misc com funcs
 static void pagestart(Page *page)
 {
-	setwblist(false);
-
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
 	page->black = NULL;
@@ -1457,7 +1436,10 @@ void ipccb(const gchar *line)
 		break;
 
 	case Cwhite:
-		showwhite(page, !strcmp(arg, "white") ? true : false );
+		if (*arg == 'r') setwblist(true);
+		if (*arg == 'n') setwblist(false);
+		if (*arg == 'w') showwhite(page, true);
+		if (*arg == 'b') showwhite(page, false);
 		break;
 
 	case Ctlget:
@@ -1631,6 +1613,7 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 	page->seto = g_object_new(G_TYPE_OBJECT, NULL);
 	g_ptr_array_add(pages, page);
 
+	wbpath = path2conf("whiteblack.conf");
 	setwblist(false);
 
 	gchar *name = NULL;
