@@ -3666,7 +3666,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 }
 static gboolean policycb(
 		WebKitWebView *v,
-		WebKitPolicyDecision *dec,
+		void *dec, //WebKitPolicyDecision
 		WebKitPolicyDecisionType type,
 		Win *win)
 {
@@ -3678,9 +3678,22 @@ static gboolean policycb(
 		return true;
 	}
 
-	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE) return false;
+	if (type != WEBKIT_POLICY_DECISION_TYPE_RESPONSE)
+	{
+		WebKitNavigationAction *na =
+			webkit_navigation_policy_decision_get_navigation_action(dec);
+		if (webkit_navigation_action_is_user_gesture(na))
+		{
+			static GdkCursor *cur = NULL;
+			if (!cur) cur = gdk_cursor_new_for_display(
+					gdk_display_get_default(), GDK_RIGHT_PTR);
+			gdk_window_set_cursor(gtk_widget_get_window(win->kitw), cur);
+		}
 
-	WebKitResponsePolicyDecision *rdec = (void *)dec;
+		return false;
+	}
+
+	WebKitResponsePolicyDecision *rdec = dec;
 	WebKitURIResponse *res = webkit_response_policy_decision_get_response(rdec);
 
 	bool dl = false;
@@ -4311,7 +4324,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	GtkStyleContext *sctx = gtk_widget_get_style_context(win->progw);
 	GtkCssProvider *cssp = gtk_css_provider_new();
 	gtk_css_provider_load_from_data(cssp,
-		"progressbar *{min-height: 0.9em;}", -1, NULL); //bigger
+		"progressbar *{min-height:1.2em; border-style:none}"
+		"progressbar{margin:.7em; opacity:.77}", -1, NULL);
 	gtk_style_context_add_provider(sctx, (GtkStyleProvider *)cssp,
 			GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 	g_object_unref(cssp);
