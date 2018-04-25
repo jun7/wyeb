@@ -3592,6 +3592,7 @@ typedef struct {
 	int times;
 	GdkEvent *e;
 } Scrl;
+static int scrlcnt = 0;
 static gboolean multiscrlcb(Scrl *si)
 {
 	if (si->times--)
@@ -3601,6 +3602,7 @@ static gboolean multiscrlcb(Scrl *si)
 	}
 	gdk_event_free(si->e);
 	g_free(si);
+	scrlcnt--;
 	return false;
 }
 static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
@@ -3634,6 +3636,12 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
 
+	times--;
+#define Z 3
+	if (scrlcnt >= Z)
+		times = (times + 1) * scrlcnt / Z;
+#undef Z
+
 	GdkEvent *e = gdk_event_new(GDK_SCROLL);
 	GdkEventScroll *es = (void *)e;
 
@@ -3652,6 +3660,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	si->times = times;
 	si->e = e;
 	g_timeout_add(300 / (times + 4), (GSourceFunc)multiscrlcb, si);
+	scrlcnt++;
 
 	return false;
 }
