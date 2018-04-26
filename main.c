@@ -1416,7 +1416,7 @@ static void scroll(Win *win, gint x, gint y)
 
 	es->delta_x = x;
 	es->delta_y = y;
-	gdk_event_set_device(e, keyboard()); //or pointer()
+	gdk_event_set_device(e, keyboard());
 
 	gdk_event_put(e);
 	gdk_event_free(e);
@@ -3633,12 +3633,14 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 		return true;
 	}
 
+	if (scrlcnt > 44) return false;
+
 	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
 
 	times--;
 #define Z 3
-	if (scrlcnt >= Z)
+	if (scrlcnt >= Z && pe->device != keyboard())
 		times = (times + 1) * scrlcnt / Z;
 #undef Z
 
