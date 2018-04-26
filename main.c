@@ -3683,12 +3683,7 @@ static gboolean policycb(
 		WebKitNavigationAction *na =
 			webkit_navigation_policy_decision_get_navigation_action(dec);
 		if (webkit_navigation_action_is_user_gesture(na))
-		{
-			static GdkCursor *cur = NULL;
-			if (!cur) cur = gdk_cursor_new_for_display(
-					gdk_display_get_default(), GDK_RIGHT_PTR);
-			gdk_window_set_cursor(gtk_widget_get_window(win->kitw), cur);
-		}
+			gdk_window_set_cursor(gtk_widget_get_window(win->kitw), NULL);
 
 		return false;
 	}
