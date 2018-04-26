@@ -4380,6 +4380,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	if (getsetbool(win, "addressbar"))
 		gtk_widget_show(win->lblw);
+	SIGW(win->lblw, "notify::visible", update, win);
 
 	gtk_widget_show(olw);
 	gtk_widget_show(boxw);
