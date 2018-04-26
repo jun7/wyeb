@@ -4172,7 +4172,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	gtk_window_set_default_size(win->win, w, h);
 
 	if (back != 2)
-		gtk_window_present(win->win);
+		gtk_widget_show(win->winw);
 
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
@@ -4388,8 +4388,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	gtk_widget_show(win->kitw);
 	gtk_widget_grab_focus(win->kitw);
 
-	if (back && LASTWIN)
-		gtk_window_present(LASTWIN->win);
+	gtk_window_present(back && LASTWIN ? LASTWIN->win : win->win);
 
 	if (!cbwin)
 		_openuri(win, uri, caller);
