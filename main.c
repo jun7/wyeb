@@ -930,6 +930,7 @@ static void checkconf(const gchar *mp)
 		g_key_file_save_to_file(conf, confpath, NULL);
 		return;
 	}
+	else if (!mp && conf) return; //from focuscb
 
 	GKeyFile *new = g_key_file_new();
 	GError *err = NULL;
@@ -2521,6 +2522,9 @@ static gboolean focuscb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
+
+	checkconf(NULL); //to create conf
+
 	if (!webkit_web_view_is_loading(win->kit) &&
 			webkit_web_view_get_uri(win->kit))
 		addhistory(win);
