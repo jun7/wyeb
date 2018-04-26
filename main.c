@@ -4172,7 +4172,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	gtk_window_set_default_size(win->win, w, h);
 
 	if (back != 2)
-		gtk_widget_show(win->winw);
+		gtk_window_present(win->win);
 
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
@@ -4278,7 +4278,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 
 	GObject *o = win->kito;
-	SIGA(o, "draw"                 , drawcb, win);
+	SIGA(o, "draw"                 , drawcb    , win);
 	SIGW(o, "destroy"              , destroycb , win);
 	SIGW(o, "web-process-crashed"  , crashcb   , win);
 	SIGW(o, "notify::title"        , notifycb  , win);
@@ -4386,10 +4386,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	gtk_widget_show(boxw);
 	gtk_widget_show(box2w);
 	gtk_widget_show(win->kitw);
-
 	gtk_widget_grab_focus(win->kitw);
-	gtk_window_present(
-			back && LASTWIN ? LASTWIN->win : win->win);
+
+	if (back && LASTWIN)
+		gtk_window_present(LASTWIN->win);
 
 	if (!cbwin)
 		_openuri(win, uri, caller);
