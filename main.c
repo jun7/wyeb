@@ -4373,12 +4373,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
-	if (back == 2)
-	{
-		g_ptr_array_insert(wins, 0, win);
-		return win;
-	}
+
 	g_ptr_array_add(wins, win);
+	if (back == 2)
+		return win;
 
 	if (caller)
 		webkit_web_view_set_zoom_level(win->kit,
