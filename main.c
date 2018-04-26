@@ -606,7 +606,13 @@ static void monitorcb(GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e,
 		return;
 	}
 
+#ifdef GLIB_VERSION_2_56
 	func(g_file_peek_path(f));
+#else
+	char *p = g_file_get_path(f);
+	func(p);
+	g_free(p);
+#endif
 	mqueue = g_slist_prepend(mqueue, func);
 	g_idle_add(mqueuecb, func);
 }
