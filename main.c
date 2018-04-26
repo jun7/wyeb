@@ -4167,6 +4167,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		w = confint("winwidth"), h = confint("winheight");
 	gtk_window_set_default_size(win->win, w, h);
 
+	if (back != 2)
+		gtk_widget_show(win->winw);
+
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
@@ -4360,18 +4363,25 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
+	if (back == 2)
+	{
+		g_ptr_array_insert(wins, 0, win);
+		return win;
+	}
 	g_ptr_array_add(wins, win);
-	if (back == 2) return win;
 
 	if (caller)
 		webkit_web_view_set_zoom_level(win->kit,
 				webkit_web_view_get_zoom_level(caller->kit));
 
-	gtk_widget_show_all(win->winw);
-	if (!getsetbool(win, "addressbar"))
-		gtk_widget_hide(win->lblw);
-	gtk_widget_hide(win->entw);
-	gtk_widget_hide(win->progw);
+	if (getsetbool(win, "addressbar"))
+		gtk_widget_show(win->lblw);
+
+	gtk_widget_show(olw);
+	gtk_widget_show(boxw);
+	gtk_widget_show(box2w);
+	gtk_widget_show(win->kitw);
+
 	gtk_widget_grab_focus(win->kitw);
 	gtk_window_present(
 			back && LASTWIN ? LASTWIN->win : win->win);
