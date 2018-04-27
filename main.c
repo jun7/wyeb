@@ -4147,10 +4147,10 @@ static void findfailedcb(Win *win)
 	enticon(win, "dialog-warning");
 	showmsg(win, "Not found");
 }
-static void foundcb(Win *win)
+static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 {
 	enticon(win, NULL);
-	_showmsg(win, NULL, false); //clear
+	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL, false);
 }
 static gboolean detachcb(GtkWidget * w)
 {
@@ -4318,7 +4318,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	win->findct = webkit_web_view_get_find_controller(win->kit);
 	SIGW(win->findct, "failed-to-find-text", findfailedcb, win);
-	SIGW(win->findct, "found-text"         , foundcb     , win);
+	SIG( win->findct, "found-text"         , foundcb     , win);
 
 	//entry
 	win->entw = gtk_entry_new();
