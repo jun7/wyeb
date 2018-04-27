@@ -10,17 +10,18 @@ mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use
 
 # WithYourEditorBrowser / wyeb
 
-[Screenshot](https://github.com/jun7/wyeb/wiki/img/favicon.png)
+![Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
+
+[main](https://github.com/jun7/wyeb/wiki/img/favicon.png)
 / [OwnStyleBookmarks](https://github.com/jun7/wyeb/wiki/img/bookmark.jpg)
 / [ContextMenuInFileManager](https://github.com/jun7/wyeb/wiki/img/contextmenu.jpg)
-/ [Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.jpg)
 
 ### Features
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
 - Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor. As this all settings are thrown to editors.
-- Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it. And another thing, Ctrl + i/s and v switch setting set can be edited.
+- Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it. And another thing, Ctrl + i/s and v switch setting 'set:' can be edited.
 - Open actions. Most of actions assigned to keys can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
@@ -28,7 +29,7 @@ For example, context-menu items we added are just shell scripts.
 - [Window List.](https://github.com/jun7/wyeb/wiki/img/windowlist.jpg) Key **z**
 - No tab. But keys J/K/x/X or button actions.
 - Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
-Of course it is in the set, so we can set it by uri.
+Of course it is in the 'set:', so we can set it by uri.
 - Focused history. Instead of loaded history.
 - Pointer Mode. **p** makes pure click event for javascript pages.
 - Range hinting. See hidden files in the menu dir. You have to assign keys for it by use of the accels.
