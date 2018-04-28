@@ -2601,7 +2601,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_show_text(cr, win->msg);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, fsize + fsize / 30, h);
+		cairo_move_to(cr, fsize - fsize / 30.0, h - fsize / 30.0);
 		cairo_show_text(cr, win->msg);
 	}
 	if (win->prog != 1)
