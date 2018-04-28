@@ -669,7 +669,7 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	if (styleis(dec, "display", "inline"))
 	{
 		WebKitDOMElement *le = te;
-		while (le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le))
+		while ((le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le)))
 		{
 			WebKitDOMCSSStyleDeclaration *decp =
 				webkit_dom_dom_window_get_computed_style(win, le, NULL);
