@@ -2618,8 +2618,8 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdouble alpha = px > 0 && px < w &&
 			py > (gint)(h - fsize * 2) && py < h ? .4 : .9;
 
-		gdouble y = h -         (1 + (fsize/4) * (1 - win->prog));
-		cairo_set_line_width(cr, 1 + (fsize/2) * (1 - win->prog));
+		gdouble y = h -         (fsize/20.0 + (fsize/6.0) * (1 - win->prog));
+		cairo_set_line_width(cr, fsize/10.0 + (fsize/3.0) * (1 - win->prog));
 
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
