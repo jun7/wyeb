@@ -580,7 +580,7 @@ static gint getdigit(gint len, gint num)
 {
 	gint tmp = num;
 	gint digit = 1;
-	while (tmp = tmp / len) digit++;
+	while ((tmp = tmp / len)) digit++;
 	return digit;
 }
 
@@ -1320,7 +1320,7 @@ static void focus(Page *page)
 		}
 		g_free(tag);
 
-	} while (an = webkit_dom_node_get_parent_node(an));
+	} while ((an = webkit_dom_node_get_parent_node(an)));
 
 	g_object_unref(selection);
 	g_object_unref(win);

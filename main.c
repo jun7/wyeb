@@ -812,10 +812,12 @@ static void checkwb(const gchar *mp)
 {
 	gchar *arg = wbreload ? "r" : "n";
 	if (wins->len)
+	{
 		if (shared)
 			send(LASTWIN, Cwhite, arg);
 		else for (int i = 0; i < wins->len; i++)
 			send(wins->pdata[i], Cwhite, arg);
+	}
 	wbreload = true;
 }
 static void preparewb()
@@ -1217,7 +1219,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	gchar *dsearch;
 	if (regexec(url, str, 0, NULL, 0) == 0)
 		uri = g_strdup_printf("http://%s", str);
-	else if (dsearch = getset(caller ?: win, "search"))
+	else if ((dsearch = getset(caller ?: win, "search")))
 	{
 		checklen = strlen(str);
 		char *esc = g_uri_escape_string(str, NULL, false);
@@ -2476,10 +2478,12 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			GFA(*os, NULL)
 			bool add = !unset;
 			if (arg) for (gchar **s = ss; *s; s++)
+			{
 				if (g_strcmp0(*s, arg))
 					GFA(*os, g_strconcat(*os ?: *s, *os ? "/" : NULL, *s, NULL))
 				else
 					add = false;
+			}
 			if (add)
 				GFA(*os, g_strconcat(*os ?: arg, *os ? "/" : NULL, arg, NULL))
 			g_strfreev(ss);
@@ -3910,7 +3914,7 @@ static GSList *dirmenu(
 
 	GDir *gd = g_dir_open(dir, 0, NULL);
 	const gchar *dn;
-	while (dn = g_dir_read_name(gd))
+	while ((dn = g_dir_read_name(gd)))
 		names = g_slist_insert_sorted(names, g_strdup(dn), (GCompareFunc)strcmp);
 	g_dir_close(gd);
 
