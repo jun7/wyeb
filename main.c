@@ -54,10 +54,6 @@ typedef struct _WP {
 		GObject   *wino;
 	};
 	union {
-		GtkProgressBar *prog;
-		GtkWidget      *progw;
-	};
-	union {
 		WebKitWebView *kit;
 		GtkWidget     *kitw;
 		GObject       *kito;
@@ -94,6 +90,8 @@ typedef struct _WP {
 	gdouble lasty;
 	gchar  *msg;
 	bool    smallmsg;
+	gdouble progress;
+	GdkRGBA rgba;
 
 	//hittestresult
 	gchar  *link;
@@ -115,7 +113,6 @@ typedef struct _WP {
 	GSList *undo;
 	GSList *redo;
 	gchar  *lastfind;
-	GtkStyleProvider *sp;
 
 	//winlist
 	gint    cursorx;
@@ -132,7 +129,6 @@ typedef struct _WP {
 	GTlsCertificateFlags tlserr;
 	bool    fordl;
 	guint   msgfunc;
-	int     proglast;
 
 	bool cancelcontext;
 	bool cancelbtn1r;
@@ -584,6 +580,15 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 
 
 //@@conf
+static void colorf(Win *win, cairo_t *cr, double alpha)
+{
+	cairo_set_source_rgba(cr,
+			win->rgba.red, win->rgba.green, win->rgba.blue, alpha);
+}
+static void colorb(Win *win, cairo_t *cr, double alpha)
+{
+	cairo_set_source_rgba(cr, .9, .9, .9, alpha);
+}
 //monitor
 static GSList *mqueue   = NULL;
 static GSList *mqueuedo = NULL;
@@ -755,6 +760,8 @@ static void resetconf(Win *win, int type)
 		gtk_widget_show(win->lblw);
 	else
 		gtk_widget_hide(win->lblw);
+
+	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor"));
 }
 
 static void checkmd(const gchar *mp)
@@ -1801,7 +1808,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		cairo_close_path(cr);
 		if (pin)
 		{
-			cairo_set_source_rgba(cr, .9, .0, .4, .7);
+			colorf(lw, cr, 1);
 			cairo_set_line_width(cr, 6.0);
 			cairo_stroke_preserve(cr);
 		}
@@ -2550,7 +2557,6 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	if (!csize) csize = gdk_display_get_default_cursor_size(
 					gdk_display_get_default());
 
-
 	if (win->lastx || win->lastx || win->mode == Mpointer)
 	{
 		gdouble x, y, size;
@@ -2567,11 +2573,11 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		if (win->mode == Mpointer)
 		{
 			cairo_set_line_width(cr, 6);
-			cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.6);
+			colorb(win, cr, .9);
 			cairo_stroke_preserve(cr);
-			cairo_set_source_rgba(cr, .9, .0, .0, .9);
+			colorf(win, cr, 1);
 		} else
-			cairo_set_source_rgba(cr, .9, .0, .0, .3);
+			colorf(win, cr, .3);
 
 		cairo_set_line_width(cr, 2);
 
@@ -2579,25 +2585,50 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->msg)
 	{
-		gint h;
-		gdk_window_get_geometry(gdkw(win->winw), NULL, NULL, NULL, &h);
+		gint h = gtk_widget_get_allocated_height(win->kitw) - csize;
+		h -= gtk_widget_get_visible(win->entw) ?
+				gtk_widget_get_allocated_height(win->entw) : 0;
 
 		if (win->smallmsg)
 			cairo_set_font_size(cr, csize * .6);
 		else
 			cairo_set_font_size(cr, csize * .8);
 
-		h -= csize + (
-				gtk_widget_get_visible(win->entw) ?
-				gtk_widget_get_allocated_height(win->entw) : 0);
-
-		cairo_set_source_rgba(cr, .9, .9, .9, .7);
+		colorb(win, cr, .9);
 		cairo_move_to(cr, csize, h);
 		cairo_show_text(cr, win->msg);
 
-		cairo_set_source_rgba(cr, .9, .0, .9, .7);
+		colorf(win, cr, .9);
 		cairo_move_to(cr, csize + csize / 30, h);
 		cairo_show_text(cr, win->msg);
+	}
+	if (win->progress != 1)
+	{
+		gint h = gtk_widget_get_allocated_height(win->kitw);
+		gint w = gtk_widget_get_allocated_width(win->kitw);
+		h -= gtk_widget_get_visible(win->entw) ?
+				gtk_widget_get_allocated_height(win->entw) : 0;
+
+		gint px, py;
+		gdk_window_get_device_position(
+				gdkw(win->kitw), pointer(), &px, &py, NULL);
+
+		gdouble alpha = px > 0 && px < w &&
+			py > (gint)(h - csize) && py < h ? .4 : .9;
+
+		gdouble y = h - 3;
+		cairo_set_line_width(cr, 6);
+
+		cairo_move_to(cr, 0, y);
+		cairo_line_to(cr, w, y);
+		colorb(win, cr, alpha);
+		cairo_stroke(cr);
+
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+		cairo_move_to(cr, w/2 * win->progress, y);
+		cairo_line_to(cr, w - w/2 * win->progress, y);
+		colorf(win, cr, alpha);
+		cairo_stroke(cr);
 	}
 
 	winlist(win, 0, cr);
@@ -3199,54 +3230,10 @@ static void crashcb(Win *win)
 	tonormal(win);
 }
 static void notifycb(Win *win) { update(win); }
-
-static void setstyle(GtkWidget *w, gchar *style)
-{
-	GtkStyleContext *sctx = gtk_widget_get_style_context(w);
-	GtkCssProvider *cssp = gtk_css_provider_new();
-	gtk_css_provider_load_from_data(cssp, style, -1, NULL);
-	gtk_style_context_add_provider(sctx, (GtkStyleProvider *)cssp,
-			GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-	g_object_unref(cssp);
-	g_free(style);
-}
-static void progstyle(Win *win, bool normal)
-{
-	if (win->proglast == normal) return;
-	win->proglast = normal;
-	setstyle(win->progw, g_strdup_printf(
-			"progressbar *{min-height:1.2em; border-style:none}"
-			"progressbar{margin:.7em; opacity:.%d}", normal ? 9 : 4));
-}
-static void checkprog(Win *win, gint py)
-{
-	if (!gtk_widget_get_visible(win->progw)) return;
-	gint y;
-	gdk_window_get_position(gdkw(win->progw), NULL, &y);
-	progstyle(win, py < (y - 22));
-}
-static gboolean progdelay(Win *win)
-{
-	gint py;
-	gdk_window_get_device_position(
-			gdkw(win->kitw), pointer(), NULL, &py, NULL);
-	checkprog(win, py);
-	return false;
-}
 static void progcb(Win *win)
 {
-	gdouble p = webkit_web_view_get_estimated_load_progress(win->kit);
-	if (p == 1) {
-		gtk_widget_hide(win->progw);
-	} else {
-		if (!gtk_widget_get_visible(win->progw))
-		{
-			progstyle(win, true);
-			gtk_widget_show(win->progw);
-			g_idle_add((GSourceFunc)progdelay, win);
-		}
-		gtk_progress_bar_set_fraction(win->prog, p);
-	}
+	win->progress = webkit_web_view_get_estimated_load_progress(win->kit);
+	gtk_widget_queue_draw(win->kitw);
 }
 static void favcb(Win *win)
 {
@@ -3605,11 +3592,15 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
+	else if (win->progress != 1)
+		gtk_widget_queue_draw(win->kitw);
+
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 {
-	checkprog(win, 0);
+	if (win->progress != 1)
+		gtk_widget_queue_draw(win->kitw);
 	return false;
 }
 static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
@@ -3629,13 +3620,15 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 		static GdkCursor *hand = NULL;
 		if (!hand) hand = gdk_cursor_new_for_display(
 				gdk_display_get_default(), GDK_HAND2);
-		gdk_window_set_cursor(gdkw(win->winw),
+		gdk_window_set_cursor(gdkw(win->kitw),
 				winlist(win, 0, NULL) ? hand : NULL);
 
 		return true;
 	}
 
-	checkprog(win, e->y);
+	if (win->progress != 1)
+		gtk_widget_queue_draw(win->kitw);
+
 	return false;
 }
 
@@ -4205,6 +4198,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
 	win->pbtn = 1;
+	win->progress = 1;
 	win->userreq = true;
 	win->winw = plugto ?
 		gtk_plug_new(plugto) : gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -4371,9 +4365,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	SIGW(buf, "inserted-text", textcb, win);
 	SIGW(buf, "deleted-text" , textcb, win);
 
-	//progress
-	win->progw = gtk_progress_bar_new();
-
 	//label
 	win->lblw = gtk_label_new("");
 	gtk_label_set_selectable(win->lbl, true);
@@ -4384,7 +4375,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 //	<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>
 //	gtk_label_set_use_markup(win->lbl, TRUE);
 
-	//without overlay, show and hide of prog causes slow down
+	//without overlay, showing ent delays when a page is heavy
 	GtkWidget  *olw = gtk_overlay_new();
 	GtkOverlay *ol  = (GtkOverlay *)olw;
 
@@ -4396,7 +4387,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	gtk_box_pack_start(box , win->lblw , false, true, 0);
 	gtk_box_pack_end(  box , win->kitw , true , true, 0);
 	gtk_box_pack_end(  box2, win->entw , false, true, 0);
-	gtk_box_pack_end(  box2, win->progw, false, true, 0);
 	gtk_widget_set_valign(box2w, GTK_ALIGN_END);
 
 	gtk_overlay_add_overlay(ol, box2w);
