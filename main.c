@@ -2786,8 +2786,13 @@ static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 	mkdirif(path);
 
 	gchar *org = g_strdup(path);
+	//Last ext is duplicated for keeping order and easily rename
+	gchar *dot = strrchr(org, '.');
+	if (!dot || dot == org || !*(dot + 1) ||
+			strlen(dot) > 4) //have not to support long ext
+		dot = "";
 	for (int i = 2; g_file_test(path, G_FILE_TEST_EXISTS); i++)
-		GFA(path, g_strdup_printf("%s.%d", org, i))
+		GFA(path, g_strdup_printf("%s.%d%s", org, i, dot))
 	g_free(org);
 
 	gchar *uri = g_filename_to_uri(path, NULL, NULL);
