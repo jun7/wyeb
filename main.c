@@ -90,7 +90,7 @@ typedef struct _WP {
 	gdouble lasty;
 	gchar  *msg;
 	bool    smallmsg;
-	gdouble progress;
+	gdouble prog;
 	GdkRGBA rgba;
 
 	//hittestresult
@@ -2602,7 +2602,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_move_to(cr, csize + csize / 30, h);
 		cairo_show_text(cr, win->msg);
 	}
-	if (win->progress != 1)
+	if (win->prog != 1)
 	{
 		gint h = gtk_widget_get_allocated_height(win->kitw);
 		gint w = gtk_widget_get_allocated_width(win->kitw);
@@ -2616,8 +2616,8 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdouble alpha = px > 0 && px < w &&
 			py > (gint)(h - csize) && py < h ? .4 : .9;
 
-		gdouble y = h - 3;
-		cairo_set_line_width(cr, 6);
+		gdouble y = h -         (1 + 4 * (1 - win->prog));
+		cairo_set_line_width(cr, 1 + 9 * (1 - win->prog));
 
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
@@ -2625,9 +2625,9 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_stroke(cr);
 
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-		cairo_move_to(cr, w/2 * win->progress, y);
-		cairo_line_to(cr, w - w/2 * win->progress, y);
-		colorf(win, cr, alpha);
+		cairo_move_to(cr,     w/2 * win->prog, y);
+		cairo_line_to(cr, w - w/2 * win->prog, y);
+		colorf(win, cr, alpha / (gtk_widget_has_focus(win->kitw) ? 1 : 3));
 		cairo_stroke(cr);
 	}
 
@@ -3232,7 +3232,7 @@ static void crashcb(Win *win)
 static void notifycb(Win *win) { update(win); }
 static void progcb(Win *win)
 {
-	win->progress = webkit_web_view_get_estimated_load_progress(win->kit);
+	win->prog = webkit_web_view_get_estimated_load_progress(win->kit);
 	gtk_widget_queue_draw(win->kitw);
 }
 static void favcb(Win *win)
@@ -3592,14 +3592,14 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
-	else if (win->progress != 1)
+	else if (win->prog != 1)
 		gtk_widget_queue_draw(win->kitw);
 
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 {
-	if (win->progress != 1)
+	if (win->prog != 1)
 		gtk_widget_queue_draw(win->kitw);
 	return false;
 }
@@ -3626,7 +3626,7 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 		return true;
 	}
 
-	if (win->progress != 1)
+	if (win->prog != 1)
 		gtk_widget_queue_draw(win->kitw);
 
 	return false;
@@ -4198,7 +4198,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
 	win->pbtn = 1;
-	win->progress = 1;
+	win->prog = 1;
 	win->userreq = true;
 	win->winw = plugto ?
 		gtk_plug_new(plugto) : gtk_window_new(GTK_WINDOW_TOPLEVEL);
