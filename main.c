@@ -2557,17 +2557,15 @@ static gboolean focusoutcb(Win *win)
 }
 static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
-	static guint csize = 0;
-	if (!csize) csize = gdk_display_get_default_cursor_size(
-					gdk_display_get_default());
+	guint32 fsize = MAX(10, webkit_settings_get_default_font_size(win->set));
 
 	if (win->lastx || win->lastx || win->mode == Mpointer)
 	{
 		gdouble x, y, size;
 		if (win->mode == Mpointer)
-			x = win->px, y = win->py, size = csize / 3;
+			x = win->px, y = win->py, size = fsize * .7;
 		else
-			x = win->lastx, y = win->lasty, size = csize / 6;
+			x = win->lastx, y = win->lasty, size = fsize * .4;
 
 		cairo_move_to(cr, x - size, y - size);
 		cairo_line_to(cr, x + size, y + size);
@@ -2589,21 +2587,21 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->msg)
 	{
-		gint h = gtk_widget_get_allocated_height(win->kitw) - csize;
+		gint h = gtk_widget_get_allocated_height(win->kitw) - fsize * 3;
 		h -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
 		if (win->smallmsg)
-			cairo_set_font_size(cr, csize * .6);
+			cairo_set_font_size(cr, fsize);
 		else
-			cairo_set_font_size(cr, csize * .8);
+			cairo_set_font_size(cr, fsize * 1.4);
 
 		colorb(win, cr, .9);
-		cairo_move_to(cr, csize, h);
+		cairo_move_to(cr, fsize, h);
 		cairo_show_text(cr, win->msg);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, csize + csize / 30, h);
+		cairo_move_to(cr, fsize + fsize / 30, h);
 		cairo_show_text(cr, win->msg);
 	}
 	if (win->prog != 1)
@@ -2618,10 +2616,10 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 				gdkw(win->kitw), pointer(), &px, &py, NULL);
 
 		gdouble alpha = px > 0 && px < w &&
-			py > (gint)(h - csize) && py < h ? .4 : .9;
+			py > (gint)(h - fsize) && py < h ? .4 : .9;
 
-		gdouble y = h -         (1 + 4 * (1 - win->prog));
-		cairo_set_line_width(cr, 1 + 9 * (1 - win->prog));
+		gdouble y = h -         (1 + (fsize/4) * (1 - win->prog));
+		cairo_set_line_width(cr, 1 + (fsize/2) * (1 - win->prog));
 
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
