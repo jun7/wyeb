@@ -2587,7 +2587,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->msg)
 	{
-		gint h = gtk_widget_get_allocated_height(win->kitw) - fsize * 3;
+		gint h = gtk_widget_get_allocated_height(win->kitw) - fsize;
 		h -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
@@ -2616,7 +2616,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 				gdkw(win->kitw), pointer(), &px, &py, NULL);
 
 		gdouble alpha = px > 0 && px < w &&
-			py > (gint)(h - fsize) && py < h ? .4 : .9;
+			py > (gint)(h - fsize * 2) && py < h ? .4 : .9;
 
 		gdouble y = h -         (1 + (fsize/4) * (1 - win->prog));
 		cairo_set_line_width(cr, 1 + (fsize/2) * (1 - win->prog));
