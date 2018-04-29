@@ -2601,7 +2601,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_show_text(cr, win->msg);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, fsize - fsize / 30.0, h - fsize / 30.0);
+		cairo_move_to(cr, fsize - fsize/30.0, h - fsize/30.0);
 		cairo_show_text(cr, win->msg);
 	}
 	if (win->prog != 1)
@@ -2618,8 +2618,9 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdouble alpha = px > 0 && px < w &&
 			py > (gint)(h - fsize * 2) && py < h ? .4 : .9;
 
-		gdouble y = h -         (fsize/20.0 + (fsize/6.0) * (1 - win->prog));
-		cairo_set_line_width(cr, fsize/10.0 + (fsize/3.0) * (1 - win->prog));
+		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->prog));
+		gdouble y = h - base;
+		cairo_set_line_width(cr, base * 2);
 
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
