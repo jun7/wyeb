@@ -4202,13 +4202,6 @@ static gboolean detachcb(GtkWidget * w)
 
 
 //@newwin
-static gboolean delayedpresent(Win *win)
-{
-	if (!isin(wins, win)) return false;
-	gtk_window_set_accept_focus(win->win, true);
-	gtk_window_present(win->win);
-	return false;
-}
 Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
@@ -4228,19 +4221,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		w = confint("winwidth"), h = confint("winheight");
 	gtk_window_set_default_size(win->win, w, h);
 
-	if (!back)
-	{
-		//delayed focus for openbox and compton
-		gtk_window_set_accept_focus(win->win, false);
-		gtk_widget_show_now(win->winw);
-		gtk_window_present(win->win);
-		g_timeout_add(66, (GSourceFunc)delayedpresent, win);
-	}
-	else if (back == 1)
-	{
+	if (back != 2)
 		gtk_widget_show(win->winw);
-		if (LASTWIN) gtk_window_present(LASTWIN->win);
-	}
 
 	SIGW(win->wino, "focus-in-event" , focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
@@ -4444,6 +4426,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 	if (!cbwin)
 		_openuri(win, uri, caller);
+
+	gtk_window_present(back && LASTWIN ? LASTWIN->win : win->win);
 
 	return win;
 }
