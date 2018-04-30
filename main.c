@@ -4233,7 +4233,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		//delayed focus for openbox and compton
 		gtk_window_set_accept_focus(win->win, false);
 		gtk_widget_show_now(win->winw);
-		g_idle_add((GSourceFunc)delayedpresent, win);
+		gtk_window_present(win->win);
+		g_timeout_add(66, (GSourceFunc)delayedpresent, win);
 	}
 	else if (back == 1)
 	{
