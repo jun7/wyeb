@@ -2565,7 +2565,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		if (win->mode == Mpointer)
 			x = win->px, y = win->py, size = fsize * .7;
 		else
-			x = win->lastx, y = win->lasty, size = fsize * .4;
+			x = win->lastx, y = win->lasty, size = fsize * .3;
 
 		cairo_move_to(cr, x - size, y - size);
 		cairo_line_to(cr, x + size, y + size);
