@@ -2536,8 +2536,7 @@ static gboolean focuscb(Win *win)
 
 	checkconf(NULL); //to create conf
 
-	if (!webkit_web_view_is_loading(win->kit) &&
-			webkit_web_view_get_uri(win->kit))
+	if (!webkit_web_view_is_loading(win->kit))
 		addhistory(win);
 
 	return false;
