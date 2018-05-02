@@ -3723,6 +3723,18 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 
 	return false;
 }
+static bool urihandler(Win *win, const gchar *uri, gchar *group)
+{
+	if (!g_key_file_has_key(conf, group, "handler", NULL)) return false;
+
+	gchar *keyval = g_key_file_get_string(conf, group, "handler", NULL);
+	gchar *command = g_strdup_printf(keyval, uri);
+	run(win, "spawn", command);
+	_showmsg(win, g_strdup_printf("Handled: %s", command), false);
+	g_free(command);
+	g_free(keyval);
+	return true;
+}
 static gboolean policycb(
 		WebKitWebView *v,
 		void *dec, //WebKitPolicyDecision
@@ -3741,6 +3753,14 @@ static gboolean policycb(
 	{
 		WebKitNavigationAction *na =
 			webkit_navigation_policy_decision_get_navigation_action(dec);
+		WebKitURIRequest *req =
+			webkit_navigation_action_get_request(na);
+
+		if (eachuriconf(win, webkit_uri_request_get_uri(req), urihandler))
+		{
+			webkit_policy_decision_ignore(dec);
+			return true;
+		} else
 		if (webkit_navigation_action_is_user_gesture(na))
 			gdk_window_set_cursor(gdkw(win->kitw), NULL);
 

@@ -295,15 +295,16 @@ static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 			setprop(wp, kf, group, dconf[i].key);
 }
 
-static bool _seturiconf(WP *wp, const gchar* uri)
+static bool eachuriconf(WP *wp, const gchar* uri,
+		bool (*func)(WP *, const gchar *uri, gchar *group))
 {
 	bool ret = false;
-	GFA(wp->lastreset, g_strdup(uri))
 
 	gchar **groups = g_key_file_get_groups(conf, NULL);
 	for (gchar **gl = groups; *gl; gl++)
 	{
 		gchar *g = *gl;
+
 		if (!g_str_has_prefix(g, "uri:")) continue;
 
 		gchar *tofree = NULL;
@@ -321,11 +322,8 @@ static bool _seturiconf(WP *wp, const gchar* uri)
 			continue;
 		}
 
-		if (regexec(&reg, uri ?: "", 0, NULL, 0) == 0) {
-			setprops(wp, conf, *gl);
-			GFA(wp->lasturiconf, g_strdup(uri))
-			ret = true;
-		}
+		if (regexec(&reg, uri, 0, NULL, 0) == 0)
+			ret = func(wp, uri, *gl) || ret;
 
 		regfree(&reg);
 		g_free(tofree);
@@ -333,6 +331,11 @@ static bool _seturiconf(WP *wp, const gchar* uri)
 
 	g_strfreev(groups);
 	return ret;
+}
+static bool seturiprops(WP *wp, const gchar *uri, gchar *group)
+{
+	setprops(wp, conf, group);
+	return true;
 }
 
 static void _resetconf(WP *wp, const gchar *uri, bool force)
@@ -348,7 +351,9 @@ static void _resetconf(WP *wp, const gchar *uri, bool force)
 		setprops(wp, conf, DSET);
 	}
 
-	_seturiconf(wp, uri);
+	GFA(wp->lastreset, g_strdup(uri))
+	if (uri && eachuriconf(wp, uri, seturiprops))
+		GFA(wp->lasturiconf, g_strdup(uri))
 
 	if (wp->overset) {
 		gchar **sets = g_strsplit(wp->overset, "/", -1);
@@ -414,6 +419,10 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
 	g_key_file_set_comment(conf, sample, "reg",
 			"Use reg if the regular expression has []."
+			, NULL);
+	g_key_file_set_string(conf, sample, "handler", "chromium %s");
+	g_key_file_set_comment(conf, sample, "handler",
+			"handler cancels request before send and spawns the command with a URI matched the 'uri:'"
 			, NULL);
 
 	g_key_file_set_string(conf, sample, "sets", "image;script");
