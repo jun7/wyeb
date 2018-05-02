@@ -137,10 +137,15 @@ Conf dconf[] = {
 	{"boot"  , "multiwebprocs", "true"},
 	{"boot"  , "ephemeral"    , "false"},
 
-	{"search", "h"            , "http://%s"},
+
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
+
+	{"raw"   , "na"           , "%s",
+		"Unlike the search section, the arg is not escaped"
+			" but can be called the same as the search"},
+	{"raw"   , "h"            , "http://%s"},
 
 	{"set:v"     , "enable-caret-browsing", "true"},
 	{"set:script", "enable-javascript"    , "false"},
@@ -408,7 +413,7 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_comment(conf, "all", NULL, "Basically "APP" doesn't cut spaces."
 			" Also true is only 'true' not 'True'", NULL);
 
-	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's.", NULL);
+	g_key_file_set_comment(conf, DSET, NULL, "Default of 'set's", NULL);
 
 	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
 
@@ -422,7 +427,7 @@ static void initconf(GKeyFile *kf)
 
 	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
 	g_key_file_set_comment(conf, sample, "reg",
-			"Use reg if the regular expression has []."
+			"Use reg if the regular expression has []"
 			, NULL);
 	g_key_file_set_string(conf, sample, "handler", "chromium %s");
 	g_key_file_set_comment(conf, sample, "handler",
@@ -431,7 +436,7 @@ static void initconf(GKeyFile *kf)
 
 	g_key_file_set_string(conf, sample, "sets", "image;script");
 	g_key_file_set_comment(conf, sample, "sets",
-			"include other sets." , NULL);
+			"include other sets" , NULL);
 #endif
 }
 

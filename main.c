@@ -1149,21 +1149,25 @@ static void tonormal(Win *win)
 //@funcs for actions
 static bool run(Win *win, gchar* action, const gchar *arg); //declaration
 
-static gchar *getsearch(gchar *pkey)
+static int formaturi(char **uri, char *key, const char *arg, char *spare)
 {
-	gchar *ret = NULL;
-	gchar **kv = g_key_file_get_keys(conf, "search", NULL, NULL);
-	for (gchar **key = kv; *key; key++)
-		if (!strcmp(pkey, *key))
-		{
-			ret = g_key_file_get_string(conf, "search", *key, NULL);
-			break;
-		}
+	int checklen = 1;
+	char *format, *esc = NULL;
 
-	g_strfreev(kv);
-	return ret;
+	if      ((format = g_key_file_get_string(conf, "raw"   , key, NULL))) ;
+	else if ((format = g_key_file_get_string(conf, "search", key, NULL) ?:
+				g_strdup(spare)))
+	{
+		checklen = strlen(arg) ?: 1; //only search else are 1 even ""
+		arg = esc = g_uri_escape_string(arg, NULL, false);
+	}
+	else return 0;
+
+	*uri = g_strdup_printf(format, arg);
+	g_free(esc);
+	g_free(format);
+	return checklen;
 }
-
 static void _openuri(Win *win, const gchar *str, Win *caller)
 {
 	win->userreq = true;
@@ -1193,18 +1197,11 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 	int checklen = 0;
 	gchar **stra = g_strsplit(str, " ", 2);
 
-	if (*stra && stra[1])
+	if (*stra && stra[1] &&
+			(checklen = formaturi(&uri, stra[0], stra[1], NULL)))
 	{
-		gchar *search = getsearch(stra[0]);
-		if (search) {
-			checklen = strlen(stra[1]);
-			char *esc = g_uri_escape_string(stra[1], NULL, false);
-			uri = g_strdup_printf(search, esc);
-			g_free(esc);
-
-			GFA(win->lastfind, g_strdup(stra[1]))
-			goto out;
-		}
+		GFA(win->lastfind, g_strdup(stra[1]))
+		goto out;
 	}
 
 	static regex_t *url = NULL;
@@ -1221,11 +1218,7 @@ static void _openuri(Win *win, const gchar *str, Win *caller)
 		uri = g_strdup_printf("http://%s", str);
 	else if ((dsearch = getset(caller ?: win, "search")))
 	{
-		checklen = strlen(str);
-		char *esc = g_uri_escape_string(str, NULL, false);
-		uri = g_strdup_printf(getsearch(dsearch) ?: dsearch, esc);
-		g_free(esc);
-
+		checklen = formaturi(&uri, dsearch, str, dsearch);
 		GFA(win->lastfind, g_strdup(str))
 	}
 
@@ -1234,7 +1227,7 @@ out:
 	g_strfreev(stra);
 
 	int max;
-	if (checklen && (max = confint("searchstrmax")) && checklen > max)
+	if (checklen > 1 && (max = confint("searchstrmax")) && checklen > max)
 		_showmsg(win, g_strdup_printf("Input Len(%d) > searchstrmax=%d",
 					checklen, max), false);
 	else
@@ -2086,7 +2079,7 @@ static Keybind dkeys[]= {
 	{"setstack"      , 0, 0,
 		"arg == NULL ? remove last : add set without checking duplicate"},
 	{"new"           , 0, 0},
-	{"newclipboard"  , 0, 0, "Open [arg + ' ' +] clipboard text in a new window."},
+	{"newclipboard"  , 0, 0, "Open [arg + ' ' +] clipboard text in a new window"},
 	{"newselection"  , 0, 0, "Open [arg + ' ' +] selection ..."},
 	{"newsecondary"  , 0, 0, "Open [arg + ' ' +] secondaly ..."},
 	{"findclipboard" , 0, 0},
@@ -2103,8 +2096,8 @@ static Keybind dkeys[]= {
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
 	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $JSRESULT"},
 	{"tohintcallback", 0, 0,
-		"arg is called with env selected by hint."},
-	{"tohintrange"   , 0, 0, "Same as tohintcallback but range."},
+		"arg is called with env selected by hint"},
+	{"tohintrange"   , 0, 0, "Same as tohintcallback but range"},
 	{"sourcecallback", 0, 0, "The web resource is sent via pipe"},
 
 //todo pagelist
