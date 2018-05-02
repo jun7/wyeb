@@ -137,7 +137,6 @@ Conf dconf[] = {
 	{"boot"  , "multiwebprocs", "true"},
 	{"boot"  , "ephemeral"    , "false"},
 
-
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
@@ -388,6 +387,7 @@ static void initconf(GKeyFile *kf)
 		if (g_key_file_has_key(conf, c.group, c.key, NULL)) continue;
 		if (kf)
 		{
+			if (!strcmp(c.group, "raw")) continue;
 			if (!strcmp(c.group, "search")) continue;
 			if (g_str_has_prefix(c.group, "set:")) continue;
 		}
