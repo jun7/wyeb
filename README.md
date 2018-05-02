@@ -1,11 +1,14 @@
 ## Changes
+Jan 15, 2018:
 Install dir /bin/ -> /usr/bin/
 
+Jan 6, 2018:
 The directories' names are changed from 'wyebrowser' to 'wyeb.' because it was too long.
 wyeb uses old name if old conf dir is found though.
 Changing the name loses the cache and local storage what webkit has saved.
 See ~/.cache and ~/.local/share to keep it by rename or cleanup.
 
+Dec 27, 2017:
 mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use it.
 
 # WithYourEditorBrowser / wyeb
