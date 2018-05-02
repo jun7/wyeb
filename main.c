@@ -3723,9 +3723,12 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 
 	return false;
 }
+static bool handled = false;
 static bool urihandler(Win *win, const gchar *uri, gchar *group)
 {
-	if (!g_key_file_has_key(conf, group, "handler", NULL)) return false;
+	if (handled || !g_key_file_has_key(conf, group, "handler", NULL))
+		return false;
+	handled = true;
 
 	gchar *keyval = g_key_file_get_string(conf, group, "handler", NULL);
 	gchar *command = g_strdup_printf(keyval, uri);
@@ -3756,6 +3759,7 @@ static gboolean policycb(
 		WebKitURIRequest *req =
 			webkit_navigation_action_get_request(na);
 
+		handled = false;
 		if (eachuriconf(win, webkit_uri_request_get_uri(req), urihandler))
 		{
 			webkit_policy_decision_ignore(dec);
