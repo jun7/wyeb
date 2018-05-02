@@ -2095,6 +2095,7 @@ static Keybind dkeys[]= {
 	{"click"         , 0, 0, "x:y"},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
 	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $JSRESULT"},
+
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint"},
 	{"tohintrange"   , 0, 0, "Same as tohintcallback but range"},
@@ -3754,7 +3755,12 @@ static gboolean policycb(
 			return true;
 		} else
 		if (webkit_navigation_action_is_user_gesture(na))
-			gdk_window_set_cursor(gdkw(win->kitw), NULL);
+		{
+			static GdkCursor *cur = NULL;
+			if (!cur) cur = gdk_cursor_new_for_display(
+					gdk_display_get_default(), GDK_CENTER_PTR);
+			gdk_window_set_cursor(gdkw(win->kitw), cur);
+		}
 
 		return false;
 	}
