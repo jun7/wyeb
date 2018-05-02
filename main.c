@@ -587,7 +587,7 @@ static void colorf(Win *win, cairo_t *cr, double alpha)
 }
 static void colorb(Win *win, cairo_t *cr, double alpha)
 {
-	cairo_set_source_rgba(cr, .9, .9, .9, alpha);
+	cairo_set_source_rgba(cr, 1, 1, 1, alpha);
 }
 //monitor
 static GSList *mqueue   = NULL;
@@ -2587,8 +2587,8 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->msg)
 	{
-		gint h = gtk_widget_get_allocated_height(win->kitw) - fsize;
-		h -= gtk_widget_get_visible(win->entw) ?
+		gint x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x;
+		y -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
 		if (win->smallmsg)
@@ -2596,12 +2596,17 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		else
 			cairo_set_font_size(cr, fsize * 1.4);
 
-		colorb(win, cr, .9);
-		cairo_move_to(cr, fsize, h);
-		cairo_show_text(cr, win->msg);
+		colorb(win, cr, .6);
+		cairo_text_extents_t ex;
+		cairo_text_extents(cr, win->msg, &ex);
+		double m = fsize/4.0, m2 = m * 2;
+		cairo_rectangle(cr,
+				x + ex.x_bearing - m, y + ex.y_bearing - m,
+				ex.width + m2, ex.height + m2);
+		cairo_fill(cr);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, fsize - fsize/30.0, h - fsize/30.0);
+		cairo_move_to(cr, x, y);
 		cairo_show_text(cr, win->msg);
 	}
 	if (win->prog != 1)

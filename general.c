@@ -153,7 +153,7 @@ Conf dconf[] = {
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
 	{DSET    , "usercss"          , "user.css;user2.css"},
 	{DSET    , "addressbar"       , "false"},
-	{DSET    , "msgcolor"         , "#e0007a"},
+	{DSET    , "msgcolor"         , "#c07"},
 
 	//loading
 	{DSET    , "reldomaindataonly", "false"},
