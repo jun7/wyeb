@@ -1950,11 +1950,9 @@ static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
 static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 {
-	GList *gl =
-		webkit_cookie_manager_get_cookies_finish
-		((WebKitCookieManager *)cm, res, NULL);
-
 	char *header = NULL;
+	GList *gl = webkit_cookie_manager_get_cookies_finish(
+				(WebKitCookieManager *)cm, res, NULL);
 	if (gl)
 	{
 		GSList *gs = NULL;
