@@ -1961,13 +1961,8 @@ static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 				(WebKitCookieManager *)cm, res, NULL);
 	if (gl)
 	{
-		GSList *gs = NULL;
-		for (GList *next = gl; next; next = next->next)
-			gs = g_slist_prepend(gs, next->data);
-		g_list_free(gl);
-
-		header = soup_cookies_to_cookie_header(gs);
-		soup_cookies_free(gs);
+		header = soup_cookies_to_cookie_header((GSList *)gl);
+		g_list_free_full(gl, (GDestroyNotify)soup_cookie_free);
 	}
 
 	void **args = p;
