@@ -1247,7 +1247,7 @@ static void openuri(Win *win, const gchar *str)
 { _openuri(win, str, NULL); }
 
 static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
-		bool iscallback, gchar *jsresult,
+		bool iscallback, gchar *result,
 		gchar *piped, gsize plen)
 {
 	gchar **argv;
@@ -1275,7 +1275,10 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);
 	envp = g_environ_setenv(envp, "ISCALLBACK",
 			iscallback ? "1" : "0", true);
-	envp = g_environ_setenv(envp, "JSRESULT", jsresult ?: "", true);
+
+	envp = g_environ_setenv(envp, "RESULT", result ?: "", true);
+	//for backward compatibility
+	envp = g_environ_setenv(envp, "JSRESULT", result ?: "", true);
 
 	gchar buf[9];
 	snprintf(buf, 9, "%d", wins->len);
@@ -1886,22 +1889,6 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	showmsg(win, "Added");
 }
 
-static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
-{
-	if (!LASTWIN) return;
-	Win *win = LASTWIN;
-	GSList *sp = p;
-
-	gsize len;
-	guchar *data = webkit_web_resource_get_data_finish(
-			(WebKitWebResource *)srco, res, &len, NULL);
-
-	spawnwithenv(win, sp->data, sp->next->data, true, NULL, (gchar *)data, len);
-
-	g_free(data);
-	g_slist_free_full(sp, g_free);
-}
-
 static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 {
 	if (!p) return;
@@ -1946,6 +1933,48 @@ static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 out:
 	g_slist_free_full(sp, g_free);
 }
+static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
+{
+	gsize len;
+	guchar *data = webkit_web_resource_get_data_finish(
+			(WebKitWebResource *)srco, res, &len, NULL);
+
+	void **args = p;
+	if (isin(wins, args[0]))
+		spawnwithenv(args[0], args[1], args[2], true, NULL, (gchar *)data, len);
+	g_free(args[1]);
+	g_free(args[2]);
+	g_free(args);
+	g_free(data);
+}
+#if WEBKIT_CHECK_VERSION(2, 20, 0)
+static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
+{
+	GList *gl =
+		webkit_cookie_manager_get_cookies_finish
+		((WebKitCookieManager *)cm, res, NULL);
+
+	char *header = NULL;
+	if (gl)
+	{
+		GSList *gs = NULL;
+		for (GList *next = gl; next; next = next->next)
+			gs = g_slist_prepend(gs, next->data);
+		g_list_free(gl);
+
+		header = soup_cookies_to_cookie_header(gs);
+		soup_cookies_free(gs);
+	}
+
+	void **args = p;
+	if (isin(wins, args[0]))
+		spawnwithenv(args[0], args[1], args[2], true, header ?: "", NULL, 0);
+	g_free(args[1]);
+	g_free(args[2]);
+	g_free(args);
+	g_free(header);
+}
+#endif
 
 //textlink
 static gchar   *tlpath = NULL;
@@ -2094,12 +2123,17 @@ static Keybind dkeys[]= {
 	{"showmsg"       , 0, 0},
 	{"click"         , 0, 0, "x:y"},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
-	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $JSRESULT"},
-
+	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $RESULT"},
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint"},
 	{"tohintrange"   , 0, 0, "Same as tohintcallback but range"},
+//for backward, naming resource is good
 	{"sourcecallback", 0, 0, "The web resource is sent via pipe"},
+#if WEBKIT_CHECK_VERSION(2, 20, 0)
+	{"cookies"       , 0, 0,
+		"` wyeb // cookies $URI 'sh -c \"echo $RESULT\"' ` returns header"},
+#endif
+
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
@@ -2284,18 +2318,27 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
 		Z("jscallback"    ,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
-			g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(exarg))))
+				g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(exarg))))
 		Z("tohintcallback", win->mode = Mhintspawn;
 				GFA(win->spawn, g_strdup(arg))
 				GFA(win->spawndir, g_strdup(cdir)))
 		Z("tohintrange", win->mode = Mhintrange;
 				GFA(win->spawn, g_strdup(arg))
 				GFA(win->spawndir, g_strdup(cdir)))
+
 		Z("sourcecallback",
 			WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
 			webkit_web_resource_get_data(res, NULL, resourcecb,
-				g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(arg)))
-		)
+				g_memdup((void *[]){win, g_strdup(arg), g_strdup(cdir)},
+					sizeof(void *) * 3)))
+#if WEBKIT_CHECK_VERSION(2, 20, 0)
+		Z("cookies"  ,
+			WebKitCookieManager *cm =
+				webkit_web_context_get_cookie_manager(ctx);
+			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb,
+				g_memdup((void *[]){win, g_strdup(exarg), g_strdup(cdir)},
+					sizeof(void *) * 3)))
+#endif
 	}
 
 	Z("tonormal"    , win->mode = Mnormal)
@@ -4523,7 +4566,7 @@ int main(int argc, char **argv)
 		!strcmp(suffix,  envsuf) ? g_getenv("WINID") : NULL;
 	if (!winid || !*winid) winid = "0";
 
-	fullname = g_strconcat(OLDNAME, suffix, NULL);
+	fullname = g_strconcat(OLDNAME, suffix, NULL); //for backward
 	if (!g_file_test(path2conf(NULL), G_FILE_TEST_EXISTS))
 		GFA(fullname, g_strconcat(DIRNAME, suffix, NULL));
 
