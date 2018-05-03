@@ -236,26 +236,6 @@ static bool isin(GPtrArray *ary, void *v)
 		if (v == ary->pdata[i]) return true;
 	return false;
 }
-static gint threshold(Win *win)
-{
-	gint ret = 8;
-	g_object_get(gtk_widget_get_settings(win->winw),
-			"gtk-dnd-drag-threshold", &ret, NULL);
-	return ret;
-}
-static const gchar *dldir(Win *win)
-{//return is static string
-	static gchar *ret = NULL;
-	g_free(ret);
-	ret = g_build_filename(
-		g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
-		g_get_home_dir(),
-		getset(win, "dlsubdir"),
-		NULL
-	);
-
-	return ret;
-}
 static void quitif(bool force)
 {
 	if (!force && (wins->len != 0 || dlwins->len != 0)) return;
@@ -272,7 +252,6 @@ static void reloadlast()
 	last = now;
 	webkit_web_view_reload(LASTWIN->kit);
 }
-
 static void alert(gchar *msg)
 {
 	GtkWidget *dialog = gtk_message_dialog_new(
@@ -535,6 +514,13 @@ static void delaymdlr(Win * win)
 }
 
 //shared
+static void altcur(Win *win)
+{
+	static GdkCursor *cur = NULL;
+	if (!cur) cur = gdk_cursor_new_for_display(
+			gdk_display_get_default(), GDK_CENTER_PTR);
+	gdk_window_set_cursor(gdkw(win->kitw), cur);
+}
 static void setresult(Win *win, WebKitHitTestResult *htr)
 {
 	g_free(win->image);
@@ -580,6 +566,26 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 
 
 //@@conf
+static gint threshold(Win *win)
+{
+	gint ret = 8;
+	g_object_get(gtk_widget_get_settings(win->winw),
+			"gtk-dnd-drag-threshold", &ret, NULL);
+	return ret;
+}
+static const gchar *dldir(Win *win)
+{//return is static string
+	static gchar *ret = NULL;
+	g_free(ret);
+	ret = g_build_filename(
+		g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
+		g_get_home_dir(),
+		getset(win, "dlsubdir"),
+		NULL
+	);
+
+	return ret;
+}
 static void colorf(Win *win, cairo_t *cr, double alpha)
 {
 	cairo_set_source_rgba(cr,
@@ -2269,7 +2275,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		)
 
 		//nokey
-		Z("openback", showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
+		Z("openback",
+			altcur(win); showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
 		Z("openwithref",
 			const gchar *ref = retv ? retv[0] : URI(win);
 			gchar *nrml = soup_uri_normalize(arg, NULL);
@@ -3796,12 +3803,7 @@ static gboolean policycb(
 			return true;
 		} else
 		if (webkit_navigation_action_is_user_gesture(na))
-		{
-			static GdkCursor *cur = NULL;
-			if (!cur) cur = gdk_cursor_new_for_display(
-					gdk_display_get_default(), GDK_CENTER_PTR);
-			gdk_window_set_cursor(gdkw(win->kitw), cur);
-		}
+			altcur(win);
 
 		return false;
 	}
