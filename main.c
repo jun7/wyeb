@@ -4101,8 +4101,9 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "3openSelectionNew", APP" // opennew \"$PRIMARY\"");
 		addscript(dir, "6searchDictionary", APP" // open \"u $PRIMARY\"");
 		addscript(dir, "9---"             , "");
-		addscript(dir, "9saveSource2DLdir", APP" // sourcecallback "
-				"\"tee -a \\\"$DLDIR/"APP"-source\\\"\"");
+		addscript(dir, "cviewSource"      , APP" // sourcecallback "
+				"'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" &&"
+					" tee > \\\"$d\\\" && mimeopen -n \\\"$d\\\"\"'");
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
 		addscript(dir, "xnoSuffixProcess" , APP" / new $LINK_OR_URI");
