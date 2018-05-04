@@ -4195,40 +4195,76 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 					run(win, "find", text);
 
 				senddelay(win, Cfocus, NULL);
-				break;
+				return true;
 			case Mopen:
 				action = "open";
 			case Mopennew:
 				if (!action) action = "opennew";
 				run(win, action, text);
-				break;
+				return true;
 			default:
 					g_assert_not_reached();
 			}
 			tonormal(win);
+			return true;
 		}
-		break;
 
 	case GDK_KEY_Escape:
 		if (win->mode == Mfind)
 			webkit_find_controller_search_finish(win->findct);
 		tonormal(win);
-		break;
+		return true;
+	}
 
+	if (!(ke->state & GDK_CONTROL_MASK)) return false;
+	//ctrls
+	static char *buf = NULL;
+	GtkEditable *e = (void *)w;
+	int pos = gtk_editable_get_position(e);
+	switch (ke->keyval) {
 	case GDK_KEY_Z:
 	case GDK_KEY_n:
-		if (!(ke->state & GDK_CONTROL_MASK)) return false;
-		undo(win, &win->redo, &win->undo);
-		break;
+		undo(win, &win->redo, &win->undo); break;
 	case GDK_KEY_z:
 	case GDK_KEY_p:
-		if (!(ke->state & GDK_CONTROL_MASK)) return false;
-		undo(win, &win->undo, &win->redo);
-		break;
+		undo(win, &win->undo, &win->redo); break;
 
+	case GDK_KEY_a:
+		gtk_editable_set_position(e, 0); break;
+	case GDK_KEY_e:
+		gtk_editable_set_position(e, -1); break;
+	case GDK_KEY_b:
+		gtk_editable_set_position(e, pos - 1); break;
+	case GDK_KEY_f:
+		gtk_editable_set_position(e, pos + 1); break;
+
+	case GDK_KEY_d:
+		gtk_editable_delete_text(e, pos, pos + 1); break;
+	case GDK_KEY_h:
+		gtk_editable_delete_text(e, pos - 1, pos); break;
+	case GDK_KEY_k:
+	{
+		GFA(buf, g_strdup(
+		  gtk_editable_get_chars(e, pos, -1)));
+		gtk_editable_delete_text(e, pos, -1); break;
+	}
+	case GDK_KEY_w:
+	{
+		GFA(buf, g_strdup(
+		  gtk_editable_get_chars(e, 0, pos)));
+		gtk_editable_delete_text(e, 0, pos); break;
+	}
+	case GDK_KEY_y:
+	{
+		int ret = pos;
+		gtk_editable_insert_text(e, buf ?: "", -1, &ret);
+		gtk_editable_select_region(e, pos, ret);
+		break;
+	}
 	default:
 		return false;
 	}
+
 	return true;
 }
 static gboolean textcb(Win *win)
