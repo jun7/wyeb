@@ -147,12 +147,12 @@ typedef struct {
 } Img;
 static gchar *lastmsg = NULL;
 
-static gchar    *mdpath = NULL;
-static gchar    *accelp = NULL;
+static gchar *mdpath = NULL;
+static gchar *accelp = NULL;
 
-static gchar *hists[] = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
-static gint histfnum = sizeof(hists) / sizeof(*hists) - 1;
-static gchar *histdir = NULL;
+static gchar *hists[]  = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
+static gint   histfnum = sizeof(hists) / sizeof(*hists) - 1;
+static gchar *histdir  = NULL;
 
 static GtkAccelGroup *accelg = NULL;
 static WebKitWebContext *ctx = NULL;
@@ -2017,7 +2017,7 @@ static Keybind dkeys[]= {
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
 	{"topointer"     , 'p', 0, "pp resets damping"},
-	{"topointermdl"  , 'P', 0, "makes middle click"},
+	{"topointermdl"  , 'P', 0, "Makes middle click"},
 	{"topointerright", 'p', GDK_CONTROL_MASK, "right click"},
 
 	{"tohint"        , 'f', 0},
@@ -2025,6 +2025,7 @@ static Keybind dkeys[]= {
 	{"tohintback"    , 't', 0},
 	{"tohintdl"      , 'd', 0, "dl is Download"},
 	{"tohintbookmark", 'T', 0},
+	{"tohintrangenew", 'r', GDK_CONTROL_MASK, "Open new windows"},
 
 	{"showdldir"     , 'D', 0},
 
@@ -2320,7 +2321,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
 		Z("jscallback"    ,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
-				g_slist_prepend(g_slist_prepend(NULL, g_strdup(cdir)), g_strdup(exarg))))
+				g_slist_prepend(g_slist_prepend(NULL,
+						g_strdup(cdir)), g_strdup(exarg))))
 		Z("tohintcallback", win->mode = Mhintspawn;
 				GFA(win->spawn, g_strdup(arg))
 				GFA(win->spawndir, g_strdup(cdir)))
@@ -2329,7 +2331,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 				GFA(win->spawndir, g_strdup(cdir)))
 
 		Z("sourcecallback",
-			WebKitWebResource *res = webkit_web_view_get_main_resource(win->kit);
+			WebKitWebResource *res =
+				webkit_web_view_get_main_resource(win->kit);
 			webkit_web_resource_get_data(res, NULL, resourcecb,
 				g_memdup((void *[]){win, g_strdup(arg), g_strdup(cdir)},
 					sizeof(void *) * 3)))
@@ -2370,14 +2373,18 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("tohintback"  , win->mode = Mhintback)
 	Z("tohintdl"    , win->mode = Mhintdl)
 	Z("tohintbookmark", win->mode = Mhintbkmrk)
-	Z("tohintrange" , win->mode = Mhintrange)
+	Z("tohintrangenew", win->mode = Mhintrange;
+				GFA(win->spawn, g_strdup(
+						"sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\""))
+				GFA(win->spawndir, NULL))
 
 	Z("showdldir"   ,
 		command(win, confcstr("diropener"), dldir(win));
 	)
 
 	Z("yankuri"     ,
-		gtk_clipboard_set_text(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
+		gtk_clipboard_set_text(
+			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD), URI(win), -1);
 		showmsg(win, "URI is yanked to clipboard")
 	)
 	Z("yanktitle"   ,
@@ -4079,8 +4086,8 @@ void makemenu(WebKitContextMenu *menu)
 	gchar *dir = path2conf("menu");
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 	{
-		addscript(dir, ".openNewRange"    , APP" // tohintrange "
-				"'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'");
+		addscript(dir, ".openBackRange"    , APP" // tohintrange "
+				"'sh -c \""APP" // openback $MEDIA_IMAGE_LINK\"'");
 		addscript(dir, ".openNewSrcURI"   , APP" // tohintcallback "
 				"'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'");
 		addscript(dir, ".openWithRef"     , APP" // tohintcallback "

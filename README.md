@@ -35,7 +35,7 @@ For example, context-menu items we added are just shell scripts.
 Of course it is in the 'set:', so we can set it by uri.
 - Focused history. Instead of loaded history.
 - Pointer Mode. **p** makes pure click event for javascript pages.
-- Range hinting. See hidden files in the menu dir. You have to assign keys for it by use of the accels.
+- Range hinting. ctrl-r. Also see hidden files in the menu dir, it has callback interface.
 - Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time though.
 
@@ -107,6 +107,7 @@ key:
 0 - F          : tohintnew              : 
 0 - t          : tohintback             : 
 0 - T          : tohintbookmark         : 
+4 - r          : tohintrangenew         : Open new windows
 0 - d          : tohintdl               : dl is Download
 0 - D          : showdldir              : 
 0 - y          : yankuri                : Clipboard
