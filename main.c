@@ -2049,6 +2049,8 @@ static Keybind dkeys[]= {
 
 	{"pagedown"      , 'f', GDK_CONTROL_MASK},
 	{"pageup"        , 'b', GDK_CONTROL_MASK},
+	{"halfdown"      , 'd', GDK_CONTROL_MASK},
+	{"halfup"        , 'u', GDK_CONTROL_MASK},
 
 	{"top"           , 'g', 0},
 	{"bottom"        , 'G', 0},
@@ -2408,6 +2410,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 	Z("pagedown"    , sendkey(win, GDK_KEY_Page_Down))
 	Z("pageup"      , sendkey(win, GDK_KEY_Page_Up))
+	Z("halfdown"    , send(win, Cscroll, "d"))
+	Z("halfup"      , send(win, Cscroll, "u"))
 
 	Z("top"         , sendkey(win, GDK_KEY_Home))
 	Z("bottom"      , sendkey(win, GDK_KEY_End))

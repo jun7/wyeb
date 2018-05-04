@@ -74,6 +74,7 @@ typedef enum {
 	Cstart  = 's',
 	Con     = 'o',
 
+	//hint
 	Ckey    = 'k',
 	Cclick  = 'c',
 	Clink   = 'l',
@@ -90,6 +91,7 @@ typedef enum {
 	Ctlset  = 'T',
 	Ctlget  = 'g',
 	Cwref   = 'W',
+	Cscroll = 'v',
 
 	Cfree   = 'F',
 } Coms;

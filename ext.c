@@ -1353,6 +1353,17 @@ static void loadconf()
 	initconf(new);
 }
 
+static void halfscroll(Page *page, bool d)
+{
+	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+	glong y = webkit_dom_dom_window_get_scroll_y(win);
+	glong x = webkit_dom_dom_window_get_scroll_x(win);
+	glong h = webkit_dom_dom_window_get_inner_height(win);
+	y += (d ? h/2 : - h/2);
+	webkit_dom_dom_window_scroll_to(win, x, y);
+	g_object_unref(win);
+}
 
 //@ipccb
 void ipccb(const gchar *line)
@@ -1452,6 +1463,10 @@ void ipccb(const gchar *line)
 	case Cwref:
 		g_strfreev(page->refreq);
 		page->refreq = g_strsplit(arg, " ", 2);
+		break;
+
+	case Cscroll:
+		halfscroll(page, *arg == 'd');
 		break;
 
 	case Cfree:
