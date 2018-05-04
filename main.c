@@ -840,11 +840,18 @@ static void preparewb()
 			, checkwb);
 }
 
-
+static void clearaccels(gpointer p,
+		const gchar *path, guint key, GdkModifierType mods, gboolean changed)
+{
+	gtk_accel_map_change_entry(path, 0, 0, true);
+}
 static void checkaccels(const gchar *mp)
 {
 	if (accelp && g_file_test(accelp, G_FILE_TEST_EXISTS))
+	{
+		gtk_accel_map_foreach(NULL, clearaccels);
 		gtk_accel_map_load(accelp);
+	}
 }
 
 static void checkcss(const gchar *mp)
@@ -4062,7 +4069,7 @@ static GSList *dirmenu(
 	return ret;
 }
 static void makemenu(WebKitContextMenu *menu); //declaration
-static void accelmonitorcb(
+static void acceldircb(
 		GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e)
 {
 	if (e == G_FILE_MONITOR_EVENT_CREATED)
@@ -4123,7 +4130,7 @@ void makemenu(WebKitContextMenu *menu)
 		GFile *gf = g_file_new_for_path(dir);
 		GFileMonitor *gm = g_file_monitor_directory(gf,
 				G_FILE_MONITOR_NONE, NULL, NULL);
-		SIG(gm, "changed", accelmonitorcb, NULL);
+		SIG(gm, "changed", acceldircb, NULL);
 		g_object_unref(gf);
 
 		accelp = path2conf("accels");
