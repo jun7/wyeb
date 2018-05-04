@@ -4265,6 +4265,23 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		gtk_editable_select_region(e, pos, ret);
 		break;
 	}
+	case GDK_KEY_t:
+	{
+		if (pos == 0) pos++;
+		gtk_editable_set_position(e, -1);
+		int chk = gtk_editable_get_position(e);
+		if (chk < 2)
+			break;
+		if (chk == pos)
+			pos--;
+
+		gchar *rm = gtk_editable_get_chars(e, pos - 1, pos);
+		          gtk_editable_delete_text(e, pos - 1, pos);
+		gtk_editable_insert_text(e, rm, -1, &pos);
+		gtk_editable_set_position(e, pos);
+		g_free(rm);
+		break;
+	}
 	default:
 		return false;
 	}
