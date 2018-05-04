@@ -4195,13 +4195,13 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 					run(win, "find", text);
 
 				senddelay(win, Cfocus, NULL);
-				return true;
+				break;
 			case Mopen:
 				action = "open";
 			case Mopennew:
 				if (!action) action = "opennew";
 				run(win, action, text);
-				return true;
+				break;
 			default:
 					g_assert_not_reached();
 			}
