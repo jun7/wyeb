@@ -2092,6 +2092,7 @@ static Keybind dkeys[]= {
 //	{"showsource"    , 'S', 0}, //not good
 	{"showhelp"      , ':', 0},
 	{"showhistory"   , 'M', 0},
+	{"showhistoryall", 'm', GDK_CONTROL_MASK},
 	{"showmainpage"  , 'm', 0},
 
 	{"clearallwebsitedata", 'C', GDK_CONTROL_MASK},
@@ -2498,6 +2499,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 //	Z("showsource"  , )
 	Z("showhelp"    , openuri(win, APP":help"))
 	Z("showhistory" , openuri(win, APP":history"))
+	Z("showhistoryall", openuri(win, APP":history/all"))
 	Z("showmainpage", openuri(win, APP":main"))
 
 	Z("clearallwebsitedata",
