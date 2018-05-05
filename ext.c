@@ -1423,7 +1423,10 @@ void ipccb(const gchar *line)
 			page->script = *arg == 'y';
 		}
 		if (!makehint(page, type, confcstr("hintkeys"), ipkeys))
+		{
+			send(page, "showmsg", "No hint");
 			send(page, "tonormal", NULL);
+		}
 		break;
 
 	case Ctext:
