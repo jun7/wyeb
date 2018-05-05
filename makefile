@@ -1,11 +1,9 @@
 EXTENSION_DIR=$(DESTDIR)/usr/lib/wyebrowser
-ifndef DEBUG
-	DEBUG = 0
-endif
-ifeq ($(DEBUG), 0)
-	CFLAGS += -Wno-deprecated-declarations
-else
+ifeq ($(DEBUG), 1)
 	CFLAGS += -Wall
+else
+	DEBUG = 0
+	CFLAGS += -Wno-deprecated-declarations
 endif
 DDEBUG=-DDEBUG=${DEBUG}
 

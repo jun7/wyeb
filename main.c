@@ -583,7 +583,6 @@ static const gchar *dldir(Win *win)
 		getset(win, "dlsubdir"),
 		NULL
 	);
-
 	return ret;
 }
 static void colorf(Win *win, cairo_t *cr, double alpha)
@@ -3935,6 +3934,9 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			send(win, Con, NULL); //for iframe
 		}
 
+		//workaround first time not dir then prog left
+		win->prog = 1;
+
 		break;
 	}
 }
@@ -4615,6 +4617,7 @@ int main(int argc, char **argv)
 {
 #if DEBUG
 	g_log_set_always_fatal(G_LOG_LEVEL_CRITICAL);
+	DD(This bin is compiled with DEBUG=1)
 #endif
 
 	if (argc == 2 && (

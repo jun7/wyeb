@@ -50,6 +50,10 @@ depends:
 	make
 	sudo make install
 
+For testing, Make and run without install
+
+	./testrun.sh
+
 For arch linux: https://aur.archlinux.org/packages/wyeb-git/
 
 ### Usage:
