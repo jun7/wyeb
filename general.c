@@ -138,6 +138,7 @@ Conf dconf[] = {
 	{"boot"  , "extensionargs", "adblock:true;"},
 	{"boot"  , "multiwebprocs", "true"},
 	{"boot"  , "ephemeral"    , "false"},
+	{"boot"  , "unsetGTK_OVERLAY_SCROLLING", "true", "workaround"},
 
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},

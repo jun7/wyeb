@@ -4669,6 +4669,10 @@ int main(int argc, char **argv)
 	gtk_init(NULL, NULL);
 	checkconf(NULL);
 
+	if (g_key_file_get_boolean(conf, "boot",
+				"unsetGTK_OVERLAY_SCROLLING", NULL))
+		g_unsetenv("GTK_OVERLAY_SCROLLING");
+
 	ipcwatch("main");
 
 	//icon
