@@ -278,6 +278,38 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
+static Img *makeimg(Win *win)
+{
+	gdouble ww = gtk_widget_get_allocated_width(win->kitw);
+	gdouble wh = gtk_widget_get_allocated_height(win->kitw);
+	gdouble scale = confint("histimgsize") / MAX(1, MAX(ww, wh));
+	if (!(
+		gtk_widget_get_visible(win->kitw) &&
+		gtk_widget_is_drawable(win->kitw) &&
+		scale > 0.0 &&
+		ww > 0.0 &&
+		wh > 0.0
+	))
+		return NULL;
+
+	Img *img = g_new(Img, 1);
+	static guint64 unique = 1;
+	img->id = unique++;
+
+	GdkPixbuf *pix =
+		gdk_pixbuf_get_from_window(gdkw(win->kitw), 0, 0, ww, wh);
+	GdkPixbuf *scaled = gdk_pixbuf_scale_simple(
+			pix, ww * scale, wh * scale, GDK_INTERP_BILINEAR);
+
+	g_object_unref(pix);
+
+	gdk_pixbuf_save_to_buffer(scaled,
+			&img->buf, &img->size,
+			"jpeg", NULL, "quality", "77", NULL);
+
+	g_object_unref(scaled);
+	return img;
+}
 static void freeimg(Img *img)
 {
 	g_free(img ? img->buf : NULL);
@@ -333,38 +365,7 @@ static gboolean historycb(Win *win)
 		freeimg(g_queue_pop_tail(histimgs));
 
 	if (maxi)
-	{
-		gdouble ww = gtk_widget_get_allocated_width(win->kitw);
-		gdouble wh = gtk_widget_get_allocated_height(win->kitw);
-		gdouble scale = confint("histimgsize") / MAX(1, MAX(ww, wh));
-
-		if (
-			gtk_widget_get_visible(win->kitw) &&
-			gtk_widget_is_drawable(win->kitw) &&
-			scale > 0.0 && ww > 0.0 && wh > 0.0
-		) {
-			GdkPixbuf *pix =
-				gdk_pixbuf_get_from_window(gdkw(win->kitw), 0, 0, ww, wh);
-
-			GdkPixbuf *scaled = gdk_pixbuf_scale_simple(
-					pix, ww * scale, wh * scale, GDK_INTERP_BILINEAR);
-
-			Img *img = g_new(Img, 1);
-			static guint64 unique = 1;
-			img->id = unique++;
-
-			gdk_pixbuf_save_to_buffer(scaled,
-					&img->buf, &img->size,
-					"jpeg", NULL, "quality", "77", NULL);
-
-			g_queue_push_head(histimgs, img);
-
-			g_object_unref(pix);
-			g_object_unref(scaled);
-		}
-		else
-			g_queue_push_head(histimgs, NULL);
-	}
+		g_queue_push_head(histimgs, makeimg(win));
 
 	if (!str) return false;
 
