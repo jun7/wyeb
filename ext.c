@@ -300,6 +300,7 @@ static void showwhite(Page *page, bool white)
 //@textlink
 static WebKitDOMElement *tldoc;
 static WebKitDOMHTMLTextAreaElement *tlelm;
+static WebKitDOMHTMLInputElement *tlielm;
 static void textlinkset(Page *page, gchar *path)
 {
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
@@ -310,7 +311,10 @@ static void textlinkset(Page *page, gchar *path)
 	g_io_channel_read_to_end(io, &text, NULL, NULL);
 	g_io_channel_unref(io);
 
-	webkit_dom_html_text_area_element_set_value(tlelm, text);
+	if (tlelm)
+		webkit_dom_html_text_area_element_set_value(tlelm, text);
+	else
+		webkit_dom_html_input_element_set_value(tlielm, text);
 	g_free(text);
 }
 static void textlinkget(Page *page, gchar *path)
@@ -318,18 +322,28 @@ static void textlinkget(Page *page, gchar *path)
 	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
 	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
 	gchar *tag = webkit_dom_element_get_tag_name(te);
-	bool ist = !strcmp(tag, "TEXTAREA");
+	bool ista = !strcmp(tag, "TEXTAREA");
 	g_free(tag);
-	if (!ist)
+
+	tlelm = NULL;
+	tlielm = NULL;
+
+	if (ista)
+		tlelm = (WebKitDOMHTMLTextAreaElement *)te;
+	else if (isinput(te))
+		tlielm = (WebKitDOMHTMLInputElement *)te;
+	else
 	{
-		send(page, "showmsg", "Not a textare");
+		send(page, "showmsg", "Not a text");
 		return;
 	}
 
 	tldoc = webkit_dom_document_get_document_element(doc);
-	tlelm = (WebKitDOMHTMLTextAreaElement *)te;
 
-	gchar *text = webkit_dom_html_text_area_element_get_value(tlelm);
+	gchar *text = tlelm ?
+		webkit_dom_html_text_area_element_get_value(tlelm) :
+		webkit_dom_html_input_element_get_value(tlielm);
+
 	GIOChannel *io = g_io_channel_new_file(path, "w", NULL);
 	g_io_channel_write_chars(io, text ?: "", -1, NULL, NULL);
 	g_io_channel_unref(io);
