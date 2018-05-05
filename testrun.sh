@@ -1,7 +1,13 @@
 
 export DEBUG=1
-make re
+make re > /dev/null 2>&1
 
-./wyeb
+if test -e wyeb; then
+	./wyeb
+else
+	export DEBUG=0
+	#show error
+	make
+fi
 
 make clean
