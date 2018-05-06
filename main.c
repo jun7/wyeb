@@ -429,7 +429,7 @@ static void fixhist(Win *win)
 		g_source_remove(win->histcb);
 
 	//drawing delays so for ss have to swap non finished draw
-	win->histcb = g_timeout_add(100, (GSourceFunc)histcb, win);
+	win->histcb = g_timeout_add(200, (GSourceFunc)histcb, win);
 }
 
 static void removehistory()
