@@ -122,6 +122,10 @@ typedef struct _WP {
 	gdouble scrlx;
 	gdouble scrly;
 
+	//history
+	gchar  *histstr;
+	guint   histcb;
+
 	//misc
 	gchar  *spawn;
 	gchar  *spawndir;
@@ -278,9 +282,22 @@ static void append(gchar *path, const gchar *str)
 	fputs("\n", f);
 	fclose(f);
 }
-static Img *makeimg(Win *win)
+static void freeimg(Img *img)
 {
-	if (win->prog != 1) return NULL;
+	g_free(img ? img->buf : NULL);
+	g_free(img);
+}
+static void pushimg(Win *win, bool swap)
+{
+	gint maxi = MAX(confint("histimgs"), 0);
+
+	while (histimgs->length > 0 && histimgs->length >= maxi)
+		freeimg(g_queue_pop_tail(histimgs));
+
+	if (!maxi) return;
+
+	if (swap)
+		freeimg(g_queue_pop_head(histimgs));
 
 	gdouble ww = gtk_widget_get_allocated_width(win->kitw);
 	gdouble wh = gtk_widget_get_allocated_height(win->kitw);
@@ -292,7 +309,7 @@ static Img *makeimg(Win *win)
 		ww > 0.0 &&
 		wh > 0.0
 	))
-		return NULL;
+		return;
 
 	Img *img = g_new(Img, 1);
 	static guint64 unique = 1;
@@ -310,22 +327,15 @@ static Img *makeimg(Win *win)
 			"jpeg", NULL, "quality", "77", NULL);
 
 	g_object_unref(scaled);
-	return img;
-}
-static void freeimg(Img *img)
-{
-	g_free(img ? img->buf : NULL);
-	g_free(img);
+
+	g_queue_push_head(histimgs, img);
 }
 static gchar *histfile = NULL;
 static gchar *lasthist = NULL;
-static gboolean historycb(Win *win)
+static gboolean histcb(Win *win)
 {
-	if (ephemeral ||
-		!isin(wins, win) ||
-		!webkit_web_view_get_uri(win->kit) ||
-		g_str_has_prefix(URI(win), APP":")
-	) return false;
+	if (!isin(wins, win)) return false;
+	win->histcb = 0;
 
 #define MAXSIZE 22222
 	static gint ci = -1;
@@ -349,26 +359,15 @@ static gboolean historycb(Win *win)
 		}
 	}
 
-	gchar tstr[99];
-	time_t t = time(NULL);
-	strftime(tstr, sizeof(tstr), "%T/%d/%b/%y", localtime(&t));
-	gchar *str = g_strdup_printf("%s %s %s", tstr, URI(win),
-			webkit_web_view_get_title(win->kit) ?: "");
-
+	gchar *str = win->histstr;
+	win->histstr = NULL;
 	if (lasthist && !strcmp(str + 18, lasthist + 18))
 	{
-		GFA(str, NULL);
-		freeimg(g_queue_pop_head(histimgs));
+		g_free(str);
+		pushimg(win, true);
+		return false;
 	}
-
-	gint maxi = confint("histimgs");
-	while (histimgs->length > 0 && histimgs->length >= maxi)
-		freeimg(g_queue_pop_tail(histimgs));
-
-	if (maxi)
-		g_queue_push_head(histimgs, makeimg(win));
-
-	if (!str) return false;
+	pushimg(win, false);
 
 	append(histfile, str);
 	GFA(lasthist, str)
@@ -388,16 +387,51 @@ static gboolean historycb(Win *win)
 
 	return false;
 }
-static void addhistory(Win *win)
+static bool checkhist(Win *win)
 {
-	const gchar *uri = URI(win);
-	if (!*uri ||
-			g_str_has_prefix(uri, APP":") ||
-			g_str_has_prefix(uri, "about:")
-			) return;
-
-	g_timeout_add(100, (GSourceFunc)historycb, win);
+	const gchar *uri;
+	return !ephemeral &&
+		*(uri = URI(win)) &&
+		!g_str_has_prefix(uri, APP":") &&
+		!g_str_has_prefix(uri, "about:");
 }
+static bool updatehist(Win *win)
+{
+	if (!checkhist(win)) return false;
+
+	gchar tstr[99];
+	time_t t = time(NULL);
+	strftime(tstr, sizeof(tstr), "%T/%d/%b/%y", localtime(&t));
+
+	g_free(win->histstr);
+	win->histstr = g_strdup_printf("%s %s %s", tstr, URI(win),
+			webkit_web_view_get_title(win->kit) ?: "");
+
+	return true;
+}
+static void histperiod(Win *win)
+{
+	if (win->histstr)
+	{
+		if (win->histcb)
+			g_source_remove(win->histcb);
+
+		//if not cancel updated by load finish(fixhist)
+		histcb(win);
+	}
+}
+static void fixhist(Win *win)
+{
+	if (webkit_web_view_is_loading(win->kit) ||
+			!updatehist(win)) return;
+
+	if (win->histcb)
+		g_source_remove(win->histcb);
+
+	//drawing delays so for ss have to swap non finished draw
+	win->histcb = g_timeout_add(100, (GSourceFunc)histcb, win);
+}
+
 static void removehistory()
 {
 	for (gchar **file = hists; *file; file++)
@@ -2601,8 +2635,7 @@ static gboolean focuscb(Win *win)
 
 	checkconf(NULL); //to create conf
 
-	if (!webkit_web_view_is_loading(win->kit))
-		addhistory(win);
+	fixhist(win);
 
 	return false;
 }
@@ -3020,6 +3053,7 @@ static gchar *histdata(bool rest, bool all)
 		"time {font-family:monospace;}\n"
 		"a > span {padding:0 0 0 .6em; white-space:normal; word-wrap:break-word;}\n"
 		"i {font-size:.79em; color:#43a;}\n"
+		"p:hover {background-color:#faf6ff}\n"
 		//for img
 		"em {min-width:%dpx; text-align:center;}\n"
 		"img {"
@@ -3289,6 +3323,8 @@ static void destroycb(Win *win)
 	g_slist_free_full(win->redo, g_free);
 	g_free(win->lastfind);
 
+	g_free(win->histstr);
+
 	g_free(win->spawn);
 	g_free(win->spawndir);
 
@@ -3302,12 +3338,10 @@ static void crashcb(Win *win)
 static void notifycb(Win *win) { update(win); }
 static void progcb(Win *win)
 {
-	gdouble last = win->prog;
 	win->prog = webkit_web_view_get_estimated_load_progress(win->kit);
 
-	//D(prog %f, win->prog)
-	if (last < .3 && win->prog >= .3)
-		addhistory(win);
+	if (win->prog > .3) //.3 emits after other events just about
+		updatehist(win);
 
 	gtk_widget_queue_draw(win->kitw);
 }
@@ -3890,6 +3924,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
 		//D(WEBKIT_LOAD_STARTED %s, URI(win))
+		histperiod(win);
 		if (tlwin == win) tlwin = NULL;
 		win->scheme = false;
 		setresult(win, NULL);
@@ -3937,7 +3972,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		}
 		else if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
 		{
-			addhistory(win);
+			fixhist(win);
 			setspawn(win, "onloadedmenu");
 			send(win, Con, NULL); //for iframe
 		}
