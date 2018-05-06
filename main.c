@@ -280,6 +280,8 @@ static void append(gchar *path, const gchar *str)
 }
 static Img *makeimg(Win *win)
 {
+	if (win->prog != 1) return NULL;
+
 	gdouble ww = gtk_widget_get_allocated_width(win->kitw);
 	gdouble wh = gtk_widget_get_allocated_height(win->kitw);
 	gdouble scale = confint("histimgsize") / MAX(1, MAX(ww, wh));
@@ -322,8 +324,7 @@ static gboolean historycb(Win *win)
 	if (ephemeral ||
 		!isin(wins, win) ||
 		!webkit_web_view_get_uri(win->kit) ||
-		g_str_has_prefix(URI(win), APP":") ||
-		webkit_web_view_is_loading(win->kit)
+		g_str_has_prefix(URI(win), APP":")
 	) return false;
 
 #define MAXSIZE 22222
@@ -3020,7 +3021,7 @@ static gchar *histdata(bool rest, bool all)
 		"a > span {padding:0 0 0 .6em; white-space:normal; word-wrap:break-word;}\n"
 		"i {font-size:.79em; color:#43a;}\n"
 		//for img
-		"em {min-width:%dpx;}\n"
+		"em {min-width:%dpx; text-align:center;}\n"
 		"img {"
 		" border-radius:.4em;"
 		" box-shadow:0 .1em .1em 0 #cbf;"
@@ -3069,7 +3070,7 @@ static gchar *histdata(bool rest, bool all)
 			gchar *itag = img ?
 				g_strdup_printf("<em><img src="APP":histimg/%"
 						G_GUINT64_FORMAT"></img></em>", img->id)
-				: NULL;
+				: g_strdup("<em>-</em>");
 
 			sv[++i] = g_strdup_printf(
 					"<p><a href=%s>%s"
@@ -3301,7 +3302,13 @@ static void crashcb(Win *win)
 static void notifycb(Win *win) { update(win); }
 static void progcb(Win *win)
 {
+	gdouble last = win->prog;
 	win->prog = webkit_web_view_get_estimated_load_progress(win->kit);
+
+	//D(prog %f, win->prog)
+	if (last < .3 && win->prog >= .3)
+		addhistory(win);
+
 	gtk_widget_queue_draw(win->kitw);
 }
 static void favcb(Win *win)
