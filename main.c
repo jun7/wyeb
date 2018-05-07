@@ -175,6 +175,11 @@ static void setcss(Win *win, gchar *namesstr);
 
 static gchar *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
+	"\n"
+	"  "APP" google.com\n"
+	"  "APP" new google.com\n"
+	"  "APP" / new google.com\n"
+	"\n"
 	"  suffix: Process ID.\n"
 	"    It is added to all directories conf, cache and etc.\n"
 	"    '/' is default. '//' means $SUFFIX.\n"
