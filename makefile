@@ -30,6 +30,9 @@ install: all
 	install -Dm644 wyeb.desktop $(DESTDIR)/usr/share/applications/wyeb.desktop
 
 re: clean all
+#	$(MAKE) clean
+#	$(MAKE) all
+
 full: re install
 
 uninstall:
