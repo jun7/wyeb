@@ -2176,7 +2176,9 @@ static Keybind dkeys[]= {
 	{"sourcecallback", 0, 0, "The web resource is sent via pipe"},
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
 	{"cookies"       , 0, 0,
-		"` wyeb // cookies $URI 'sh -c \"echo $RESULT\"' ` returns header"},
+		"` "APP" // cookies $URI 'sh -c \"echo $RESULT\"' ` prints headers."
+			"\n  Make sure, the callbacks of "APP" are async."
+			"\n  The stdout is not caller's but first process's stdout."},
 #endif
 
 
