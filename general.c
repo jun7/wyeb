@@ -136,7 +136,7 @@ Conf dconf[] = {
 
 	{"boot"  , "enablefavicon", "true"},
 	{"boot"  , "extensionargs", "adblock:true;"},
-	{"boot"  , "multiwebprocs", "true"},
+	{"boot"  , "multiwebprocs", "false"},
 	{"boot"  , "ephemeral"    , "false"},
 	{"boot"  , "unsetGTK_OVERLAY_SCROLLING", "true", "workaround"},
 
