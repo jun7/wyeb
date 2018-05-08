@@ -91,6 +91,9 @@ typedef struct _WP {
 	gchar  *msg;
 	bool    smallmsg;
 	gdouble prog;
+	gdouble progd;
+	GdkRectangle progrect;
+	guint drawprogcb;
 	GdkRGBA rgba;
 
 	//hittestresult
@@ -2718,23 +2721,30 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 				gdkw(win->kitw), pointer(), &px, &py, NULL);
 
 		gdouble alpha = px > 0 && px < w &&
-			py > (gint)(h - fsize * 2) && py < h ? .4 : .9;
+			py > (gint)(h - fsize * 2) && py < h ? .4 : 1.0;
 
-		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->prog));
-		gdouble y = h - base - 1; //-1: for monitors hide bottom pixels when viewing top to bottom
+		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->progd));
+		//* 2: for monitors hide bottom pixels when viewing top to bottom
+		gdouble y = h - base * 2 ;
 		cairo_set_line_width(cr, base * 2);
 
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
-		colorb(win, cr, alpha);
+		colorb(win, cr, alpha - .2);
 		cairo_stroke(cr);
 
+		static bool blink = false;
+		if ((blink = !blink)) alpha *= .8;
+		GdkRectangle rect = {0, y - base - 1, w, y + base * 2 + 2};
+		win->progrect = rect;
+
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-		cairo_move_to(cr,     w/2 * win->prog, y);
-		cairo_line_to(cr, w - w/2 * win->prog, y);
+		cairo_move_to(cr,     w/2 * win->progd, y);
+		cairo_line_to(cr, w - w/2 * win->progd, y);
 		colorf(win, cr, alpha / (gtk_widget_has_focus(win->kitw) ? 1 : 3));
 		cairo_stroke(cr);
-	}
+	} else
+		win->progrect.width = 0;
 
 	winlist(win, 0, cr);
 	return false;
@@ -3343,14 +3353,40 @@ static void crashcb(Win *win)
 	tonormal(win);
 }
 static void notifycb(Win *win) { update(win); }
+static void drawprogif(Win *win)
+{
+	if (win->prog != 1 && win->progrect.width)
+		gdk_window_invalidate_rect(gdkw(win->kitw), &win->progrect, TRUE);
+}
+static gboolean drawprogcb(Win *win)
+{
+	if (!isin(wins, win)) return false;
+	gdouble shift = win->prog + .2 * (1 - win->prog);
+	win->progd = shift - (shift - win->progd) * .94;
+	drawprogif(win);
+	return true;
+}
 static void progcb(Win *win)
 {
 	win->prog = webkit_web_view_get_estimated_load_progress(win->kit);
+	//D(prog %f, win->prog)
 
 	if (win->prog > .3) //.3 emits after other events just about
 		updatehist(win);
 
-	gtk_widget_queue_draw(win->kitw);
+	if (win->prog == 1)
+	{
+		if (win->drawprogcb)
+			g_source_remove(win->drawprogcb);
+		win->drawprogcb = 0;
+		win->progd = 0;
+		gtk_widget_queue_draw(win->kitw);
+	}
+	else if (!win->drawprogcb)
+	{
+		win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
+		gtk_widget_queue_draw(win->kitw);
+	}
 }
 static void favcb(Win *win)
 {
@@ -3709,15 +3745,13 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
-	else if (win->prog != 1)
-		gtk_widget_queue_draw(win->kitw);
+	else drawprogif(win);
 
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 {
-	if (win->prog != 1)
-		gtk_widget_queue_draw(win->kitw);
+	drawprogif(win);
 	return false;
 }
 static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
@@ -3743,8 +3777,7 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 		return true;
 	}
 
-	if (win->prog != 1)
-		gtk_widget_queue_draw(win->kitw);
+	drawprogif(win);
 
 	return false;
 }
