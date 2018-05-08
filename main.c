@@ -2721,7 +2721,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 			py > (gint)(h - fsize * 2) && py < h ? .4 : .9;
 
 		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->prog));
-		gdouble y = h - base;
+		gdouble y = h - base - 1; //-1: for monitors hide bottom pixels when viewing top to bottom
 		cairo_set_line_width(cr, base * 2);
 
 		cairo_move_to(cr, 0, y);
