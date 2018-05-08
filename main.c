@@ -421,9 +421,7 @@ static void histperiod(Win *win)
 {
 	if (win->histstr)
 	{
-		if (win->histcb)
-			g_source_remove(win->histcb);
-
+		g_source_remove(win->histcb);
 		//if not cancel updated by load finish(fixhist)
 		histcb(win);
 	}
@@ -433,9 +431,7 @@ static void fixhist(Win *win)
 	if (webkit_web_view_is_loading(win->kit) ||
 			!updatehist(win)) return;
 
-	if (win->histcb)
-		g_source_remove(win->histcb);
-
+	g_source_remove(win->histcb);
 	//drawing delays so for ss have to swap non finished draw
 	win->histcb = g_timeout_add(200, (GSourceFunc)histcb, win);
 }
@@ -467,7 +463,7 @@ static gboolean clearmsgcb(Win *win)
 }
 static void _showmsg(Win *win, gchar *msg, bool small)
 {
-	if (win->msgfunc) g_source_remove(win->msgfunc);
+	g_source_remove(win->msgfunc);
 	GFA(win->msg, msg)
 	win->smallmsg = small;
 	win->msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
@@ -3366,9 +3362,10 @@ static gboolean drawprogcb(Win *win)
 	{
 		win->progd = shift;
 		gtk_widget_queue_draw(win->kitw);
+	} else {
+		win->progd = shift - (shift - win->progd) * .94;
+		drawprogif(win);
 	}
-	win->progd = shift - (shift - win->progd) * .94;
-	drawprogif(win);
 	return true;
 }
 static void progcb(Win *win)
@@ -3381,8 +3378,7 @@ static void progcb(Win *win)
 
 	if (win->prog == 1)
 	{
-		if (win->drawprogcb)
-			g_source_remove(win->drawprogcb);
+		g_source_remove(win->drawprogcb);
 		win->drawprogcb = 0;
 		win->progd = 0;
 		gtk_widget_queue_draw(win->kitw);
