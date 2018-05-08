@@ -2725,7 +2725,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 
 		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->progd));
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
-		gdouble y = h - base * 2 ;
+		gdouble y = h - base * 2;
 		cairo_set_line_width(cr, base * 2);
 
 		cairo_move_to(cr, 0, y);
@@ -3362,6 +3362,11 @@ static gboolean drawprogcb(Win *win)
 {
 	if (!isin(wins, win)) return false;
 	gdouble shift = win->prog + .2 * (1 - win->prog);
+	if (win->progd > shift) //reload
+	{
+		win->progd = shift;
+		gtk_widget_queue_draw(win->kitw);
+	}
 	win->progd = shift - (shift - win->progd) * .94;
 	drawprogif(win);
 	return true;
@@ -3980,6 +3985,9 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		send(win, Cstart, NULL);
 
 		setspawn(win, "onstartmenu");
+
+		//workaround first time not dir then prog left
+		win->prog = 0;
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
