@@ -4162,9 +4162,6 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "cviewSource"      , APP" // sourcecallback "
 				"'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" &&"
 					" tee > \\\"$d\\\" && mimeopen -n \\\"$d\\\"\"'");
-		addscript(dir, "fopenSourceAsText", APP" // sourcecallback "
-				"'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" &&"
-					" tee > \\\"$d\\\" && wyeb // openeditor \\\"$d\\\"\"'");
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
 		addscript(dir, "xnoSuffixProcess" , APP" / new $LINK_OR_URI");
