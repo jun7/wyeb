@@ -2148,6 +2148,7 @@ static Keybind dkeys[]= {
 	{"dlwithheaders" , 0, 0, "Current uri is sent as Referer. Also cookies"},
 	{"showmsg"       , 0, 0},
 	{"click"         , 0, 0, "x:y"},
+	{"openeditor"    , 0, 0},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
 	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $RESULT"},
 	{"tohintcallback", 0, 0,
@@ -2231,7 +2232,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
 			return true;)
-	Z("openeditor" , openeditor(win, arg, NULL))
 	Z("reloadlast" , reloadlast())
 	Z("focusuri"   , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
 
@@ -2320,6 +2320,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			makeclick(win, win->pbtn);
 			g_strfreev(xy);
 		)
+		Z("openeditor", openeditor(win, arg, NULL))
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
 		Z("jscallback"    ,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
@@ -4161,6 +4162,9 @@ void makemenu(WebKitContextMenu *menu)
 		addscript(dir, "cviewSource"      , APP" // sourcecallback "
 				"'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" &&"
 					" tee > \\\"$d\\\" && mimeopen -n \\\"$d\\\"\"'");
+		addscript(dir, "fopenSourceAsText", APP" // sourcecallback "
+				"'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" &&"
+					" tee > \\\"$d\\\" && wyeb // openeditor \\\"$d\\\"\"'");
 		addscript(dir, "v---"             , "");
 		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
 		addscript(dir, "xnoSuffixProcess" , APP" / new $LINK_OR_URI");
