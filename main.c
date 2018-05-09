@@ -3364,7 +3364,7 @@ static gboolean drawprogcb(Win *win)
 	gdouble shift = win->prog + .2 * (1 - win->prog);
 	if (win->progd > shift) //reload
 	{
-		win->progd = shift;
+		win->progd = 0;
 		gtk_widget_queue_draw(win->kitw);
 	} else {
 		win->progd = shift - (shift - win->progd) * .94;
