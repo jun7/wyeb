@@ -421,7 +421,9 @@ static void histperiod(Win *win)
 {
 	if (win->histstr)
 	{
-		g_source_remove(win->histcb);
+		if (win->histcb)
+			g_source_remove(win->histcb);
+
 		//if not cancel updated by load finish(fixhist)
 		histcb(win);
 	}
@@ -431,7 +433,9 @@ static void fixhist(Win *win)
 	if (webkit_web_view_is_loading(win->kit) ||
 			!updatehist(win)) return;
 
-	g_source_remove(win->histcb);
+	if (win->histcb)
+		g_source_remove(win->histcb);
+
 	//drawing delays so for ss have to swap non finished draw
 	win->histcb = g_timeout_add(200, (GSourceFunc)histcb, win);
 }
@@ -463,7 +467,7 @@ static gboolean clearmsgcb(Win *win)
 }
 static void _showmsg(Win *win, gchar *msg, bool small)
 {
-	g_source_remove(win->msgfunc);
+	if (win->msgfunc) g_source_remove(win->msgfunc);
 	GFA(win->msg, msg)
 	win->smallmsg = small;
 	win->msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
