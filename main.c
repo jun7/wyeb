@@ -3308,48 +3308,27 @@ static void crashcb(Win *win)
 	tonormal(win);
 }
 static void notifycb(Win *win) { update(win); }
-static void drawprogif(Win *win)
+static void drawprogif(Win *win, bool force)
 {
-	if (win->prog != 1 && win->progrect.width)
+	if ((win->prog != 1 || force) && win->progrect.width)
 		gdk_window_invalidate_rect(gdkw(win->kitw), &win->progrect, TRUE);
 }
 static gboolean drawprogcb(Win *win)
 {
 	if (!isin(wins, win)) return false;
 	gdouble shift = win->prog + .2 * (1 - win->prog);
-	if (shift - win->progd < 0) //load re-started but not progcb
-		win->progd = win->prog;
-	else
-		win->progd = shift - (shift - win->progd) * .94;
-	drawprogif(win);
+	if (shift - win->progd < 0) return true; //when reload prog is may mixed
+	win->progd = shift - (shift - win->progd) * .94;
+	drawprogif(win, false);
 	return true;
 }
 static void progcb(Win *win)
 {
-	gdouble last = win->prog;
 	win->prog = webkit_web_view_get_estimated_load_progress(win->kit);
 	//D(prog %f, win->prog)
 
 	if (win->prog > .3) //.3 emits after other events just about
 		updatehist(win);
-
-	if (win->prog == 1)
-	{
-		g_source_remove(win->drawprogcb);
-		win->drawprogcb = 0;
-		win->progd = 0;
-		gtk_widget_queue_draw(win->kitw);
-	}
-	else if (!win->drawprogcb)
-	{
-		win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
-		gtk_widget_queue_draw(win->kitw);
-	}
-	else if (last >= win->prog) //reload
-	{
-		win->progd = 0;
-		gtk_widget_queue_draw(win->kitw);
-	}
 }
 static void favcb(Win *win)
 {
@@ -3703,13 +3682,13 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
-	else drawprogif(win);
+	else drawprogif(win, false);
 
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 {
-	drawprogif(win);
+	drawprogif(win, false);
 	return false;
 }
 static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
@@ -3735,7 +3714,7 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 		return true;
 	}
 
-	drawprogif(win);
+	drawprogif(win, false);
 
 	return false;
 }
@@ -3939,8 +3918,15 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 		setspawn(win, "onstartmenu");
 
-		//workaround first time not dir then prog left
-		win->prog = 0;
+		//there is progcb before this event but sometimes it is
+		//before page's prog and we can't get which is it.
+		//policycb? no it emits even sub frames and of course
+		//we can't get if it is sub or not.
+		win->prog = .1;
+		win->progd = 0;
+		if (!win->drawprogcb)
+			win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
+		gtk_widget_queue_draw(win->kitw);
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
@@ -3978,9 +3964,10 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			send(win, Con, NULL); //for iframe
 		}
 
-		//workaround first time not dir then prog left
-		win->prog = 1;
-
+		win->prog = 1; //workaround first time if not dirs then prog left
+		drawprogif(win, true);
+		g_source_remove(win->drawprogcb);
+		win->drawprogcb = 0;
 		break;
 	}
 }
