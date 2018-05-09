@@ -1,4 +1,6 @@
 
+cd `dirname $0`
+
 export DEBUG=1
 make clean
 make > /dev/null 2>&1
