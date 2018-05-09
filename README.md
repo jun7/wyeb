@@ -50,7 +50,7 @@ depends:
 	make
 	sudo make install
 
-For testing, Make and run without install
+For testing, make and run without install
 
 	./testrun.sh
 
