@@ -3362,18 +3362,13 @@ static gboolean drawprogcb(Win *win)
 {
 	if (!isin(wins, win)) return false;
 	gdouble shift = win->prog + .2 * (1 - win->prog);
-	if (win->progd > shift) //reload
-	{
-		win->progd = 0;
-		gtk_widget_queue_draw(win->kitw);
-	} else {
-		win->progd = shift - (shift - win->progd) * .94;
-		drawprogif(win);
-	}
+	win->progd = shift - (shift - win->progd) * .94;
+	drawprogif(win);
 	return true;
 }
 static void progcb(Win *win)
 {
+	gdouble last = win->prog;
 	win->prog = webkit_web_view_get_estimated_load_progress(win->kit);
 	//D(prog %f, win->prog)
 
@@ -3390,6 +3385,11 @@ static void progcb(Win *win)
 	else if (!win->drawprogcb)
 	{
 		win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
+		gtk_widget_queue_draw(win->kitw);
+	}
+	else if (last >= win->prog) //reload
+	{
+		win->progd = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
 }
