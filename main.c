@@ -29,20 +29,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 typedef enum {
 	Mnormal    = 0,
 	Minsert    = 1,
-
-	Mhint      = 2, //click
-	Mhintopen  = 2 + 4,
-	Mhintnew   = 2 + 8,
-	Mhintback  = 2 + 16,
-	Mhintdl    = 2 + 32,
-	Mhintbkmrk = 2 + 64,
-	Mhintspawn = 2 + 128,
-	Mhintrange = 2 + 256,
-
+	Mhint      = 2,
+	Mhintrange = 2 + 4,
 	Mfind      = 512,
 	Mopen      = 1024,
 	Mopennew   = 2048,
-
 	Mlist      = 4096,
 	Mpointer   = 8192,
 } Modes;
@@ -129,9 +120,13 @@ typedef struct _WP {
 	gchar  *histstr;
 	guint   histcb;
 
-	//misc
+	//hint
+	char    com; //Coms
+	gchar  *action; //const. do not free
 	gchar  *spawn;
 	gchar  *spawndir;
+
+	//misc
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
 	bool    fordl;
@@ -1061,12 +1056,6 @@ static void _modechanged(Win *win)
 
 	case Mhint:
 		win->pbtn = 1;
-	case Mhintopen:
-	case Mhintnew:
-	case Mhintback:
-	case Mhintdl:
-	case Mhintbkmrk:
-	case Mhintspawn:
 	case Mhintrange:
 		send(win, Crm, NULL);
 	case Mnormal:
@@ -1075,7 +1064,6 @@ static void _modechanged(Win *win)
 	}
 
 	//into
-	Coms com = 0;
 	switch (win->mode) {
 	case Minsert:
 		break;
@@ -1116,19 +1104,7 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mhint:
-		com = Cclick;
-	case Mhintopen:
-	case Mhintnew:
-	case Mhintback:
-		if (!com) com = Clink;
-	case Mhintdl:
-	case Mhintbkmrk:
-		if (!com) com = Curi;
-	case Mhintspawn:
-		if (!com) com = Cspawn;
 	case Mhintrange:
-		if (!com) com = Crange;
-
 		if (win->crashed)
 			win->mode = Mnormal;
 		else
@@ -1136,7 +1112,7 @@ static void _modechanged(Win *win)
 			gchar *arg = g_strdup_printf("%c",
 					win->pbtn > 1 ||
 					getsetbool(win, "hackedhint4js") ? 'y' : 'n');
-			send(win, com, arg);
+			send(win, win->com, arg);
 			g_free(arg);
 		}
 	case Mnormal:
@@ -1167,13 +1143,6 @@ static void update(Win *win)
 		break;
 
 	case Mhint:
-	case Mhintopen:
-	case Mhintnew:
-	case Mhintback:
-	case Mhintdl:
-	case Mhintbkmrk:
-	case Mhintspawn:
-
 	case Mopen:
 	case Mopennew:
 	case Mfind:
@@ -2268,25 +2237,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		retv = g_strsplit(arg + 1, " ", 3);
 		arg = retv[1];
 
-		switch (win->mode) {
-		case Mhintopen:
-			action = "open"    ; break;
-		case Mhintnew:
-			action = "opennew" ; break;
-		case Mhintback:
-			action = "openback"; break;
-		case Mhintdl:
-			if (getsetbool(win, "dlwithheaders"))
-				action = "dlwithheaders";
-			else
-				action = "download";
-			break;
-		case Mhintbkmrk:
+		action = win->action;
+		if (!strcmp(action, "bookmark"))
 			arg = strchr(orgarg, ' ') + 1;
-			action = "bookmark"; break;
-
-		case Mhintrange:
-		case Mhintspawn:
+		else if (!strcmp(action, "spawn"))
+		{
 			setresult(win, NULL);
 			win->linklabel = g_strdup(retv[2]);
 
@@ -2298,14 +2253,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			case 'm':
 				win->media = g_strdup(arg); break;
 			}
-			action = "spawn";
 			arg = win->spawn;
 			cdir = win->spawndir;
-			break;
-
-		case Mhint:
-		default:
-			break;
 		}
 	}
 
@@ -2376,13 +2325,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
 				g_slist_prepend(g_slist_prepend(NULL,
 						g_strdup(cdir)), g_strdup(exarg))))
-		Z("tohintcallback", win->mode = Mhintspawn;
-				GFA(win->spawn, g_strdup(arg))
-				GFA(win->spawndir, g_strdup(cdir)))
-		Z("tohintrange", win->mode = Mhintrange;
-				GFA(win->spawn, g_strdup(arg))
-				GFA(win->spawndir, g_strdup(cdir)))
-
 		Z("sourcecallback",
 			WebKitWebResource *res =
 				webkit_web_view_get_main_resource(win->kit);
@@ -2404,7 +2346,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("toinsert"    , win->mode = Minsert)
 	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, NULL))
 
-
 	if (g_str_has_prefix(action, "topointer"))
 	{
 		guint prevbtn = win->pbtn;
@@ -2420,16 +2361,28 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		goto out;
 	}
 
-	Z("tohint"      , win->mode = Mhint)
-	Z("tohintopen"  , win->mode = Mhintopen)
-	Z("tohintnew"   , win->mode = Mhintnew)
-	Z("tohintback"  , win->mode = Mhintback)
-	Z("tohintdl"    , win->mode = Mhintdl)
-	Z("tohintbookmark", win->mode = Mhintbkmrk)
-	Z("tohintrangenew", win->mode = Mhintrange;
-				GFA(win->spawn, g_strdup(
-						"sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\""))
-				GFA(win->spawndir, NULL))
+#define H(str, pcom, paction, func) \
+	Z(str, win->com = pcom; win->action = paction; win->mode = Mhint; func)
+	H("tohint"        , Cclick, ""        , ) //click
+	H("tohintopen"    , Clink , "open"    , )
+	H("tohintnew"     , Clink , "opennew" , )
+	H("tohintback"    , Clink , "openback", )
+	H("tohintdl"      , Curi  ,
+		getsetbool(win, "dlwithheaders") ? "dlwithheaders" :"download", )
+	H("tohintbookmark", Curi  , "bookmark", )
+	H("tohintrangenew", Crange, "spawn"   , win->mode = Mhintrange;
+		GFA(win->spawn, g_strdup("sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\""))
+		GFA(win->spawndir, NULL))
+
+	if (arg != NULL) {
+	H("tohintrange"   , Crange, "spawn"   , win->mode = Mhintrange;
+		GFA(win->spawn, g_strdup(arg))
+		GFA(win->spawndir, g_strdup(cdir)))
+	H("tohintcallback", Cspawn, "spawn"   ,
+		GFA(win->spawn, g_strdup(arg))
+		GFA(win->spawndir, g_strdup(cdir)))
+	}
+#undef H
 
 	Z("showdldir"   ,
 		command(win, confcstr("diropener"), dldir(win));
@@ -3342,6 +3295,7 @@ static void destroycb(Win *win)
 
 	g_free(win->histstr);
 
+	//hint
 	g_free(win->spawn);
 	g_free(win->spawndir);
 
