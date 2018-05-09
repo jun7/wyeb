@@ -2140,7 +2140,7 @@ static Keybind dkeys[]= {
 	{"findclipboard" , 0, 0},
 	{"findsecondary" , 0, 0},
 
-	{"tohintopen"    , 0, 0, "not click but open uri as opennew/back"},
+	{"tohintopen"    , 0, 0, "not click but opens uri as opennew/back"},
 
 	{"openback"      , 0, 0},
 	{"openwithref"   , 0, 0, "Current uri is sent as Referer"},
