@@ -3317,7 +3317,10 @@ static gboolean drawprogcb(Win *win)
 {
 	if (!isin(wins, win)) return false;
 	gdouble shift = win->prog + .2 * (1 - win->prog);
-	win->progd = shift - (shift - win->progd) * .94;
+	if (shift - win->progd < 0) //load re-started but not progcb
+		win->progd = win->prog;
+	else
+		win->progd = shift - (shift - win->progd) * .94;
 	drawprogif(win);
 	return true;
 }
