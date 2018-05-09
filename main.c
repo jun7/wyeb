@@ -547,9 +547,13 @@ static gboolean delaymdlrcb(Win *win)
 		putbtne(win, GDK_BUTTON_RELEASE, 2);
 	return false;
 }
-static void delaymdlr(Win * win)
+static void makeclick(Win *win, guint btn)
 {
-	g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
+	putbtne(win, GDK_BUTTON_PRESS, btn);
+	if (btn == 2)
+		g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
+	else
+		putbtne(win, GDK_BUTTON_RELEASE, btn);
 }
 
 //shared
@@ -2313,11 +2317,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			gdouble z = webkit_web_view_get_zoom_level(win->kit);
 			win->px = atof(*xy) * z;
 			win->py = atof(*(xy + 1)) * z;
-			putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
-			if (win->pbtn == 2)
-				delaymdlr(win);
-			else
-				putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
+			makeclick(win, win->pbtn);
 			g_strfreev(xy);
 		)
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
@@ -3372,12 +3372,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (win->mode == Mpointer &&
 			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
-		putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
-		if (win->pbtn == 2)
-			delaymdlr(win);
-		else
-			putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
-
+		makeclick(win, win->pbtn);
 		tonormal(win);
 		return true;
 	}
