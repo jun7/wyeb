@@ -809,7 +809,7 @@ static void resetconf(Win *win, int type)
 	else
 		gtk_widget_hide(win->lblw);
 
-	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor"));
+	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor") ?: "");
 }
 
 static void checkmd(const gchar *mp)
