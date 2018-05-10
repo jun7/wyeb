@@ -4269,6 +4269,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	if (!(ke->state & GDK_CONTROL_MASK)) return false;
 	//ctrls
 	static char *buf = NULL;
+	int wpos = 0;
 	GtkEditable *e = (void *)w;
 	int pos = gtk_editable_get_position(e);
 	switch (ke->keyval) {
@@ -4299,8 +4300,6 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		gtk_editable_delete_text(e, pos, -1); break;
 	}
 	case GDK_KEY_w:
-	{
-		bool start = false;
 		for (int i = pos; i > 0; i--)
 		{
 			gchar *str = gtk_editable_get_chars(e, i - 1, i);
@@ -4308,18 +4307,15 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 			g_free(str);
 
 			if (c != ' ')
-				start = true;
-			else if (start)
+				wpos = i - 1;
+			else if (wpos)
 				break;
-			gtk_editable_delete_text(e, i - 1, i);
 		}
-		break;
-	}
 	case GDK_KEY_u:
 	{
 		GFA(buf, g_strdup(
-		  gtk_editable_get_chars(e, 0, pos)));
-		gtk_editable_delete_text(e, 0, pos); break;
+		  gtk_editable_get_chars(e, wpos, pos)));
+		gtk_editable_delete_text(e, wpos, pos); break;
 	}
 	case GDK_KEY_y:
 	{
