@@ -4300,6 +4300,23 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	}
 	case GDK_KEY_w:
 	{
+		bool start = false;
+		for (int i = pos; i > 0; i--)
+		{
+			gchar *str = gtk_editable_get_chars(e, i - 1, i);
+			gchar c = *str;
+			g_free(str);
+
+			if (c != ' ')
+				start = true;
+			else if (start)
+				break;
+			gtk_editable_delete_text(e, i - 1, i);
+		}
+		break;
+	}
+	case GDK_KEY_u:
+	{
 		GFA(buf, g_strdup(
 		  gtk_editable_get_chars(e, 0, pos)));
 		gtk_editable_delete_text(e, 0, pos); break;
