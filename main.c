@@ -519,7 +519,7 @@ static GdkDevice *pointer()
 static GdkDevice *keyboard()
 { return gdk_seat_get_keyboard(
 		gdk_display_get_default_seat(gdk_display_get_default())); }
-static void _putbtne(Win* win, GdkEventType type, guint btn, double x, double y)
+static void _putbtn(Win* win, GdkEventType type, guint btn, double x, double y)
 {
 	GdkEvent *e = gdk_event_new(type);
 	GdkEventButton *eb = (GdkEventButton *)e;
@@ -540,21 +540,21 @@ static void _putbtne(Win* win, GdkEventType type, guint btn, double x, double y)
 	gdk_event_put(e);
 	gdk_event_free(e);
 }
-static void putbtne(Win* win, GdkEventType type, guint btn)
-{ _putbtne(win, type, btn, win->px, win->py); }
+static void putbtn(Win* win, GdkEventType type, guint btn)
+{ _putbtn(win, type, btn, win->px, win->py); }
 static gboolean delaymdlrcb(Win *win)
 {
 	if (isin(wins, win))
-		putbtne(win, GDK_BUTTON_RELEASE, 2);
+		putbtn(win, GDK_BUTTON_RELEASE, 2);
 	return false;
 }
 static void makeclick(Win *win, guint btn)
 {
-	putbtne(win, GDK_BUTTON_PRESS, btn);
+	putbtn(win, GDK_BUTTON_PRESS, btn);
 	if (btn == 2)
 		g_timeout_add(40, (GSourceFunc)delaymdlrcb, win);
 	else
-		putbtne(win, GDK_BUTTON_RELEASE, btn);
+		putbtn(win, GDK_BUTTON_RELEASE, btn);
 }
 
 //shared
@@ -1054,6 +1054,7 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mpointer:
+		win->ppress = 0;
 		if (win->mode != Mhint)
 			win->pbtn = 1;
 		gtk_widget_queue_draw(win->kitw);
@@ -1445,7 +1446,7 @@ static void scroll(Win *win, gint x, gint y)
 	gdk_event_put(e);
 	gdk_event_free(e);
 }
-void motion(Win *win, gdouble x, gdouble y)
+static void motion(Win *win, gdouble x, gdouble y)
 {
 	GdkEvent *e = gdk_event_new(GDK_MOTION_NOTIFY);
 	GdkEventMotion *em = (GdkEventMotion *)e;
@@ -1509,7 +1510,7 @@ void pmove(Win *win, guint key)
 
 	gtk_widget_queue_draw(win->kitw);
 }
-static void sendkey(Win *win, guint key)
+static void putkey(Win *win, guint key)
 {
 	GdkEvent *e = gdk_event_new(GDK_KEY_PRESS);
 	GdkEventKey *ek = (GdkEventKey *)e;
@@ -2449,22 +2450,22 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("scrollright", pmove(win, GDK_KEY_Right))
 	}
 	bool arrow = getsetbool(win, "hjkl2arrowkeys");
-	Z(arrow ? "scrolldown"  : "arrowdown" , sendkey(win, GDK_KEY_Down))
-	Z(arrow ? "scrollup"    : "arrowup"   , sendkey(win, GDK_KEY_Up))
-	Z(arrow ? "scrollleft"  : "arrowleft" , sendkey(win, GDK_KEY_Left))
-	Z(arrow ? "scrollright" : "arrowright", sendkey(win, GDK_KEY_Right))
+	Z(arrow ? "scrolldown"  : "arrowdown" , putkey(win, GDK_KEY_Down))
+	Z(arrow ? "scrollup"    : "arrowup"   , putkey(win, GDK_KEY_Up))
+	Z(arrow ? "scrollleft"  : "arrowleft" , putkey(win, GDK_KEY_Left))
+	Z(arrow ? "scrollright" : "arrowright", putkey(win, GDK_KEY_Right))
 	Z(arrow ? "arrowdown"  : "scrolldown" , scroll(win, 0, 1))
 	Z(arrow ? "arrowup"    : "scrollup"   , scroll(win, 0, -1))
 	Z(arrow ? "arrowleft"  : "scrollleft" , scroll(win, -1, 0))
 	Z(arrow ? "arrowright" : "scrollright", scroll(win, 1, 0))
 
-	Z("pagedown"    , sendkey(win, GDK_KEY_Page_Down))
-	Z("pageup"      , sendkey(win, GDK_KEY_Page_Up))
+	Z("pagedown"    , putkey(win, GDK_KEY_Page_Down))
+	Z("pageup"      , putkey(win, GDK_KEY_Page_Up))
 	Z("halfdown"    , send(win, Cscroll, "d"))
 	Z("halfup"      , send(win, Cscroll, "u"))
 
-	Z("top"         , sendkey(win, GDK_KEY_Home))
-	Z("bottom"      , sendkey(win, GDK_KEY_End))
+	Z("top"         , putkey(win, GDK_KEY_Home))
+	Z("bottom"      , putkey(win, GDK_KEY_End))
 	Z("zoomin"      ,
 			gdouble z = webkit_web_view_get_zoom_level(win->kit);
 			webkit_web_view_set_zoom_level(win->kit, z * 1.06))
@@ -3385,6 +3386,13 @@ static void favcb(Win *win)
 	else
 		gtk_window_set_icon(win->win, NULL);
 }
+static bool checkppress(Win *win, guint key)
+{
+	if (!win->ppress || (key && key != win->ppress)) return false;
+	putbtn(win, GDK_BUTTON_RELEASE, win->pbtn);
+	tonormal(win);
+	return true;
+}
 static bool keyr = true;
 static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
@@ -3397,7 +3405,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	{
 		if (!win->ppress)
 		{
-			putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
+			putbtn(win, GDK_BUTTON_PRESS, win->pbtn);
 			win->ppress = ek->keyval;
 		}
 		return true;
@@ -3503,13 +3511,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 }
 static gboolean keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
-	if (win->ppress == ek->keyval)
-	{
-		win->ppress = 0;
-		putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
-		tonormal(win);
-		return true;
-	}
+	if (checkppress(win, ek->keyval)) return true;
 
 	if (ek->is_modifier) return false;
 	return keyr;
@@ -3701,14 +3703,17 @@ static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
 	{ //we assume this is right click though it only means a btn released
 		double px, py;
 		gdk_window_get_device_position_double(gw, gd, &px, &py, NULL);
-		_putbtne(win, GDK_BUTTON_PRESS, 13, px, py);
+		_putbtn(win, GDK_BUTTON_PRESS, 13, px, py);
 	}
 }
 static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
 {
 	if (win->mode == Mpointer)
-		putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
-		//gtk_drag_cancel(ctx); //not works
+	{
+		showmsg(win, "Pointer Mode does not support drag");
+		putkey(win, GDK_KEY_Escape);
+		checkppress(win, 0);
+	}
 	else
 		SIG(ctx, "cancel", dragccb, win);
 }
@@ -3721,6 +3726,7 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 	}
 	else drawprogif(win, false);
 
+	checkppress(win, 0);
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
