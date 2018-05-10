@@ -2687,10 +2687,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		colorb(win, cr, alpha - .2);
 		cairo_stroke(cr);
 
-		static bool blink = false;
-		if ((blink = !blink)) alpha *= .8;
-		GdkRectangle rect = {0, y - base - 1, w, y + base * 2 + 2};
-		win->progrect = rect;
+		win->progrect = (GdkRectangle){0, y - base - 1, w, y + base * 2 + 2};
 
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 		cairo_move_to(cr,     w/2 * win->progd, y);
