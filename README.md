@@ -34,7 +34,7 @@ For example, context-menu items we added are just shell scripts.
 - Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
 Of course it is in the 'set:', so we can set it by uri.
 - Focused history. Instead of loaded history.
-- Pointer Mode. **p** makes pure click event for javascript pages.
+- Pointer Mode. **p** makes pure click event for javascript pages. Also it moves pointer pos used by scroll and keeps pos last clicked for same layout pages.
 - Range hinting. ctrl-r. Also see hidden files in the menu dir, it has callback interface.
 - Misc. monitored conf files, saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time though.

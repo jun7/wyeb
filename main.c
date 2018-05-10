@@ -102,6 +102,7 @@ typedef struct _WP {
 	gdouble px;
 	gdouble py;
 	guint   pbtn;
+	guint   ppress;
 
 	//entry
 	GSList *undo;
@@ -1139,7 +1140,10 @@ static void update(Win *win)
 		break;
 
 	case Mpointer:
-		settitle(win, "-- POINTER MODE --");
+		if (win->link) goto normal;
+		gchar *tmp = g_strdup_printf("-- POINTER MODE %d --", win->pbtn);
+		settitle(win, tmp);
+		g_free(tmp);
 		break;
 
 	case Mhintrange:
@@ -1156,6 +1160,7 @@ static void update(Win *win)
 
 	//normal mode
 	if (win->mode != Mnormal) return;
+normal:
 
 	if (win->focusuri || win->link)
 	{
@@ -1434,8 +1439,35 @@ static void scroll(Win *win, gint x, gint y)
 	es->delta_y = y;
 	gdk_event_set_device(e, keyboard());
 
+	es->x = win->px;
+	es->y = win->py;
+
 	gdk_event_put(e);
 	gdk_event_free(e);
+}
+void motion(Win *win, gdouble x, gdouble y)
+{
+	GdkEvent *e = gdk_event_new(GDK_MOTION_NOTIFY);
+	GdkEventMotion *em = (GdkEventMotion *)e;
+
+	em->window = gdkw(win->winw);
+	g_object_ref(em->window);
+	em->x      = x;
+	em->y      = y ;
+	gdk_event_set_device(e, pointer());
+	if (win->ppress)
+		em->state = win->pbtn == 3 ? GDK_BUTTON3_MASK :
+		            win->pbtn == 2 ? GDK_BUTTON2_MASK : GDK_BUTTON1_MASK;
+
+	gtk_widget_event(win->kitw, e);
+	gdk_event_free(e);
+
+//	gint wx, wy;
+//	gdk_window_get_position(gdkw(win->winw), &wx, &wy);
+//	gdk_device_warp(pointer(),
+//			gdk_display_get_default_screen(
+//				gdk_window_get_display(gdkw(win->winw))),
+//			wx + win->px, wy + win->py);
 }
 void pmove(Win *win, guint key)
 {
@@ -1459,7 +1491,8 @@ void pmove(Win *win, guint key)
 	)
 		win->lastdelta /= 2;
 
-	if (win->lastdelta < 2) win->lastdelta = 2;
+	guint32 unit = MAX(10, webkit_settings_get_default_font_size(win->set)) / 2;
+	if (win->lastdelta < unit) win->lastdelta = unit;
 	gdouble d = win->lastdelta;
 	if (key == GDK_KEY_Up   ) win->py -= d;
 	if (key == GDK_KEY_Down ) win->py += d;
@@ -1471,6 +1504,9 @@ void pmove(Win *win, guint key)
 
 	win->lastdelta *= .9;
 	win->lastkey = key;
+
+	motion(win, win->px, win->py);
+
 	gtk_widget_queue_draw(win->kitw);
 }
 static void sendkey(Win *win, guint key)
@@ -2039,7 +2075,7 @@ static Keybind dkeys[]= {
 //normal
 	{"toinsert"      , 'i', 0},
 	{"toinsertinput" , 'I', 0, "To Insert Mode with focus of first input"},
-	{"topointer"     , 'p', 0, "pp resets damping"},
+	{"topointer"     , 'p', 0, "pp resets damping. Press space selects text."},
 	{"topointermdl"  , 'P', 0, "Makes middle click"},
 	{"topointerright", 'p', GDK_CONTROL_MASK, "right click"},
 
@@ -2925,9 +2961,9 @@ static gchar *histdata(bool rest, bool all)
 		"<html><meta charset=utf8>\n"
 		"<style>\n"
 		"* {border-radius:.4em;}\n"
-		"p {margin:.2em 0 0 0; white-space:nowrap;}\n"
+		"p {margin:.4em 0; white-space:nowrap;}\n"
 		"a, a > * {display:inline-block; vertical-align:middle;}"
-		"a {padding:.3em; color:inherit; text-decoration:none;}\n"
+		"a {padding:.2em; color:inherit; text-decoration:none;}\n"
 		"a:hover {background-color:#faf6ff}\n"
 		"time {font-family:monospace;}\n"
 		"a > span {padding:0 0 0 .6em; white-space:normal; word-wrap:break-word;}\n"
@@ -3181,20 +3217,21 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 //@kit's cbs
 static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
-	guint32 fsize = MAX(10, webkit_settings_get_default_font_size(win->set));
-
 	if (win->lastx || win->lastx || win->mode == Mpointer)
 	{
+		guint csize = gdk_display_get_default_cursor_size(
+				gtk_widget_get_display(win->winw));
+
 		gdouble x, y, size;
 		if (win->mode == Mpointer)
-			x = win->px, y = win->py, size = fsize * .7;
+			x = win->px, y = win->py, size = csize * .6;
 		else
-			x = win->lastx, y = win->lasty, size = fsize * .3;
+			x = win->lastx, y = win->lasty, size = csize * .2;
 
-		cairo_move_to(cr, x - size, y - size);
-		cairo_line_to(cr, x + size, y + size);
-		cairo_move_to(cr, x - size, y + size);
-		cairo_line_to(cr, x + size, y - size);
+		cairo_move_to(cr, x, y - size);
+		cairo_line_to(cr, x, y + size);
+		cairo_move_to(cr, x - size, y);
+		cairo_line_to(cr, x + size, y);
 
 		if (win->mode == Mpointer)
 		{
@@ -3211,6 +3248,9 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->msg)
 	{
+		guint32 fsize = MAX(10,
+				webkit_settings_get_default_font_size(win->set));
+
 		gint x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x;
 		y -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
@@ -3235,6 +3275,9 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->prog != 1)
 	{
+		guint32 fsize = MAX(10,
+				webkit_settings_get_default_font_size(win->set));
+
 		gint h = gtk_widget_get_allocated_height(win->kitw);
 		gint w = gtk_widget_get_allocated_width(win->kitw);
 		h -= gtk_widget_get_visible(win->entw) ?
@@ -3352,8 +3395,11 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (win->mode == Mpointer &&
 			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
-		makeclick(win, win->pbtn);
-		tonormal(win);
+		if (!win->ppress)
+		{
+			putbtne(win, GDK_BUTTON_PRESS, win->pbtn);
+			win->ppress = ek->keyval;
+		}
 		return true;
 	}
 
@@ -3457,6 +3503,14 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 }
 static gboolean keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
+	if (win->ppress == ek->keyval)
+	{
+		win->ppress = 0;
+		putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
+		tonormal(win);
+		return true;
+	}
+
 	if (ek->is_modifier) return false;
 	return keyr;
 }
@@ -3491,7 +3545,8 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	//workaround
 	//for lacking of target change event when btn event happens with focus in;
-	senddelay(win, Cmode, NULL);
+	if (win->mode != Mpointer || !win->ppress)
+		senddelay(win, Cmode, NULL);
 //	if (win->oneditable)
 //		win->mode = Minsert;
 //	else
@@ -3518,27 +3573,8 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			break;
 		}
 
-		GdkEvent *me = gdk_event_new(GDK_MOTION_NOTIFY);
-		GdkEventMotion *em = (GdkEventMotion *)me;
-
-		em->time   = e->time  ;
-		em->window = e->window;
-		g_object_ref(em->window);
-		em->x      = e->x     ;
-		em->y      = e->y     ;
-		em->axes   = e->axes  ;
-		em->state  = e->state ;
-		em->device = e->device;
-		em->x_root = e->x_root;
-		em->y_root = e->y_root;
-
-		em->x      = e->x - 10000; //move somewhere
-		gtk_widget_event(win->kitw, me);
-		em->x      = e->x;         //and now enter !!
-		gtk_widget_event(win->kitw, me);
-
-		em->axes = NULL; //not own then don't free
-		gdk_event_free(me);
+		motion(win, e->x, e->y - 10000); //move somewhere
+		motion(win, e->x, e->y        ); //and now enter !!
 
 		if (pendingmiddlee)
 			gdk_event_free(pendingmiddlee);
@@ -3670,7 +3706,11 @@ static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
 }
 static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
 {
-	SIG(ctx, "cancel", dragccb, win);
+	if (win->mode == Mpointer)
+		putbtne(win, GDK_BUTTON_RELEASE, win->pbtn);
+		//gtk_drag_cancel(ctx); //not works
+	else
+		SIG(ctx, "cancel", dragccb, win);
 }
 static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 { //for checking drag end with button1
