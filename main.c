@@ -2591,7 +2591,7 @@ static bool setact(Win *win, gchar *key, const gchar *spare)
 }
 
 
-//@win and cbs:
+//@@win and cbs:
 static gboolean focuscb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
@@ -2607,97 +2607,6 @@ static gboolean focusoutcb(Win *win)
 {
 	if (win->mode == Mlist)
 		tonormal(win);
-	return false;
-}
-static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
-{
-	guint32 fsize = MAX(10, webkit_settings_get_default_font_size(win->set));
-
-	if (win->lastx || win->lastx || win->mode == Mpointer)
-	{
-		gdouble x, y, size;
-		if (win->mode == Mpointer)
-			x = win->px, y = win->py, size = fsize * .7;
-		else
-			x = win->lastx, y = win->lasty, size = fsize * .3;
-
-		cairo_move_to(cr, x - size, y - size);
-		cairo_line_to(cr, x + size, y + size);
-		cairo_move_to(cr, x - size, y + size);
-		cairo_line_to(cr, x + size, y - size);
-
-		if (win->mode == Mpointer)
-		{
-			cairo_set_line_width(cr, 6);
-			colorb(win, cr, .9);
-			cairo_stroke_preserve(cr);
-			colorf(win, cr, 1);
-		} else
-			colorf(win, cr, .3);
-
-		cairo_set_line_width(cr, 2);
-
-		cairo_stroke(cr);
-	}
-	if (win->msg)
-	{
-		gint x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x;
-		y -= gtk_widget_get_visible(win->entw) ?
-				gtk_widget_get_allocated_height(win->entw) : 0;
-
-		if (win->smallmsg)
-			cairo_set_font_size(cr, fsize);
-		else
-			cairo_set_font_size(cr, fsize * 1.4);
-
-		colorb(win, cr, .6);
-		cairo_text_extents_t ex;
-		cairo_text_extents(cr, win->msg, &ex);
-		double m = fsize/4.0, m2 = m * 2;
-		cairo_rectangle(cr,
-				x + ex.x_bearing - m, y + ex.y_bearing - m,
-				ex.width + m2, ex.height + m2);
-		cairo_fill(cr);
-
-		colorf(win, cr, .9);
-		cairo_move_to(cr, x, y);
-		cairo_show_text(cr, win->msg);
-	}
-	if (win->prog != 1)
-	{
-		gint h = gtk_widget_get_allocated_height(win->kitw);
-		gint w = gtk_widget_get_allocated_width(win->kitw);
-		h -= gtk_widget_get_visible(win->entw) ?
-				gtk_widget_get_allocated_height(win->entw) : 0;
-
-		gint px, py;
-		gdk_window_get_device_position(
-				gdkw(win->kitw), pointer(), &px, &py, NULL);
-
-		gdouble alpha = px > 0 && px < w &&
-			py > (gint)(h - fsize * 2) && py < h ? .4 : 1.0;
-
-		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->progd));
-		//* 2: for monitors hide bottom pixels when viewing top to bottom
-		gdouble y = h - base * 2;
-		cairo_set_line_width(cr, base * 2);
-
-		cairo_move_to(cr, 0, y);
-		cairo_line_to(cr, w, y);
-		colorb(win, cr, alpha - .2);
-		cairo_stroke(cr);
-
-		win->progrect = (GdkRectangle){0, y - base - 1, w, y + base * 2 + 2};
-
-		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-		cairo_move_to(cr,     w/2 * win->progd, y);
-		cairo_line_to(cr, w - w/2 * win->progd, y);
-		colorf(win, cr, alpha / (gtk_widget_has_focus(win->kitw) ? 1 : 3));
-		cairo_stroke(cr);
-	} else
-		win->progrect.width = 0;
-
-	winlist(win, 0, cr);
 	return false;
 }
 
@@ -3270,6 +3179,97 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 
 
 //@kit's cbs
+static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
+{
+	guint32 fsize = MAX(10, webkit_settings_get_default_font_size(win->set));
+
+	if (win->lastx || win->lastx || win->mode == Mpointer)
+	{
+		gdouble x, y, size;
+		if (win->mode == Mpointer)
+			x = win->px, y = win->py, size = fsize * .7;
+		else
+			x = win->lastx, y = win->lasty, size = fsize * .3;
+
+		cairo_move_to(cr, x - size, y - size);
+		cairo_line_to(cr, x + size, y + size);
+		cairo_move_to(cr, x - size, y + size);
+		cairo_line_to(cr, x + size, y - size);
+
+		if (win->mode == Mpointer)
+		{
+			cairo_set_line_width(cr, 6);
+			colorb(win, cr, .9);
+			cairo_stroke_preserve(cr);
+			colorf(win, cr, 1);
+		} else
+			colorf(win, cr, .3);
+
+		cairo_set_line_width(cr, 2);
+
+		cairo_stroke(cr);
+	}
+	if (win->msg)
+	{
+		gint x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x;
+		y -= gtk_widget_get_visible(win->entw) ?
+				gtk_widget_get_allocated_height(win->entw) : 0;
+
+		if (win->smallmsg)
+			cairo_set_font_size(cr, fsize);
+		else
+			cairo_set_font_size(cr, fsize * 1.4);
+
+		colorb(win, cr, .6);
+		cairo_text_extents_t ex;
+		cairo_text_extents(cr, win->msg, &ex);
+		double m = fsize/4.0, m2 = m * 2;
+		cairo_rectangle(cr,
+				x + ex.x_bearing - m, y + ex.y_bearing - m,
+				ex.width + m2, ex.height + m2);
+		cairo_fill(cr);
+
+		colorf(win, cr, .9);
+		cairo_move_to(cr, x, y);
+		cairo_show_text(cr, win->msg);
+	}
+	if (win->prog != 1)
+	{
+		gint h = gtk_widget_get_allocated_height(win->kitw);
+		gint w = gtk_widget_get_allocated_width(win->kitw);
+		h -= gtk_widget_get_visible(win->entw) ?
+				gtk_widget_get_allocated_height(win->entw) : 0;
+
+		gint px, py;
+		gdk_window_get_device_position(
+				gdkw(win->kitw), pointer(), &px, &py, NULL);
+
+		gdouble alpha = px > 0 && px < w &&
+			py > (gint)(h - fsize * 2) && py < h ? .4 : 1.0;
+
+		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->progd));
+		//* 2: for monitors hide bottom pixels when viewing top to bottom
+		gdouble y = h - base * 2;
+		cairo_set_line_width(cr, base * 2);
+
+		cairo_move_to(cr, 0, y);
+		cairo_line_to(cr, w, y);
+		colorb(win, cr, alpha - .2);
+		cairo_stroke(cr);
+
+		win->progrect = (GdkRectangle){0, y - base - 1, w, y + base * 2 + 2};
+
+		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+		cairo_move_to(cr,     w/2 * win->progd, y);
+		cairo_line_to(cr, w - w/2 * win->progd, y);
+		colorf(win, cr, alpha / (gtk_widget_has_focus(win->kitw) ? 1 : 3));
+		cairo_stroke(cr);
+	} else
+		win->progrect.width = 0;
+
+	winlist(win, 0, cr);
+	return false;
+}
 static void destroycb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
