@@ -1615,7 +1615,7 @@ static void nextwin(Win *win, bool next)
 
 	if (dwins->len < 2)
 	{
-		showmsg(win, "No other window");
+		showmsg(win, "No other windows");
 		goto out;
 	}
 
