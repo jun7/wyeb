@@ -130,6 +130,8 @@ Conf dconf[] = {
 	{"all"   , "histimgs"     , "99"},
 	{"all"   , "histimgsize"  , "222"},
 	{"all"   , "searchstrmax" , "99"},
+	//compatibility
+	{"all"   , "pointerwarp"  , "false"},
 
 //	{"all"   , "configreload" , "true",
 //			"reload last window when whiteblack.conf or reldomain are changed"},

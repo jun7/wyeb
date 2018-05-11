@@ -1462,13 +1462,6 @@ static void motion(Win *win, gdouble x, gdouble y)
 
 	gtk_widget_event(win->kitw, e);
 	gdk_event_free(e);
-
-//	gint wx, wy;
-//	gdk_window_get_position(gdkw(win->winw), &wx, &wy);
-//	gdk_device_warp(pointer(),
-//			gdk_display_get_default_screen(
-//				gdk_window_get_display(gdkw(win->winw))),
-//			wx + win->px, wy + win->py);
 }
 void pmove(Win *win, guint key)
 {
@@ -1589,17 +1582,36 @@ static void openconf(Win *win, bool shift)
 	openeditor(win, path, editor);
 }
 
+static void present(Win *win)
+{
+	gtk_window_present(win->win);
+	if (confbool("pointerwarp") &&
+			pointer() != gtk_get_current_event_device())
+	{
+		gint wx, wy, px, py;
+		gdk_device_get_position(pointer(), NULL, &px, &py);
+		gdk_window_get_position(gdkw(win->winw), &wx, &wy);
+		gint h = gtk_widget_get_allocated_height(win->winw);
+		gint w = gtk_widget_get_allocated_width(win->winw);
+
+		gdk_device_warp(pointer(),
+				gdk_display_get_default_screen(
+					gdk_window_get_display(gdkw(win->winw))),
+				CLAMP(px, wx, wx + w - 1),
+				CLAMP(py, wy, wy + h - 1));
+	}
+}
 static void nextwin(Win *win, bool next)
 {
-	GPtrArray *dwins = g_ptr_array_new();
-
+	Win        *tw = NULL;
 	GdkWindow  *dw = gdkw(win->winw);
 	GdkDisplay *dd = gdk_window_get_display(dw);
 	for (int i = 0; i < wins->len; i++)
 	{
 		Win *lw = wins->pdata[i];
-		GdkWindow *ldw = gdkw(lw->winw);
+		if (lw == win) continue;
 
+		GdkWindow *ldw = gdkw(lw->winw);
 		if (gdk_window_get_state(ldw) & GDK_WINDOW_STATE_ICONIFIED)
 			continue;
 
@@ -1610,31 +1622,22 @@ static void nextwin(Win *win, bool next)
 		) continue;
 #endif
 
-		g_ptr_array_add(dwins, lw);
+		tw = lw;
+		if (next) break;
 	}
 
-	if (dwins->len < 2)
-	{
+	if (!tw)
 		showmsg(win, "No other windows");
-		goto out;
-	}
-
+	else
 	if (next)
 	{
 		g_ptr_array_remove(wins, win);
 		g_ptr_array_add(wins, win);
-		//present first to keep focus on xfce
-		gtk_window_present(((Win *)dwins->pdata[1])->win);
-		gdk_window_lower(gdkw(win->winw));
+		present(tw); //present first to keep focus on xfce
+		gdk_window_lower(dw);
 	}
 	else
-	{
-		gtk_window_present(
-				((Win *)dwins->pdata[dwins->len - 1])->win);
-	}
-
-out:
-	g_ptr_array_free(dwins, TRUE);
+		present(tw);
 }
 static gint inwins(Win *win, GSList **list, bool onlylen)
 {
@@ -1846,7 +1849,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			if (pin)
 			{
 				if (type == 1) //present
-					gtk_window_present(lw->win);
+					present(lw);
 				else if (type == 3) //close
 				{
 					run(lw, "quit", NULL);
@@ -4651,7 +4654,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	if (!cbwin)
 		_openuri(win, uri, caller);
 
-	gtk_window_present(back && LASTWIN ? LASTWIN->win : win->win);
+	present(back && LASTWIN ? LASTWIN : win);
 
 	return win;
 }
