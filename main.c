@@ -1197,8 +1197,9 @@ static int formaturi(char **uri, char *key, const char *arg, char *spare)
 	int checklen = 1;
 	char *format, *esc = NULL;
 
-	if      ((format = g_key_file_get_string(conf, "raw"   , key, NULL))) ;
-	else if ((format = g_key_file_get_string(conf, "search", key, NULL) ?:
+	if      ((format = g_key_file_get_string(conf, "template", key, NULL))) ;
+	else if ((format = g_key_file_get_string(conf, "raw"     , key, NULL))) ; //backward
+	else if ((format = g_key_file_get_string(conf, "search"  , key, NULL) ?:
 				g_strdup(spare)))
 	{
 		checklen = strlen(arg) ?: 1; //only search else are 1 even ""

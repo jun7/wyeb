@@ -1,4 +1,8 @@
 ## Changes
+may 12, 2018:
+conf group raw -> template
+It still works though.
+
 Jan 15, 2018:
 Install dir /bin/ -> /usr/bin/
 

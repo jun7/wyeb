@@ -146,8 +146,8 @@ Conf dconf[] = {
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
 	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
 
-	{"raw"   , "na"           , "%s"},
-	{"raw"   , "h"            , "http://%s"},
+	{"template", "na"           , "%s"},
+	{"template", "h"            , "http://%s"},
 
 	{"set:v"     , "enable-caret-browsing", "true"},
 	{"set:script", "enable-javascript"    , "false"},
@@ -384,7 +384,7 @@ static void initconf(GKeyFile *kf)
 		if (kf)
 		{
 			if (!strcmp(c.group, "search")) continue;
-			if (!strcmp(c.group, "raw")) continue;
+			if (!strcmp(c.group, "template")) continue;
 			if (g_str_has_prefix(c.group, "set:")) continue;
 		}
 
@@ -409,7 +409,7 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_comment(conf, "all", NULL,
 			"Basically "APP" doesn't cut spaces."
 			" Also true is only 'true' not 'True'", NULL);
-	g_key_file_set_comment(conf, "raw", NULL,
+	g_key_file_set_comment(conf, "template", NULL,
 			"Unlike the search section, the arg is not escaped"
 			" but can be called the same as the search", NULL);
 	g_key_file_set_comment(conf, DSET, NULL,
