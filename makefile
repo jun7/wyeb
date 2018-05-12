@@ -29,15 +29,16 @@ install: all
 	install -Dm644 wyeb.png   $(DESTDIR)/usr/share/pixmaps/wyeb.png
 	install -Dm644 wyeb.desktop $(DESTDIR)/usr/share/applications/wyeb.desktop
 
-re: clean all
-#	$(MAKE) clean
-#	$(MAKE) all
-
-full: re install
-
 uninstall:
 	rm -f  $(DESTDIR)/usr/bin/wyeb
 	rm -f  $(EXTENSION_DIR)/ext.so
 	-rmdir $(EXTENSION_DIR)
 	rm -f  $(DESTDIR)/usr/share/pixmaps/wyeb.png
 	rm -f  $(DESTDIR)/usr/share/applications/wyeb.desktop
+
+
+re: clean all
+#	$(MAKE) clean
+#	$(MAKE) all
+
+full: re install
