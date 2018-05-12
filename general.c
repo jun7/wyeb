@@ -261,13 +261,6 @@ static bool setprop(WP *wp, GKeyFile *kf, gchar *group, gchar *key)
 {
 	if (!g_key_file_has_key(kf, group, key, NULL)) return false;
 	gchar *val = g_key_file_get_string(kf, group, key, NULL);
-#ifdef MAINC
-	if (!strcmp(key, "usercss") &&
-		g_strcmp0(g_object_get_data(wp->seto, key), val))
-	{
-		setcss(wp, val);
-	}
-#endif
 	g_object_set_data_full(wp->seto, key, *val ? val : NULL, g_free);
 	return true;
 }

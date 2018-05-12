@@ -84,7 +84,7 @@ typedef struct _WP {
 	gdouble prog;
 	gdouble progd;
 	GdkRectangle progrect;
-	guint drawprogcb;
+	guint   drawprogcb;
 	GdkRGBA rgba;
 
 	//hittestresult
@@ -167,7 +167,6 @@ static long plugto = 0;
 
 //shared code
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group);
-static void setcss(Win *win, gchar *namesstr);
 #define MAINC
 #include "general.c"
 
@@ -780,11 +779,14 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 	}
 }
 
+static void setcss(Win *win, gchar *namesstr); //declaration
 static void resetconf(Win *win, int type)
 { //type: 0: uri, 1:force, 2:overset, 3:file
 //	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
 	gchar *checks[] = {"reldomaincutheads", "removeheaders", NULL};
 	guint hash = 0;
+	gchar *lastcss = g_strdup(getset(win, "usercss"));
+
 	if (type && LASTWIN == win)
 		for (gchar **check = checks; *check; check++)
 			addhash(getset(win, *check) ?: "", &hash);
@@ -810,7 +812,13 @@ static void resetconf(Win *win, int type)
 	else
 		gtk_widget_hide(win->lblw);
 
+	gchar *newcss = getset(win, "usercss");
+	if (g_strcmp0(lastcss, newcss))
+		setcss(win, newcss);
+
 	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor") ?: "");
+
+	g_free(lastcss);
 }
 
 static void checkmd(const gchar *mp)
@@ -923,7 +931,7 @@ static void checkcss(const gchar *mp)
 }
 void setcss(Win *win, gchar *namesstr)
 {
-	gchar **names = g_strsplit(namesstr, ";", -1);
+	gchar **names = g_strsplit(namesstr ?: "", ";", -1);
 
 	WebKitUserContentManager *cmgr =
 		webkit_web_view_get_user_content_manager(win->kit);
@@ -4553,6 +4561,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	webkit_web_view_set_settings(win->kit, win->set);
 	g_object_unref(win->set);
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
+	setcss(win, getset(win, "usercss"));
 
 	GObject *o = win->kito;
 	SIGA(o, "draw"                 , drawcb    , win);
