@@ -3926,8 +3926,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			win->userreq = false; //currently not used
 		}
 		resetconf(win, 0);
-		send(win, Cstart, NULL);
-
 		setspawn(win, "onstartmenu");
 
 		//there is progcb before this event but sometimes it is
@@ -3939,6 +3937,9 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		if (!win->drawprogcb)
 			win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
 		gtk_widget_queue_draw(win->kitw);
+
+		//loadcb is multi thread!? and send may block others by alert
+		send(win, Cstart, NULL);
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
