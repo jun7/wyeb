@@ -2956,8 +2956,14 @@ static gchar *histdata(bool rest, bool all)
 		while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
 				== G_IO_STATUS_NORMAL)
 		{
-			lf = g_slist_prepend(lf, g_strsplit(line, " ", 3));
-			num++;
+			gchar **stra = g_strsplit(line, " ", 3);
+			if (stra[0] && stra[1])
+			{
+				lf = g_slist_prepend(lf, stra);
+				num++;
+			}
+			else
+				g_strfreev(stra);
 
 			g_free(line);
 		}
