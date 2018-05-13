@@ -3248,7 +3248,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_move_to(cr, x, y);
 		cairo_show_text(cr, win->msg);
 	}
-	if (win->prog != 1)
+	if (win->progd != 1)
 	{
 		guint32 fsize = MAX(10,
 				webkit_settings_get_default_font_size(win->set));
@@ -3325,7 +3325,7 @@ static void crashcb(Win *win)
 static void notifycb(Win *win) { update(win); }
 static void drawprogif(Win *win, bool force)
 {
-	if ((win->prog != 1 || force) && win->progrect.width)
+	if ((win->progd != 1 || force) && win->progrect.width)
 		gdk_window_invalidate_rect(gdkw(win->kitw), &win->progrect, TRUE);
 }
 static gboolean drawprogcb(Win *win)
@@ -3932,7 +3932,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		//before page's prog and we can't get which is it.
 		//policycb? no it emits even sub frames and of course
 		//we can't get if it is sub or not.
-		win->prog = .1;
 		win->progd = 0;
 		if (!win->drawprogcb)
 			win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
@@ -3977,8 +3976,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			send(win, Con, NULL); //for iframe
 		}
 
-		win->prog = 1; //workaround first time if not dirs then prog left
-		win->progd = 0;
+		win->progd = 1;
 		drawprogif(win, true);
 		g_source_remove(win->drawprogcb);
 		win->drawprogcb = 0;
