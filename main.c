@@ -3978,6 +3978,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		}
 
 		win->prog = 1; //workaround first time if not dirs then prog left
+		win->progd = 0;
 		drawprogif(win, true);
 		g_source_remove(win->drawprogcb);
 		win->drawprogcb = 0;
