@@ -47,7 +47,7 @@ Of course it is in the 'set:', so we can set it by uri.
 depends:
 
 - arch linux: 'webkit2gtk' 'discount' 'perl-file-mimeinfo'
-- debian 9.3: libwebkit2gtk-4.0-dev discount libfile-mimeinfo-perl
+- debian 9.4: libwebkit2gtk-4.0-dev discount libfile-mimeinfo-perl
 
 'discount(markdown)' 'perl-file-mimeinfo' are used only in the main.conf
 
