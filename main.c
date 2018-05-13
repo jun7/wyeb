@@ -69,7 +69,7 @@ typedef struct _WP {
 	Modes   lastmode;
 	Modes   mode;
 	bool    crashed;
-	bool    userreq;
+	bool    userreq; //not used
 
 	//conf
 	gchar  *lasturiconf;
@@ -231,7 +231,6 @@ static gchar *mainmdstr =
 static void addhash(gchar *str, guint *hash)
 {
 	if (*hash == 0) *hash = 5381;
-	if (!*str) str = "\0";
 	do *hash = *hash * 33 + *str;
 	while (*++str);
 }
@@ -450,13 +449,11 @@ static void removehistory()
 //msg
 static gboolean clearmsgcb(Win *win)
 {
-	if (isin(wins, win))
-	{
-		GFA(lastmsg, win->msg)
-		win->msg = NULL;
-		gtk_widget_queue_draw(win->kitw);
-	}
+	if (!isin(wins, win)) return false;
 
+	GFA(lastmsg, win->msg)
+	win->msg = NULL;
+	gtk_widget_queue_draw(win->kitw);
 	win->msgfunc = 0;
 	return false;
 }
@@ -471,6 +468,7 @@ static void _showmsg(Win *win, gchar *msg, bool small)
 static void showmsg(Win *win, const gchar *msg)
 { _showmsg(win, g_strdup(msg), false); }
 
+//com
 static void send(Win *win, Coms type, gchar *args)
 {
 	gchar *arg = g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: "");
@@ -486,8 +484,6 @@ static void send(Win *win, Coms type, gchar *args)
 
 	g_free(arg);
 }
-
-//com
 typedef struct {
 	Win   *win;
 	Coms   type;
@@ -504,11 +500,8 @@ static gboolean senddelaycb(Send *s)
 }
 static void senddelay(Win *win, Coms type, gchar *args)
 {
-	Send *s = g_new0(Send, 1);
-	s->win  = win;
-	s->type = type;
-	s->args = args;
-	g_timeout_add(40, (GSourceFunc)senddelaycb, s);
+	Send s = {win, type, args};
+	g_timeout_add(40, (GSourceFunc)senddelaycb, g_memdup(&s, sizeof(Send)));
 }
 
 //event
@@ -518,29 +511,42 @@ static GdkDevice *pointer()
 static GdkDevice *keyboard()
 { return gdk_seat_get_keyboard(
 		gdk_display_get_default_seat(gdk_display_get_default())); }
+
+static void *kitevent(Win *win, bool ispointer, GdkEventType type)
+{
+	GdkEvent    *e  = gdk_event_new(type);
+	GdkEventAny *ea = (void *)e;
+
+	ea->window = gdkw(win->kitw);
+	g_object_ref(ea->window);
+	gdk_event_set_device(e, ispointer ? pointer() : keyboard());
+	return e;
+}
+static void putevent(void *e)
+{
+	gdk_event_put(e);
+	gdk_event_free(e);
+}
 static void _putbtn(Win* win, GdkEventType type, guint btn, double x, double y)
 {
-	GdkEvent *e = gdk_event_new(type);
-	GdkEventButton *eb = (GdkEventButton *)e;
+	GdkEventButton *eb = kitevent(win, true, type);
 
-	eb->window = gdkw(win->kitw);
-	g_object_ref(eb->window);
 	eb->send_event = false; //true destroys the mdl btn hack
-	gdk_event_set_device(e, pointer());
 	if (btn > 10)
 	{
 		btn -= 10;
 		eb->state = GDK_BUTTON1_MASK;
 	}
-	eb->x = x;
-	eb->y = y;
 	eb->button = btn;
-	eb->type = type;
-	gdk_event_put(e);
-	gdk_event_free(e);
+	eb->type   = type;
+	eb->x      = x;
+	eb->y      = y;
+
+	putevent(eb);
 }
 static void putbtn(Win* win, GdkEventType type, guint btn)
 { _putbtn(win, type, btn, win->px, win->py); }
+
 static gboolean delaymdlrcb(Win *win)
 {
 	if (isin(wins, win))
@@ -619,13 +625,11 @@ static gint threshold(Win *win)
 static const gchar *dldir(Win *win)
 {//return is static string
 	static gchar *ret = NULL;
-	g_free(ret);
-	ret = g_build_filename(
-		g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
-		g_get_home_dir(),
-		getset(win, "dlsubdir"),
-		NULL
-	);
+	GFA(ret, g_build_filename(
+				g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
+				g_get_home_dir(),
+				getset(win, "dlsubdir"),
+				NULL))
 	return ret;
 }
 static void colorf(Win *win, cairo_t *cr, double alpha)
@@ -1014,10 +1018,8 @@ static void checkconf(const gchar *mp)
 static void settitle(Win *win, const gchar *pstr)
 {
 	if (!pstr && win->crashed)
-	{
-		settitle(win, "!! Web Process Crashed !!");
-		return;
-	}
+		pstr = "!! Web Process Crashed !!";
+
 	bool bar = getsetbool(win, "addressbar");
 	const gchar *wtitle = webkit_web_view_get_title(win->kit) ?: "";
 	gchar *title = pstr && !bar ? NULL : g_strconcat(
@@ -1058,18 +1060,16 @@ static void _modechanged(Win *win)
 	case Mlist:
 		gtk_widget_queue_draw(win->kitw);
 		gdk_window_set_cursor(gdkw(win->winw), NULL);
-//		gtk_widget_set_sensitive(win->kitw, true);
 		break;
 
 	case Mpointer:
 		win->ppress = 0;
-		if (win->mode != Mhint)
-			win->pbtn = 1;
+		if (win->mode != Mhint) win->pbtn = 0;
 		gtk_widget_queue_draw(win->kitw);
 		break;
 
 	case Mhint:
-		win->pbtn = 1;
+		if (win->mode != Mpointer) win->pbtn = 0;
 	case Mhintrange:
 		send(win, Crm, NULL);
 	case Mnormal:
@@ -1108,7 +1108,6 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mlist:
-//		gtk_widget_set_sensitive(win->kitw, false);
 		winlist(win, 2, NULL);
 		gtk_widget_queue_draw(win->kitw);
 		break;
@@ -1432,11 +1431,8 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 
 static void scroll(Win *win, gint x, gint y)
 {
-	GdkEvent *e = gdk_event_new(GDK_SCROLL);
-	GdkEventScroll *es = (void *)e;
+	GdkEventScroll *es = kitevent(win, false, GDK_SCROLL);
 
-	es->window = gdkw(win->kitw);
-	g_object_ref(es->window);
 	es->send_event = false; //for multiplescroll
 	//es->time   = GDK_CURRENT_TIME;
 	es->direction =
@@ -1447,30 +1443,22 @@ static void scroll(Win *win, gint x, gint y)
 
 	es->delta_x = x;
 	es->delta_y = y;
-	gdk_event_set_device(e, keyboard());
-
 	es->x = win->px;
 	es->y = win->py;
 
-	gdk_event_put(e);
-	gdk_event_free(e);
+	putevent(es);
 }
 static void motion(Win *win, gdouble x, gdouble y)
 {
-	GdkEvent *e = gdk_event_new(GDK_MOTION_NOTIFY);
-	GdkEventMotion *em = (GdkEventMotion *)e;
-
-	em->window = gdkw(win->winw);
-	g_object_ref(em->window);
-	em->x      = x;
-	em->y      = y ;
-	gdk_event_set_device(e, pointer());
+	GdkEventMotion *em = kitevent(win, true, GDK_MOTION_NOTIFY);
+	em->x = x;
+	em->y = y;
 	if (win->ppress)
 		em->state = win->pbtn == 3 ? GDK_BUTTON3_MASK :
 		            win->pbtn == 2 ? GDK_BUTTON2_MASK : GDK_BUTTON1_MASK;
 
-	gtk_widget_event(win->kitw, e);
-	gdk_event_free(e);
+	gtk_widget_event(win->kitw, (void *)em);
+	gdk_event_free((void *)em);
 }
 void pmove(Win *win, guint key)
 {
@@ -1514,18 +1502,12 @@ void pmove(Win *win, guint key)
 }
 static void putkey(Win *win, guint key)
 {
-	GdkEvent *e = gdk_event_new(GDK_KEY_PRESS);
-	GdkEventKey *ek = (GdkEventKey *)e;
-
-	ek->window = gdkw(win->kitw);
-	g_object_ref(ek->window);
+	GdkEventKey *ek = kitevent(win, false, GDK_KEY_PRESS);
 	ek->send_event = true;
 //	ek->time   = GDK_CURRENT_TIME;
 	ek->keyval = key;
 //	ek->state  = ek->state & ~GDK_MODIFIER_MASK;
-	gdk_event_set_device(e, keyboard());
-	gdk_event_put(e);
-	gdk_event_free(e);
+	putevent(ek);
 }
 
 static void command(Win *win, const gchar *cmd, const gchar *arg)
@@ -1574,7 +1556,6 @@ static void openconf(Win *win, bool shift)
 		path = confpath;
 		if (!shift)
 		{
-
 			gchar *esc = escape(uri);
 			gchar *name = g_strdup_printf("uri:^%s", esc);
 			if (!g_key_file_has_group(conf, name))
@@ -1610,9 +1591,9 @@ static void present(Win *win)
 				CLAMP(py, wy, wy + h - 1));
 	}
 }
-static void nextwin(Win *win, bool next)
+static gint inwins(Win *win, GSList **list, bool onlylen)
 {
-	Win        *tw = NULL;
+	guint len = 0;
 	GdkWindow  *dw = gdkw(win->winw);
 	GdkDisplay *dd = gdk_window_get_display(dw);
 	for (int i = 0; i < wins->len; i++)
@@ -1621,60 +1602,41 @@ static void nextwin(Win *win, bool next)
 		if (lw == win) continue;
 
 		GdkWindow *ldw = gdkw(lw->winw);
+
 		if (gdk_window_get_state(ldw) & GDK_WINDOW_STATE_ICONIFIED)
 			continue;
 
 #ifdef GDK_WINDOWING_X11
 		if (GDK_IS_X11_DISPLAY(dd) &&
 			(gdk_x11_window_get_desktop(dw) !=
-					gdk_x11_window_get_desktop(ldw))
-		) continue;
+					gdk_x11_window_get_desktop(ldw)))
+			continue;
 #endif
 
-		tw = lw;
-		if (next) break;
+		len++;
+		if (!onlylen)
+			*list = g_slist_append(*list, lw);
 	}
+	return len;
+}
+static void nextwin(Win *win, bool next)
+{
+	GSList *list = NULL;
 
-	if (!tw)
+	if (!inwins(win, &list, false))
 		showmsg(win, "No other windows");
 	else
 	if (next)
 	{
 		g_ptr_array_remove(wins, win);
 		g_ptr_array_add(wins, win);
-		present(tw); //present first to keep focus on xfce
-		gdk_window_lower(dw);
+		present(list->data); //present first to keep focus on xfce
+		gdk_window_lower(gdkw(win->winw));
 	}
 	else
-		present(tw);
-}
-static gint inwins(Win *win, GSList **list, bool onlylen)
-{
-	guint len = wins->len - 1;
+		present(g_slist_last(list)->data);
 
-	GdkWindow  *dw = gdkw(win->winw);
-	GdkDisplay *dd = gdk_window_get_display(dw);
-	for (int i = 1; i < wins->len; i++)
-	{
-		Win *lw = wins->pdata[i];
-		GdkWindow *ldw = gdkw(lw->winw);
-
-#ifdef GDK_WINDOWING_X11
-		if (GDK_IS_X11_DISPLAY(dd) &&
-			(gdk_x11_window_get_desktop(dw) !=
-					gdk_x11_window_get_desktop(ldw)))
-		{
-			len--;
-			continue;
-		}
-#endif
-
-		if (gdk_window_get_state(ldw) & GDK_WINDOW_STATE_ICONIFIED)
-			len--;
-		else if (!onlylen)
-			*list = g_slist_append(*list, lw);
-	}
-	return len;
+	g_slist_free(list);
 }
 static bool quitnext(Win *win, bool next)
 {
@@ -1701,10 +1663,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 	GSList *actvs = NULL;
 	guint len = inwins(win, &actvs, false);
 	if (len < 1)
-	{
-		g_slist_free(actvs);
 		return false;
-	}
 
 	gdouble w = gtk_widget_get_allocated_width(win->kitw);
 	gdouble h = gtk_widget_get_allocated_height(win->kitw);
@@ -1931,38 +1890,32 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 static void addlink(Win *win, const gchar *title, const gchar *uri)
 {
+	gchar *str = NULL;
 	preparemd();
 	if (uri)
 	{
 		gchar *escttl = title ? g_markup_escape_text(title, -1) : NULL;
-		if (!escttl || !*escttl) escttl = g_strdup(uri);
+		if (!escttl || !*escttl)
+			escttl = g_strdup(uri);
 		gchar *fav = g_strdup_printf(APP":f/%s", uri);
 
-		gchar *str;
-
 		gchar *items = getset(win, "linkdata") ?: "tu";
-		gint len = strlen(items);
-		const gchar *as[9];
-		for (int i = 0; i < 9; i++)
-		{
-			gchar d = i < len ? items[i] : '\0';
-			as[i] =
-				d == 't' ? escttl:
-				d == 'u' ? uri:
-				d == 'f' ? fav:
+		int i = 0;
+		const gchar *as[9] = {""};
+		for (gchar *c = items; *c && i < 9; c++)
+			as[i++] =
+				*c == 't' ? escttl:
+				*c == 'u' ? uri:
+				*c == 'f' ? fav:
 				"";
-		}
 		str = g_strdup_printf(getset(win, "linkformat"),
 				as[0], as[1], as[2], as[3], as[4], as[5], as[6], as[7], as[8]);
 
-		append(mdpath, str);
-
-		g_free(str);
 		g_free(fav);
 		g_free(escttl);
 	}
-	else
-		append(mdpath, NULL);
+	append(mdpath, str);
+	g_free(str);
 
 	showmsg(win, "Added");
 }
@@ -2048,8 +2001,8 @@ static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 #endif
 
 //textlink
-static gchar   *tlpath = NULL;
-static Win     *tlwin = NULL;
+static gchar *tlpath = NULL;
+static Win   *tlwin  = NULL;
 static void textlinkcheck(const gchar *mp)
 {
 	if (!isin(wins, tlwin)) return;
@@ -2366,7 +2319,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			gdouble z = webkit_web_view_get_zoom_level(win->kit);
 			win->px = atof(*xy) * z;
 			win->py = atof(*(xy + 1)) * z;
-			makeclick(win, win->pbtn);
+			makeclick(win, win->pbtn ?: 1);
 			g_strfreev(xy);
 		)
 		Z("openeditor", openeditor(win, arg, NULL))
@@ -2647,7 +2600,6 @@ static gboolean focuscb(Win *win)
 	g_ptr_array_insert(wins, 0, win);
 
 	checkconf(NULL); //to create conf
-
 	fixhist(win);
 
 	return false;
@@ -3052,7 +3004,6 @@ static gchar *histdata(bool rest, bool all)
 		g_free(escpd);
 	}
 
-
 loopout:
 	sv[i + 1] = NULL;
 
@@ -3234,6 +3185,11 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 
 
 //@kit's cbs
+static gboolean detachcb(GtkWidget * w)
+{
+	gtk_widget_grab_focus(w);
+	return false;
+}
 static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
 	if (win->lastx || win->lastx || win->mode == Mpointer)
@@ -3416,8 +3372,6 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 {
 	if (ek->is_modifier) return false;
 
-	keyr = true;
-
 	if (win->mode == Mpointer &&
 			(ek->keyval == GDK_KEY_space || ek->keyval == GDK_KEY_Return))
 	{
@@ -3429,6 +3383,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		return true;
 	}
 
+	keyr = true;
 	gchar *action = ke2name(ek);
 
 	if (action && !strcmp(action, "tonormal"))
@@ -3705,7 +3660,6 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 	}
 
 	update(win);
-
 	return false;
 }
 static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
@@ -3836,26 +3790,23 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 		times = (times + 1) * scrlcnt / Z;
 #undef Z
 
-	GdkEvent *e = gdk_event_new(GDK_SCROLL);
-	GdkEventScroll *es = (void *)e;
+	GdkEventScroll *es = kitevent(win, true, GDK_SCROLL);
 
-	es->window = gdkw(win->kitw);
-	g_object_ref(es->window);
 	es->send_event = true;
-	es->state = pe->state;
-	es->direction = pe->direction;
-	es->delta_x = pe->delta_x;
-	es->delta_y = pe->delta_y;
-	es->x = pe->x;
-	es->y = pe->y;
-	es->device = pe->device;
+	es->state      = pe->state;
+	es->direction  = pe->direction;
+	es->delta_x    = pe->delta_x;
+	es->delta_y    = pe->delta_y;
+	es->x          = pe->x;
+	es->y          = pe->y;
+	es->device     = pe->device;
 
 	Scrl *si = g_new0(Scrl, 1);
 	si->times = times;
-	si->e = e;
+	si->e = (void *)es;
+
 	g_timeout_add(300 / (times + 4), (GSourceFunc)multiscrlcb, si);
 	scrlcnt++;
-
 	return false;
 }
 static bool urihandler(Win *win, const gchar *uri, gchar *group)
@@ -4061,7 +4012,7 @@ static gboolean failcb(WebKitWebView *k, WebKitLoadEvent event,
 
 //@contextmenu
 typedef struct {
-	GClosure  *gc; //when dir this is NULL
+	GClosure  *gc; //when dir gc and path are NULL
 	gchar     *path;
 	GSList    *actions;
 } AItem;
@@ -4436,19 +4387,12 @@ static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 	enticon(win, NULL);
 	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL, false);
 }
-static gboolean detachcb(GtkWidget * w)
-{
-	gtk_widget_grab_focus(w);
-	return false;
-}
 
 
 //@newwin
 Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
-	win->pbtn = 1;
-	win->prog = 1;
 	win->userreq = true;
 	win->winw = plugto ?
 		gtk_plug_new(plugto) : gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -4611,7 +4555,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	//entry
 	win->entw = gtk_entry_new();
 	SIG(win->ento, "key-press-event", entkeycb, win);
-	//SIGW(win->ento, "focus-out-event", entoutcb, win);
 	GtkEntryBuffer *buf = gtk_entry_get_buffer(win->ent);
 	SIGW(buf, "inserted-text", textcb, win);
 	SIGW(buf, "deleted-text" , textcb, win);
@@ -4623,7 +4566,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	gtk_label_set_xalign(win->lbl, 0);
 //	gtk_label_set_line_wrap(win->lbl, true);
 //	gtk_label_set_line_wrap_mode(win->lbl, PANGO_WRAP_CHAR);
-//	<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>
 //	gtk_label_set_use_markup(win->lbl, TRUE);
 
 	//without overlay, showing ent delays when a page is heavy
