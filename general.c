@@ -295,17 +295,23 @@ static void setprops(WP *wp, GKeyFile *kf, gchar *group)
 			setprop(wp, kf, group, dconf[i].key);
 }
 
-static bool eachuriconf(WP *wp, const gchar* uri, bool lastone,
-		bool (*func)(WP *, const gchar *uri, gchar *group))
-{
-	bool ret = false;
+static GSList *regs = NULL;
+static GSList *regsrev = NULL;
+static void makeuriregs() {
+	for (GSList *next = regs; next; next = next->next)
+	{
+		regfree(((void **)next->data)[0]);
+		g_free( ((void **)next->data)[1]);
+	}
+	g_slist_free_full(regs, g_free);
+	regs = NULL;
+	g_slist_free(regsrev);
+	regsrev = NULL;
 
 	gchar **groups = g_key_file_get_groups(conf, NULL);
-	guint len = g_strv_length(groups);
-
-	for (guint i = 0; i < len; i++)
+	for (gchar **next = groups; *next; next++)
 	{
-		gchar *gl = groups[lastone ? len - 1 - i : i];
+		gchar *gl = *next;
 		if (!g_str_has_prefix(gl, "uri:")) continue;
 
 		gchar *g = gl;
@@ -317,23 +323,34 @@ static bool eachuriconf(WP *wp, const gchar* uri, bool lastone,
 			g += 4;
 		}
 
-		regex_t reg;
-		if (regcomp(&reg, g, REG_EXTENDED | REG_NOSUB))
+		void **reg = g_new(void*, 2);
+		*reg = g_new(regex_t, 1);
+		if (regcomp(*reg, g, REG_EXTENDED | REG_NOSUB))
+		{ //failed
+			g_free(*reg);
+			g_free(reg);
+		} else {
+			reg[1] = g_strdup(gl);
+			regsrev = g_slist_prepend(regsrev, reg);
+		}
+		g_free(tofree);
+	}
+	g_strfreev(groups);
+
+	for (GSList *next = regsrev; next; next = next->next)
+		regs = g_slist_prepend(regs, next->data);
+}
+static bool eachuriconf(WP *wp, const gchar* uri, bool lastone,
+		bool (*func)(WP *, const gchar *uri, gchar *group))
+{
+	bool ret = false;
+	for (GSList *reg = lastone ? regsrev : regs; reg; reg = reg->next)
+		if (regexec(*(void **)reg->data, uri, 0, NULL, 0) == 0)
 		{
-			g_free(tofree);
-			continue;
+			ret = func(wp, uri, ((void **)reg->data)[1]) || ret;
+			if (lastone) break;
 		}
 
-		if (regexec(&reg, uri, 0, NULL, 0) == 0)
-			ret = func(wp, uri, gl) || ret;
-
-		regfree(&reg);
-		g_free(tofree);
-
-		if (lastone && ret) break;
-	}
-
-	g_strfreev(groups);
 	return ret;
 }
 static bool seturiprops(WP *wp, const gchar *uri, gchar *group)
@@ -352,13 +369,13 @@ static void _resetconf(WP *wp, const gchar *uri, bool force)
 	if (wp->lasturiconf || force)
 	{
 		GFA(wp->lasturiconf, NULL)
+		//clearing. don't worry about reg and handler they are not set
 		setprops(wp, conf, DSET);
 	}
 
 	GFA(wp->lastreset, g_strdup(uri))
 	if (uri && eachuriconf(wp, uri, false, seturiprops))
 		GFA(wp->lasturiconf, g_strdup(uri))
-
 	if (wp->overset) {
 		gchar **sets = g_strsplit(wp->overset, "/", -1);
 		for (gchar **set = sets; *set; set++)
@@ -374,6 +391,7 @@ static void initconf(GKeyFile *kf)
 {
 	if (conf) g_key_file_free(conf);
 	conf = kf ?: g_key_file_new();
+	makeuriregs();
 
 	gint len = sizeof(dconf) / sizeof(*dconf);
 	for (int i = 0; i < len; i++)
