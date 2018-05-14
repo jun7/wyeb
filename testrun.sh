@@ -1,5 +1,6 @@
 
 cd `dirname $0`
+export PATH="$PATH:`pwd`"
 
 export DEBUG=1
 make clean
