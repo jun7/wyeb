@@ -4698,7 +4698,7 @@ int main(int argc, char **argv)
 	histdir = g_build_filename(
 			g_get_user_cache_dir(), fullname, "history", NULL);
 	g_set_prgname(fullname);
-	gtk_init(NULL, NULL);
+	gtk_init(0, NULL);
 	checkconf(NULL);
 
 	if (g_key_file_get_boolean(conf, "boot",
