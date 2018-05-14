@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=WYEBrowser
+Name=wyeb.
 Exec=wyeb %u
 StartupWMClass=wyeb.
 Icon=wyeb
