@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=WYEBrowser
 Exec=wyeb %u
+StartupWMClass=wyeb.
 Icon=wyeb
 Terminal=false
 Type=Application
