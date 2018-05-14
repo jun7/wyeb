@@ -642,45 +642,26 @@ static void colorb(Win *win, cairo_t *cr, double alpha)
 	cairo_set_source_rgba(cr, 1, 1, 1, alpha);
 }
 //monitor
-static GSList *mqueue   = NULL;
-static GSList *mqueuedo = NULL;
-static gboolean mqueuecb(gpointer func)
-{
-	mqueue = g_slist_remove(mqueue, func);
-	if (g_slist_find(mqueuedo, func))
-	{
-		mqueuedo = g_slist_remove(mqueuedo, func);
-		((void (*)(bool))func)(true);
-	}
-	return false;
-}
+static GHashTable *monitored = NULL;
 static void monitorcb(GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e,
 		void (*func)(const gchar *))
 {
-	if (e != G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT) return;
-	if (g_slist_find(mqueue, func))
-	{
-		if (!g_slist_find(mqueuedo, func))
-			mqueuedo = g_slist_prepend(mqueuedo, func);
-		return;
-	}
+	if (e != G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT &&
+			e != G_FILE_MONITOR_EVENT_DELETED) return;
 
-#ifdef GLIB_VERSION_2_56
-	func(g_file_peek_path(f));
-#else
-	char *p = g_file_get_path(f);
-	func(p);
-	g_free(p);
-#endif
-	mqueue = g_slist_prepend(mqueue, func);
-	g_idle_add(mqueuecb, func);
+	char *path = g_file_get_path(f);
+	//delete event's path is old and chenge event's path is new,
+	//when renamed out new is useless, renamed in old is useless.
+	if (g_hash_table_lookup(monitored, path))
+		func(path);
+	g_free(path);
 }
 static bool monitor(gchar *path, void (*func)(const gchar *))
 {
-	static GSList *monitored = NULL;
-	for(GSList *next = monitored; next; next = next->next)
-		if (!strcmp(next->data, path)) return false;
-	monitored = g_slist_prepend(monitored, g_strdup(path));
+	if (!monitored) monitored = g_hash_table_new(g_str_hash, g_str_equal);
+
+	if (g_hash_table_lookup(monitored, path)) return false;
+	g_hash_table_add(monitored, g_strdup(path));
 
 	GFile *gf = g_file_new_for_path(path);
 	GFileMonitor *gm = g_file_monitor_file(
@@ -952,7 +933,7 @@ void setcss(Win *win, gchar *namesstr)
 		}
 
 		gchar *str;
-		if (!g_file_get_contents (path, &str, NULL, NULL)) return;
+		if (!g_file_get_contents(path, &str, NULL, NULL)) return;
 
 		WebKitUserStyleSheet *css =
 			webkit_user_style_sheet_new(str,

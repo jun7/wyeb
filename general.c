@@ -158,7 +158,7 @@ Conf dconf[] = {
 		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
 
 	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
-	{DSET    , "usercss"          , "user.css;user2.css"},
+	{DSET    , "usercss"          , "user.css", "usercss=user.css;user2.css"},
 	{DSET    , "addressbar"       , "false"},
 	{DSET    , "msgcolor"         , "#c07"},
 
