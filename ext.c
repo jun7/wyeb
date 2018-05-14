@@ -198,16 +198,11 @@ static GSList *wblist = NULL;
 static gchar  *wbpath = NULL;
 static void setwblist(bool reload)
 {
-	if (!g_file_test(wbpath, G_FILE_TEST_EXISTS))
-	{
-		if (wblist)
-			g_slist_free_full(wblist, (GDestroyNotify)clearwb);
-		return;
-	}
-
 	if (wblist)
 		g_slist_free_full(wblist, (GDestroyNotify)clearwb);
 	wblist = NULL;
+
+	if (!g_file_test(wbpath, G_FILE_TEST_EXISTS)) return;
 
 	GIOChannel *io = g_io_channel_new_file(wbpath, "r", NULL);
 	gchar *line;
