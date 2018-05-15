@@ -4313,7 +4313,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 			gchar c = *str;
 			g_free(str);
 
-			if (c != ' ')
+			if (c != ' ' && c != '/')
 				wpos = i - 1;
 			else if (wpos)
 				break;
