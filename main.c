@@ -1296,10 +1296,8 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 		(path ? g_strdup(path) : path2conf("menu")) : g_path_get_dirname(path);
 
 	gchar **envp = g_get_environ();
-	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);
 	envp = g_environ_setenv(envp, "ISCALLBACK",
 			iscallback ? "1" : "0", true);
-
 	envp = g_environ_setenv(envp, "RESULT", result ?: "", true);
 	//for backward compatibility
 	envp = g_environ_setenv(envp, "JSRESULT", result ?: "", true);
@@ -1307,6 +1305,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	gchar buf[9];
 	snprintf(buf, 9, "%d", wins->len);
 	envp = g_environ_setenv(envp, "WINSLEN", buf, true);
+	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);
 	envp = g_environ_setenv(envp, "WINID"  , win->pageid, true);
 	envp = g_environ_setenv(envp, "CURRENTSET", win->overset ?: "", true);
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
@@ -1315,6 +1314,10 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	gchar *confdir = path2conf(NULL);
 	envp = g_environ_setenv(envp, "CONFDIR", confdir, true);
 	g_free(confdir);
+	envp = g_environ_setenv(envp, "CANBACK",
+			webkit_web_view_can_go_back(   win->kit) ? "1" : "0", true);
+	envp = g_environ_setenv(envp, "CANFORWARD",
+			webkit_web_view_can_go_forward(win->kit) ? "1" : "0", true);
 	gint WINX, WINY, WIDTH, HEIGHT;
 	gtk_window_get_position(win->win, &WINX, &WINY);
 	gtk_window_get_size(win->win, &WIDTH, &HEIGHT);
@@ -3023,11 +3026,13 @@ static gchar *helpdata()
 		"\n"
 		"context-menu:\n"
 		"  You can add your own script to context-menu. See 'menu' dir in\n"
-		"  the config dir, or click 'editMenu' in the context-menu. SUFFIX,\n"
-		"  ISCALLBACK, WINSLEN, WINID, URI, TITLE, PRIMARY/SELECTION,\n"
-		"  SECONDARY, CLIPBORAD, LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
-		"  MEDIA, IMAGE, MEDIA_IMAGE_LINK, FOCUSURI, CURRENTSET, DLDIR,\n"
-		"  WINX, WINY, WIDTH, HEIGHT and CONFDIR are set as environment variables.\n"
+		"  the config dir, or click 'editMenu' in the context-menu.\n"
+		"  ISCALLBACK, SUFFIX, WINID, WINSLEN, CURRENTSET, URI, TITLE, FOCUSURI,\n"
+		"  LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
+		"  MEDIA, IMAGE, MEDIA_IMAGE_LINK,\n"
+		"  WINX, WINY, WIDTH, HEIGHT, CANBACK, CANFORWARD,\n"
+		"  PRIMARY/SELECTION, SECONDARY, CLIPBORAD,\n"
+		"  DLDIR and CONFDIR are set as environment variables.\n"
 		"  Available actions are in the 'key:' section below.\n"
 		"  Of course it supports directories and '.'.\n"
 		"  '.' hides it from the menu but still available in the accels.\n"
