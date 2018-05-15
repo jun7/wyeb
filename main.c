@@ -881,13 +881,16 @@ static void clearaccels(gpointer p,
 {
 	gtk_accel_map_change_entry(path, 0, 0, true);
 }
+static bool cancelaccels = false;
 static void checkaccels(const gchar *mp)
 {
-	if (accelp && g_file_test(accelp, G_FILE_TEST_EXISTS))
+	if (!cancelaccels || accelp)
 	{
 		gtk_accel_map_foreach(NULL, clearaccels);
-		gtk_accel_map_load(accelp);
+		if (g_file_test(accelp, G_FILE_TEST_EXISTS))
+			gtk_accel_map_load(accelp);
 	}
+	cancelaccels = false;
 }
 
 static void checkcss(const gchar *mp)
@@ -4050,7 +4053,7 @@ static GSList *dirmenu(
 		AItem *ai = g_new0(AItem, 1);
 		bool nodata = false;
 
-		gchar *accelp = g_strconcat(parentaccel, "/", name, NULL);
+		gchar *laccelp = g_strconcat(parentaccel, "/", name, NULL);
 		gchar *path = g_build_filename(dir, org, NULL);
 
 		if (g_file_test(path, G_FILE_TEST_IS_DIR))
@@ -4059,7 +4062,7 @@ static GSList *dirmenu(
 			if (menu && *org != '.')
 				sub = webkit_context_menu_new();
 
-			ai->actions = dirmenu(sub, path, accelp);
+			ai->actions = dirmenu(sub, path, laccelp);
 			if (!ai->actions)
 				nodata = true;
 			else if (menu && *org != '.')
@@ -4071,12 +4074,12 @@ static GSList *dirmenu(
 			ai->path = path;
 			addhash(path, &menuhash);
 			ai->gc = g_cclosure_new_swap(G_CALLBACK(actioncb), path, NULL);
-			gtk_accel_group_connect_by_path(accelg, accelp, ai->gc);
+			gtk_accel_group_connect_by_path(accelg, laccelp, ai->gc);
 
 			if (menu && *org != '.')
 			{
 #if NEWV
-				GSimpleAction *gsa = g_simple_action_new(accelp, NULL);
+				GSimpleAction *gsa = g_simple_action_new(laccelp, NULL);
 				SIGW(gsa, "activate", actioncb, path);
 				webkit_context_menu_append(menu,
 						webkit_context_menu_item_new_from_gaction(
@@ -4092,7 +4095,7 @@ static GSList *dirmenu(
 			}
 		}
 
-		g_free(accelp);
+		g_free(laccelp);
 		if (nodata)
 			g_free(ai);
 		else
@@ -4168,10 +4171,10 @@ void makemenu(WebKitContextMenu *menu)
 
 		accelp = path2conf("accels");
 		monitor(accelp, checkaccels);
-	}
 
-	if (g_file_test(accelp, G_FILE_TEST_EXISTS))
-		gtk_accel_map_load(accelp);
+		if (g_file_test(accelp, G_FILE_TEST_EXISTS))
+			gtk_accel_map_load(accelp);
+	}
 
 	if (actions)
 		g_slist_free_full(actions, clearai);
@@ -4190,7 +4193,10 @@ void makemenu(WebKitContextMenu *menu)
 		webkit_context_menu_remove(menu, sep);
 
 	if (lasthash != menuhash)
+	{
+		cancelaccels = true;
 		gtk_accel_map_save(accelp);
+	}
 
 	g_free(dir);
 }
