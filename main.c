@@ -884,7 +884,7 @@ static void clearaccels(gpointer p,
 static bool cancelaccels = false;
 static void checkaccels(const gchar *mp)
 {
-	if (!cancelaccels || accelp)
+	if (!cancelaccels && accelp)
 	{
 		gtk_accel_map_foreach(NULL, clearaccels);
 		if (g_file_test(accelp, G_FILE_TEST_EXISTS))
@@ -4105,11 +4105,19 @@ static GSList *dirmenu(
 	return ret;
 }
 static void makemenu(WebKitContextMenu *menu); //declaration
-static void acceldircb(
+static guint menudirtime = 0;
+static gboolean menudirtimecb(gpointer p)
+{
+	makemenu(NULL);
+	menudirtime = 0;
+	return false;
+}
+static void menudircb(
 		GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e)
 {
-	if (e == G_FILE_MONITOR_EVENT_CREATED)
-		makemenu(NULL);
+	if (e == G_FILE_MONITOR_EVENT_CREATED && menudirtime == 0)
+		//For editors making temp files
+		menudirtime = g_timeout_add(100, menudirtimecb, NULL);
 }
 static void addscript(gchar* dir, gchar* name, gchar *script)
 {
@@ -4166,7 +4174,7 @@ void makemenu(WebKitContextMenu *menu)
 		GFile *gf = g_file_new_for_path(dir);
 		GFileMonitor *gm = g_file_monitor_directory(gf,
 				G_FILE_MONITOR_NONE, NULL, NULL);
-		SIG(gm, "changed", acceldircb, NULL);
+		SIG(gm, "changed", menudircb, NULL);
 		g_object_unref(gf);
 
 		accelp = path2conf("accels");
