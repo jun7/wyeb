@@ -3312,7 +3312,7 @@ static void drawprogif(Win *win, bool force)
 static gboolean drawprogcb(Win *win)
 {
 	if (!isin(wins, win)) return false;
-	gdouble shift = win->prog + .2 * (1 - win->prog);
+	gdouble shift = win->prog + .4 * (1 - win->prog);
 	if (shift - win->progd < 0) return true; //when reload prog is may mixed
 	win->progd = shift - (shift - win->progd) * .94;
 	drawprogif(win, false);
