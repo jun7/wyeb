@@ -3257,7 +3257,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdouble alpha = px > 0 && px < w &&
 			py > (gint)(h - fsize * 2) && py < h ? .4 : 1.0;
 
-		gdouble base = (fsize/20.0 + (fsize/7.0) * (1 - win->progd));
+		gdouble base = fsize/30.0 + (fsize/9.0) * (1 - win->progd);
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
 		gdouble y = h - base * 2;
 		cairo_set_line_width(cr, base * 2);
