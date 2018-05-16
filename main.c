@@ -1007,7 +1007,7 @@ static void settitle(Win *win, const gchar *pstr)
 	bool bar = getsetbool(win, "addressbar");
 	const gchar *wtitle = webkit_web_view_get_title(win->kit) ?: "";
 	gchar *title = pstr && !bar ? NULL : g_strconcat(
-		win->tlserr ? "!TLS has errors! " : "",
+		win->tlserr ? "!TLS " : "",
 		suffix            , *suffix      ? "| " : "",
 		win->overset ?: "", win->overset ? "| " : "",
 		wtitle, bar ? "" : " - ", bar && *wtitle ? NULL : URI(win), NULL);
