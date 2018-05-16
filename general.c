@@ -325,7 +325,8 @@ static void makeuriregs() {
 
 		void **reg = g_new(void*, 2);
 		*reg = g_new(regex_t, 1);
-		if (regcomp(*reg, g, REG_EXTENDED | REG_NOSUB))
+//		if (regcomp(*reg, g, REG_EXTENDED | REG_NOSUB))
+		if (regcomp(*reg, g, REG_EXTENDED))
 		{ //failed
 			g_free(*reg);
 			g_free(reg);
@@ -344,10 +345,15 @@ static bool eachuriconf(WP *wp, const gchar* uri, bool lastone,
 		bool (*func)(WP *, const gchar *uri, gchar *group))
 {
 	bool ret = false;
+	regmatch_t match[2];
 	for (GSList *reg = lastone ? regsrev : regs; reg; reg = reg->next)
-		if (regexec(*(void **)reg->data, uri, 0, NULL, 0) == 0)
+		if (regexec(*(void **)reg->data, uri, 2, match, 0) == 0)
 		{
-			ret = func(wp, uri, ((void **)reg->data)[1]) || ret;
+			gchar *m = match[1].rm_so == -1 ? NULL : g_strndup(
+					uri + match[1].rm_so, match[1].rm_eo - match[1].rm_so);
+
+			ret = func(wp, m ?: uri, ((void **)reg->data)[1]) || ret;
+			g_free(m);
 			if (lastone) break;
 		}
 
