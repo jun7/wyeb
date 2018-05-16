@@ -533,7 +533,7 @@ static gchar *_escape(const gchar *str, gchar *esc)
 
 	return g_strdup(ret);
 }
-static gchar *escape(const gchar *str)
+static gchar *regesc(const gchar *str)
 {
 	return _escape(str, ".?+");
 }

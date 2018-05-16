@@ -1543,7 +1543,7 @@ static void openconf(Win *win, bool shift)
 		path = confpath;
 		if (!shift)
 		{
-			gchar *esc = escape(uri);
+			gchar *esc = regesc(uri);
 			gchar *name = g_strdup_printf("uri:^%s", esc);
 			if (!g_key_file_has_group(conf, name))
 			{

@@ -276,7 +276,7 @@ static void showwhite(Page *page, bool white)
 	list = g_slist_reverse(g_slist_copy(list));
 	for (GSList *next = list; next; next = next->next)
 	{
-		gchar *esc = escape(next->data);
+		gchar *esc = regesc(next->data);
 		gchar *line = g_strdup_printf("%c^%s\n", pre, esc);
 		g_free(esc);
 
