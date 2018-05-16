@@ -412,6 +412,13 @@ static void initconf(GKeyFile *kf)
 	}
 
 #ifdef MAINC
+	if (!kf)
+	{
+		g_key_file_set_value(  conf, DSET, "dummy", "endof"APP);
+		g_key_file_set_comment(conf, DSET, "dummy", "\nWebkit's settings", NULL);
+		g_key_file_remove_key( conf, DSET, "dummy", NULL);
+	}
+
 	//fill vals not set
 	if (LASTWIN)
 		_kitprops(false, LASTWIN->seto, conf, DSET);
@@ -426,19 +433,24 @@ static void initconf(GKeyFile *kf)
 	//sample and comment
 	g_key_file_set_comment(conf, "all", NULL,
 			"Basically "APP" doesn't cut spaces."
-			" Also true is only 'true' not 'True'", NULL);
+			" Also true is only 'true' not 'True'\n", NULL);
 	g_key_file_set_comment(conf, "template", NULL,
-			"Unlike the search section, the arg is not escaped"
-			" but can be called the same as the search", NULL);
+			"Unlike the search group, the arg is not escaped\n"
+			"but can be called the same as the search", NULL);
+	g_key_file_set_comment(conf, "set:v", NULL,
+			"Settings set. You can add set:*\n"
+			"It is enabled by actions(set/set2/setstack) or included by others"
+			, NULL);
 	g_key_file_set_comment(conf, DSET, NULL,
-			"Default of 'set's", NULL);
+			"Default of 'set's\n"
+			"You can use set;'s keys in set:* and uri:*", NULL);
 
 	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
 
 	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
 	g_key_file_set_comment(conf, sample, NULL,
 			"After 'uri:' is regular expressions for the setting set.\n"
-			"preferential order of sections: Last > First > '"DSET"'"
+			"preferential order of groups: lower > upper > '"DSET"'"
 			, NULL);
 
 	sample = "uri:^foo|a-zA-Z0-9|*";
@@ -449,12 +461,13 @@ static void initconf(GKeyFile *kf)
 			, NULL);
 	g_key_file_set_string(conf, sample, "handler", "chromium %s");
 	g_key_file_set_comment(conf, sample, "handler",
-			"handler cancels request before send and spawns the command with a URI matched the 'uri:'"
+			"handler cancels request before sent and\n"
+			"spawns the command with a URI matched the 'uri:'"
 			, NULL);
 
 	g_key_file_set_string(conf, sample, "sets", "image;script");
 	g_key_file_set_comment(conf, sample, "sets",
-			"include other sets" , NULL);
+			"include sets" , NULL);
 #endif
 }
 

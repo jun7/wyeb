@@ -2108,8 +2108,8 @@ static Keybind dkeys[]= {
 	{"editconf"      , 'E', 0},
 	{"openconfigdir" , 'c', 0},
 
-	{"setv"          , 'v', 0, "Use the 'set:v' section"},
-	{"setscript"     , 's', GDK_CONTROL_MASK, "Use the 'set:script' section"},
+	{"setv"          , 'v', 0, "Use the 'set:v' group"},
+	{"setscript"     , 's', GDK_CONTROL_MASK, "Use the 'set:script' group"},
 	{"setimage"      , 'i', GDK_CONTROL_MASK, "set:image"},
 	{"unset"         , 'u', 0},
 
@@ -2121,7 +2121,7 @@ static Keybind dkeys[]= {
 	{"textlink"      , 'e', GDK_CONTROL_MASK, "For text elements in insert mode"},
 
 //nokey
-	{"set"           , 0, 0, "Use 'set:' + arg section of main.conf. This toggles"},
+	{"set"           , 0, 0, "Use 'set:' + arg group of main.conf. This toggles"},
 	{"set2"          , 0, 0, "Not toggle"},
 	{"setstack"      , 0, 0,
 		"arg == NULL ? remove last : add set without checking duplicate"},
