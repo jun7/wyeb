@@ -470,7 +470,8 @@ static void initconf(GKeyFile *kf)
 			"handler cancels request before sent and\n"
 			"spawns the command with a URI matched the 'uri:'"
 			, NULL);
-	g_key_file_set_string(conf, sample, "handlerunescape", "false");
+	g_key_file_set_string(conf, sample, "handlerunesc", "false");
+	g_key_file_set_string(conf, sample, "handlerescchrs", "");
 
 	g_key_file_set_string(conf, sample, "sets", "image;script");
 	g_key_file_set_comment(conf, sample, "sets",
@@ -501,10 +502,9 @@ static void mkdirif(gchar *path)
 	_mkdirif(path, true);
 }
 
-static gchar *escape(const gchar *str)
+static gchar *_escape(const gchar *str, gchar *esc)
 {
 	gulong len = 0;
-	gchar *esc = ".?+";
 	for (const gchar *c = str; *c; c++)
 	{
 		len++;
@@ -532,6 +532,10 @@ static gchar *escape(const gchar *str)
 	}
 
 	return g_strdup(ret);
+}
+static gchar *escape(const gchar *str)
+{
+	return _escape(str, ".?+");
 }
 
 

@@ -3793,14 +3793,22 @@ static bool urihandler(Win *win, const gchar *uri, gchar *group)
 {
 	if (!g_key_file_has_key(conf, group, "handler", NULL)) return false;
 
-	gchar *keyval = g_key_file_get_string(conf, group, "handler", NULL);
-	gchar *command = g_strdup_printf(keyval,
-			g_key_file_get_boolean(conf, group, "handlerunescape", NULL) ?
-			g_uri_unescape_string(uri, NULL) : uri);
+	gchar *buf = g_key_file_get_boolean(conf, group, "handlerunesc", NULL) ?
+			g_uri_unescape_string(uri, NULL) : NULL;
+
+	gchar *esccs = g_key_file_get_string(conf, group, "handlerescchrs", NULL);
+	if (esccs && *esccs)
+		GFA(buf, _escape(buf ?: uri, esccs))
+	g_free(esccs);
+
+	gchar *command = g_key_file_get_string(conf, group, "handler", NULL);
+	GFA(command, g_strdup_printf(command, buf ?: uri))
+	g_free(buf);
+
 	run(win, "spawn", command);
 	_showmsg(win, g_strdup_printf("Handled: %s", command), false);
+
 	g_free(command);
-	g_free(keyval);
 	return true;
 }
 static gboolean policycb(
