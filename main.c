@@ -1611,18 +1611,21 @@ static void nextwin(Win *win, bool next)
 	GSList *list = NULL;
 
 	if (!inwins(win, &list, false))
-		showmsg(win, "No other windows");
-	else
+		return showmsg(win, "No other windows");
+
+	Win *nextwin = NULL;
 	if (next)
 	{
 		g_ptr_array_remove(wins, win);
 		g_ptr_array_add(wins, win);
-		present(list->data); //present first to keep focus on xfce
+		present(nextwin = list->data); //present first to keep focus on xfce
 		gdk_window_lower(gdkw(win->winw));
 	}
 	else
-		present(g_slist_last(list)->data);
+		present(nextwin = g_slist_last(list)->data);
 
+	nextwin->lastx = win->lastx;
+	nextwin->lasty = win->lasty;
 	g_slist_free(list);
 }
 static bool quitnext(Win *win, bool next)
@@ -3546,43 +3549,31 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		return true;
 	}
 	case 3:
-		if (e->state & GDK_BUTTON1_MASK) {
-			win->cancelcontext = win->cancelbtn1r = true;
+		if (!(e->state & GDK_BUTTON1_MASK))
+			return win->crashed ?
+				run(win, "reload", NULL) : false;
 
-			static gdouble llx = 0, lly = 0;
-			if (win->lastx + win->lasty)
-			{
-				llx = win->lastx;
-				lly = win->lasty;
-			} else { //copy last pos of another window
-				win->lastx = llx;
-				win->lasty = lly;
-			}
+		win->cancelcontext = win->cancelbtn1r = true;
+		if (!(win->lastx + win->lasty)) break;
 
-			gdouble
-				deltax = (e->x - win->lastx) ,
-				deltay = e->y - win->lasty;
+		gdouble deltax = e->x - win->lastx,
+		        deltay = e->y - win->lasty;
 
-			if (MAX(abs(deltax), abs(deltay)) < threshold(win) * 2)
-			{ //default
-				setact(win, "rockerleft", URI(win));
-			}
-			else if (fabs(deltax) > fabs(deltay)) {
-				if (deltax < 0) //left
-					setact(win, "rockerleft", URI(win));
-				else //right
-					setact(win, "rockerright", URI(win));
-			} else {
-				if (deltay < 0) //up
-					setact(win, "rockerup", URI(win));
-				else //down
-					setact(win, "rockerdown", URI(win));
-			}
+		if (MAX(abs(deltax), abs(deltay)) < threshold(win) * 2)
+		{ //default
+			setact(win, "rockerleft", URI(win));
 		}
-		else if (win->crashed)
-			run(win, "reload", NULL);
-
-		break;
+		else if (fabs(deltax) > fabs(deltay)) {
+			if (deltax < 0) //left
+				setact(win, "rockerleft", URI(win));
+			else //right
+				setact(win, "rockerright", URI(win));
+		} else {
+			if (deltay < 0) //up
+				setact(win, "rockerup", URI(win));
+			else //down
+				setact(win, "rockerdown", URI(win));
+		}
 	}
 
 	return false;
