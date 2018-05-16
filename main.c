@@ -2932,7 +2932,7 @@ static gchar *histdata(bool rest, bool all)
 		//for img
 		"em {min-width:%dpx; text-align:center;}\n"
 		"img {"
-		" box-shadow:0 .1em .1em 0 #cbf;"
+		" box-shadow:0 .1em .1em 0 #ccf;"
 		" display:block;"
 		" margin:auto;"
 		"}\n"
