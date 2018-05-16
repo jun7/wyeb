@@ -3794,7 +3794,9 @@ static bool urihandler(Win *win, const gchar *uri, gchar *group)
 	if (!g_key_file_has_key(conf, group, "handler", NULL)) return false;
 
 	gchar *keyval = g_key_file_get_string(conf, group, "handler", NULL);
-	gchar *command = g_strdup_printf(keyval, uri);
+	gchar *command = g_strdup_printf(keyval,
+			g_key_file_get_boolean(conf, group, "handlerunescape", NULL) ?
+			g_uri_unescape_string(uri, NULL) : uri);
 	run(win, "spawn", command);
 	_showmsg(win, g_strdup_printf("Handled: %s", command), false);
 	g_free(command);

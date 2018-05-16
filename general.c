@@ -470,6 +470,7 @@ static void initconf(GKeyFile *kf)
 			"handler cancels request before sent and\n"
 			"spawns the command with a URI matched the 'uri:'"
 			, NULL);
+	g_key_file_set_string(conf, sample, "handlerunescape", "false");
 
 	g_key_file_set_string(conf, sample, "sets", "image;script");
 	g_key_file_set_comment(conf, sample, "sets",
