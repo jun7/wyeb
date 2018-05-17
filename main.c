@@ -4514,6 +4514,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	g_object_unref(win->set);
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 	setcss(win, getset(win, "usercss"));
+	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor") ?: "");
 
 	GObject *o = win->kito;
 	SIGA(o, "draw"                 , drawcb    , win);
