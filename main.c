@@ -21,6 +21,9 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #include <JavaScriptCore/JSStringRef.h>
 #include <gdk/gdkx.h>
 
+//flock
+#include <sys/file.h>
+
 #define LASTWIN (wins && wins->len ? (Win *)*wins->pdata : NULL)
 #define URI(win) (webkit_web_view_get_uri(win->kit) ?: "")
 
@@ -4712,6 +4715,9 @@ int main(int argc, char **argv)
 			strlen(cwd), strlen(exarg), cwd, exarg, winid, action, uri ?: "");
 	g_free(cwd);
 
+	int lock = open(ipcpath("lock"), O_RDONLY | O_CREAT, S_IRUSR);
+	flock(lock, LOCK_EX);
+
 	if (ipcsend("main", sendstr)) exit(0);
 	g_free(sendstr);
 
@@ -4727,6 +4733,8 @@ int main(int argc, char **argv)
 		g_unsetenv("GTK_OVERLAY_SCROLLING");
 
 	ipcwatch("main");
+
+	close(lock);
 
 	//icon
 	GdkPixbuf *pix = gtk_icon_theme_load_icon(

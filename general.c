@@ -542,7 +542,8 @@ static gchar *regesc(const gchar *str)
 //@ipc
 static gchar *ipcpath(gchar *name)
 {
-	gchar *path = g_build_filename(g_get_user_runtime_dir(), fullname, name, NULL);
+	static gchar *path = NULL;
+	GFA(path, g_build_filename(g_get_user_runtime_dir(), fullname, name, NULL));
 	mkdirif(path);
 	return path;
 }
@@ -587,7 +588,6 @@ static bool ipcsend(gchar *name, gchar *str) {
 
 		//D(send -end- %s %s, name, str)
 	}
-	g_free(path);
 	return ret;
 }
 static GSource *_ipcwatch(gchar *name, GMainContext *ctx) {
@@ -602,7 +602,6 @@ static GSource *_ipcwatch(gchar *name, GMainContext *ctx) {
 	g_source_set_callback(watch, (GSourceFunc)ipcgencb, NULL, NULL);
 	g_source_attach(watch, ctx);
 
-	g_free(path);
 	return watch;
 }
 static void ipcwatch(gchar *name)
