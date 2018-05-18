@@ -566,13 +566,6 @@ static void makeclick(Win *win, guint btn)
 }
 
 //shared
-static void altcur(Win *win)
-{
-	static GdkCursor *cur = NULL;
-	if (!cur) cur = gdk_cursor_new_for_display(
-			gdk_display_get_default(), GDK_CENTER_PTR);
-	gdk_window_set_cursor(gdkw(win->kitw), cur);
-}
 static void setresult(Win *win, WebKitHitTestResult *htr)
 {
 	g_free(win->image);
@@ -1490,6 +1483,16 @@ void pmove(Win *win, guint key)
 
 	gtk_widget_queue_draw(win->kitw);
 }
+static void altcur(Win *win, gdouble x, gdouble y)
+{
+	static GdkCursor *cur = NULL;
+	if (!cur) cur = gdk_cursor_new_for_display(
+			gdk_display_get_default(), GDK_CENTER_PTR);
+	if (x + y == 0)
+		gdk_window_set_cursor(gdkw(win->kitw), cur);
+	else if (gdk_window_get_cursor(gdkw(win->kitw)) == cur)
+		motion(win, x, y); //clear
+}
 static void putkey(Win *win, guint key)
 {
 	GdkEventKey *ek = kitevent(win, false, GDK_KEY_PRESS);
@@ -2275,7 +2278,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 		//nokey
 		Z("openback",
-			altcur(win); showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
+			altcur(win, 0,0); showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
 		Z("openwithref",
 			const gchar *ref = retv ? retv[0] : URI(win);
 			gchar *nrml = soup_uri_normalize(arg, NULL);
@@ -3499,6 +3502,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	win->userreq = true;
 
 	if (e->type != GDK_BUTTON_PRESS) return false;
+	altcur(win, e->x, e->y); //clears if it is alt cur
 
 	if (win->mode == Mlist)
 	{
@@ -3841,7 +3845,7 @@ static gboolean policycb(
 			return true;
 		} else
 		if (webkit_navigation_action_is_user_gesture(na))
-			altcur(win);
+			altcur(win, 0, 0);
 
 		return false;
 	}
