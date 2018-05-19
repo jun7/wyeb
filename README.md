@@ -43,7 +43,7 @@ Of course it is in the 'set:', so we can set it by uri.
 - Range hinting. ctrl-r. Also see hidden files in the menu dir, it has callback interface.
 - Lower memory usage. Just wyeb's default is multiwebprocs(WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES)=false.
 - Misc. saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
-- [Adblock extension](https://github.com/jun7/wyebadblock). This takes boot time though.
+- [Adblock extension](https://github.com/jun7/wyebadblock).
 
 ### Installation
 depends:
