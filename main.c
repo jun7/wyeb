@@ -3033,7 +3033,7 @@ static gchar *helpdata()
 		"    press and move up    : go to top\n"
 		"    press and move down  : go to bottom\n"
 		"    press and scroll up  : go to top\n"
-		"    press and scroll down: go to bottom\n"
+		"    press and scroll down: winlist\n"
 		"\n"
 		"context-menu:\n"
 		"  You can add your own script to context-menu. See 'menu' dir in\n"
