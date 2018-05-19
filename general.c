@@ -209,7 +209,7 @@ Conf dconf[] = {
 	{DSET    , "mdlbtnup"         , "top"},
 	{DSET    , "mdlbtndown"       , "bottom"},
 	{DSET    , "pressscrollup"    , "top"},
-	{DSET    , "pressscrolldown"  , "bottom"},
+	{DSET    , "pressscrolldown"  , "winlist"},
 	{DSET    , "rockerleft"       , "back"},
 	{DSET    , "rockerright"      , "forward"},
 	{DSET    , "rockerup"         , "quitprev"},
