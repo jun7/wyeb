@@ -1659,7 +1659,7 @@ static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
 
 	g_main_loop_run(page->sync);
 
-	g_source_destroy(watch);
+	g_source_unref(watch);
 	g_main_context_unref(ctx);
 	g_main_loop_unref(page->sync);
 	page->sync = NULL;
