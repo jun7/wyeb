@@ -34,9 +34,9 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 //bt324"
 
 #if DEBUG
-# define D(f, ...) g_print(#f"\n", __VA_ARGS__);
+# define D(f, ...) g_print("#"#f"\n", __VA_ARGS__);
 # define DNN(f, ...) g_print(#f, __VA_ARGS__);
-# define DD(a) g_print(#a"\n");
+# define DD(a) g_print("#"#a"\n");
 # define DENUM(v, e) if (v == e) D(%s:%3d is %s, #v, v, #e);
 #else
 # define D(...) ;
