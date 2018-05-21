@@ -2320,12 +2320,9 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("openeditor", openeditor(win, arg, NULL))
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, NULL, NULL, 0))
 		Z("jscallback"    ,
-			bool lastj = webkit_settings_get_enable_javascript(win->set);
-			if (!lastj) webkit_settings_set_enable_javascript(win->set, true);
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
 				g_slist_prepend(g_slist_prepend(NULL,
-						g_strdup(cdir)), g_strdup(exarg)));
-			if (!lastj) webkit_settings_set_enable_javascript(win->set, false))
+						g_strdup(cdir)), g_strdup(exarg))))
 		Z("sourcecallback",
 			WebKitWebResource *res =
 				webkit_web_view_get_main_resource(win->kit);
