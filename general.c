@@ -150,7 +150,7 @@ Conf dconf[] = {
 	{"template", "h"          , "http://%s"},
 
 	{"set:v"     , "enable-caret-browsing", "true"},
-	{"set:script", "enable-javascript"    , "false"},
+	{"set:script", "enable-javascript"    , "true"},
 	{"set:image" , "auto-load-images"     , "true"},
 	{"set:image" , "linkformat"   , "[![](%s) %.40s](%s)"},
 	{"set:image" , "linkdata"     , "ftu"},
