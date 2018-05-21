@@ -3854,7 +3854,11 @@ static gboolean policycb(
 
 	bool dl = false;
 	gchar *msr = getset(win, "dlmimetypes");
-	if (msr && *msr)
+	//for checking whether is sub frame or not.
+	//this time webkit_web_resource_get_response is null yet except on sub frames
+	//unfortunately on nav it returns prev page though
+	WebKitWebResource *mresrc = webkit_web_view_get_main_resource(win->kit);
+	if (msr && *msr && !webkit_web_resource_get_response(mresrc))
 	{
 		gchar **ms = g_strsplit(msr, ";", -1);
 		const gchar *mime = webkit_uri_response_get_mime_type(res);
@@ -3961,7 +3965,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		//D(WEBKIT_LOAD_FINISHED %s, URI(win))
 
 		if (g_strcmp0(win->lastreset, URI(win)))
-		{ //for load-failed before commit
+		{ //for load-failed before commit e.g. download
 			resetconf(win, 0);
 			send(win, Cstart, NULL);
 		}
