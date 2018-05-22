@@ -1795,8 +1795,24 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			xi + 1 == win->cursorx && yi + 1 == win->cursory;
 		ret = ret || pin;
 
-		if (pin)
+		if (!pin)
 		{
+			if (!cr) continue;
+		}
+		else if (type == 1) //present
+			present(lw);
+		else if (type == 3) //close
+		{
+			run(lw, "quit", NULL);
+			if (len > 1)
+			{
+				if (count == len)
+					win->scrlcur = len - 1;
+				gtk_widget_queue_draw(win->kitw);
+			}
+			else
+				tonormal(win);
+		} else {
 			gchar *title = g_strdup_printf("LIST| %s",
 					webkit_web_view_get_title(lw->kit));
 			settitle(win, title);
@@ -1804,29 +1820,10 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 			win->cursorx = xi + 1;
 			win->cursory = yi + 1;
-
 			win->scrlcur = count;
 		}
 
-		if (!cr)
-		{
-			if (pin)
-			{
-				if (type == 1) //present
-					present(lw);
-				else if (type == 3) //close
-				{
-					run(lw, "quit", NULL);
-					if (len > 1)
-						gtk_widget_queue_draw(win->kitw);
-					else
-						tonormal(win);
-				}
-				crnt = NULL;
-				break;
-			}
-			continue;
-		}
+		if (!cr) goto out;
 
 		cairo_reset_clip(cr);
 		cairo_new_sub_path(cr);
@@ -1874,6 +1871,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			cairo_paint(cr);
 		}
 	}
+out:
 
 	g_slist_free(actvs);
 
