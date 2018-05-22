@@ -1550,12 +1550,12 @@ static gboolean reqcb(
 		goto out;
 	}
 
-	const gchar *uristr = webkit_web_page_get_uri(page->kit);
+	const gchar *pagestr = webkit_web_page_get_uri(page->kit);
 
 	if (getsetbool(page, "reldomaindataonly"))
 	{
 
-		SoupURI *puri = soup_uri_new(uristr);
+		SoupURI *puri = soup_uri_new(pagestr);
 		SoupURI *ruri = soup_uri_new(reqstr);
 
 		const gchar *phost = soup_uri_get_host(puri);
@@ -1573,11 +1573,7 @@ static gboolean reqcb(
 			g_strfreev(cuts);
 
 			const gchar *rhost = soup_uri_get_host(ruri);
-			if (rhost && !g_str_has_suffix(rhost, phost))
-			{
-				addwhite(page, reqstr);
-				ret = true;
-			}
+			ret = rhost && !g_str_has_suffix(rhost, phost);
 		}
 
 		soup_uri_free(puri);
@@ -1589,10 +1585,12 @@ static gboolean reqcb(
 		bool (*checkf)(const char *, const char *) =
 			g_object_get_data(G_OBJECT(page->kit), "wyebcheck");
 		if (checkf)
-			ret = !checkf(reqstr, uristr);
+			ret = !checkf(reqstr, pagestr);
 	}
 
-	if (!ret)
+	if (ret)
+		addwhite(page, reqstr);
+	else
 		addblack(page, reqstr);
 
 out:
