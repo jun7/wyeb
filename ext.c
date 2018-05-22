@@ -51,6 +51,16 @@ typedef struct _WP {
 } Page;
 
 #include "general.c"
+static void resetconf(Page *page, const gchar *uri, bool force)
+{
+	page->setagentprev = page->setagent && !force;
+	page->setagent = false;
+
+	_resetconf(page, uri, force);
+
+	g_object_set_data(G_OBJECT(page->kit), "adblock",
+			GINT_TO_POINTER(getsetbool(page, "adblock") ? 'y' : 'n'));
+}
 
 
 static GPtrArray *pages = NULL;
@@ -1397,7 +1407,7 @@ void ipccb(const gchar *line)
 		break;
 	case Coverset:
 		GFA(page->overset, g_strdup(*arg ? arg : NULL))
-		_resetconf(page, webkit_web_page_get_uri(page->kit), true);
+		resetconf(page, webkit_web_page_get_uri(page->kit), true);
 		if (page->apnode)
 			makehint(page, page->lasttype, NULL, g_strdup(page->apkeys));
 		break;
@@ -1526,13 +1536,13 @@ static gboolean reqcb(
 	if (res && page->pagereq == 2)
 	{//redirect. pagereq == 2 means it is a top level request
 		//in redirection we don't get yet current uri
-		_resetconf(page, reqstr, false);
+		resetconf(page, reqstr, false);
 		page->pagereq = 1;
 		page->redirected = true;
 		goto out;
 	}
 
-	if (check == 1 || !getsetbool(page, "reldomaindataonly") ||
+	if (check == 1 ||
 		!head || !soup_message_headers_get_list(head, "Referer")) //historical
 		//but the purpose of the reldomain is adblock, so non ref is not ad
 	{
@@ -1540,40 +1550,50 @@ static gboolean reqcb(
 		goto out;
 	}
 
-
-	//reldomain check
 	const gchar *uristr = webkit_web_page_get_uri(page->kit);
 
-	SoupURI *puri = soup_uri_new(uristr);
-	SoupURI *ruri = soup_uri_new(reqstr);
-
-	const gchar *phost = soup_uri_get_host(puri);
-
-	if (phost)
+	if (getsetbool(page, "reldomaindataonly"))
 	{
-		gchar **cuts = g_strsplit(
-				getset(page, "reldomaincutheads") ?: "", ";", -1);
-		for (gchar **cut = cuts; *cut; cut++)
-			if (g_str_has_prefix(phost, *cut))
-			{
-				phost += strlen(*cut);
-				break;
-			}
-		g_strfreev(cuts);
 
-		const gchar *rhost = soup_uri_get_host(ruri);
-		if (rhost && !g_str_has_suffix(rhost, phost))
+		SoupURI *puri = soup_uri_new(uristr);
+		SoupURI *ruri = soup_uri_new(reqstr);
+
+		const gchar *phost = soup_uri_get_host(puri);
+
+		if (phost)
 		{
-			addwhite(page, reqstr);
-			ret = true;
+			gchar **cuts = g_strsplit(
+					getset(page, "reldomaincutheads") ?: "", ";", -1);
+			for (gchar **cut = cuts; *cut; cut++)
+				if (g_str_has_prefix(phost, *cut))
+				{
+					phost += strlen(*cut);
+					break;
+				}
+			g_strfreev(cuts);
+
+			const gchar *rhost = soup_uri_get_host(ruri);
+			if (rhost && !g_str_has_suffix(rhost, phost))
+			{
+				addwhite(page, reqstr);
+				ret = true;
+			}
 		}
+
+		soup_uri_free(puri);
+		soup_uri_free(ruri);
+	}
+
+	if (!ret && getsetbool(page, "adblock"))
+	{
+		bool (*checkf)(const char *, const char *) =
+			g_object_get_data(G_OBJECT(page->kit), "wyebcheck");
+		if (checkf)
+			ret = !checkf(reqstr, uristr);
 	}
 
 	if (!ret)
 		addblack(page, reqstr);
-
-	soup_uri_free(puri);
-	soup_uri_free(ruri);
 
 out:
 	if (!ret && head)
@@ -1618,7 +1638,7 @@ out:
 	return ret;
 }
 //static void formcb(WebKitWebPage *page, GPtrArray *elms, gpointer p) {}
-//static void loadcb(WebKitWebPage *wp, Page *page) {}
+//static void loadcb(WebKitWebPage *kp, Page *page) {}
 static void uricb(Page* page)
 {
 	//workaround: when in redirect change uri delays
@@ -1627,16 +1647,16 @@ static void uricb(Page* page)
 	else
 	{
 		page->pagereq = 0;
-		_resetconf(page, webkit_web_page_get_uri(page->kit), false);
+		resetconf(page, webkit_web_page_get_uri(page->kit), false);
 	}
 	page->redirected = false;
 }
 
-static void initex(WebKitWebExtension *ex, WebKitWebPage *wp)
+static void initex(WebKitWebExtension *ex, WebKitWebPage *kp)
 {
 	Page *page = g_new0(Page, 1);
-	page->kit = wp;
-	page->id = webkit_web_page_get_id(wp);
+	page->kit = kp;
+	page->id = webkit_web_page_get_id(kp);
 	page->seto = g_object_new(G_TYPE_OBJECT, NULL);
 	g_ptr_array_add(pages, page);
 

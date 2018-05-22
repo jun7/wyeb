@@ -4467,7 +4467,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		gchar *args = g_strjoinv(";", argv);
 		g_strfreev(argv);
 		gchar *udata = g_strconcat(args,
-				";", shared ? "s" : "m", fullname, NULL);
+				";wyebabapi;", shared ? "s" : "m", fullname, NULL);
 		g_free(args);
 
 		webkit_web_context_set_web_extensions_initialization_user_data(

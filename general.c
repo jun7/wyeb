@@ -137,7 +137,7 @@ Conf dconf[] = {
 //			"reload last window when whiteblack.conf or reldomain are changed"},
 
 	{"boot"  , "enablefavicon", "true"},
-	{"boot"  , "extensionargs", "adblock:true;"},
+	{"boot"  , "extensionargs", ";"},
 	{"boot"  , "multiwebprocs", "false"},
 	{"boot"  , "ephemeral"    , "false"},
 	{"boot"  , "unsetGTK_OVERLAY_SCROLLING", "true", "workaround"},
@@ -163,6 +163,9 @@ Conf dconf[] = {
 	{DSET    , "msgcolor"         , "#c07"},
 
 	//loading
+	{DSET    , "adblock"          , "true",
+		"This has a point only while wyebadblock is working."
+	},
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
 	{DSET    , "showblocked"      , "false"},
@@ -367,11 +370,6 @@ static bool seturiprops(WP *wp, const gchar *uri, gchar *group)
 
 static void _resetconf(WP *wp, const gchar *uri, bool force)
 {
-#ifndef MAINC
-	wp->setagentprev = wp->setagent && !force;
-	wp->setagent = false;
-#endif
-
 	if (wp->lasturiconf || force)
 	{
 		GFA(wp->lasturiconf, NULL)
