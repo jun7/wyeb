@@ -1518,6 +1518,7 @@ static gboolean reqcb(
 {
 	page->pagereq++;
 	const gchar *reqstr = webkit_uri_request_get_uri(req);
+	const gchar *pagestr = webkit_web_page_get_uri(page->kit);
 
 	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
 	if (!head && g_str_has_prefix(reqstr, APP":"))
@@ -1529,10 +1530,16 @@ static gboolean reqcb(
 	{
 		addwhite(page, reqstr);
 		ret = true;
-		goto out;
 	}
+	else if (check == -1 && getsetbool(page, "adblock"))
+	{
+		bool (*checkf)(const char *, const char *) =
+			g_object_get_data(G_OBJECT(page->kit), "wyebcheck");
+		if (checkf)
+			ret = !checkf(reqstr, pagestr);
+	}
+	if (ret) goto out;
 
-	if (page->pagereq == 1) goto out; //open page request
 	if (res && page->pagereq == 2)
 	{//redirect. pagereq == 2 means it is a top level request
 		//in redirection we don't get yet current uri
@@ -1542,58 +1549,43 @@ static gboolean reqcb(
 		goto out;
 	}
 
-	if (check == 1 ||
-		!head || !soup_message_headers_get_list(head, "Referer")) //historical
-		//but the purpose of the reldomain is adblock, so non ref is not ad
+	if (check == 1 //white
+		|| page->pagereq == 1 //open page request
+		|| !head
+		|| !getsetbool(page, "reldomaindataonly")
+		|| !soup_message_headers_get_list(head, "Referer")
+	) goto out;
+
+	//reldomainonly
+	SoupURI *puri = soup_uri_new(pagestr);
+	const gchar *phost = soup_uri_get_host(puri);
+	if (phost)
 	{
-		addblack(page, reqstr);
-		goto out;
-	}
+		gchar **cuts = g_strsplit(
+				getset(page, "reldomaincutheads") ?: "", ";", -1);
+		for (gchar **cut = cuts; *cut; cut++)
+			if (g_str_has_prefix(phost, *cut))
+			{
+				phost += strlen(*cut);
+				break;
+			}
+		g_strfreev(cuts);
 
-	const gchar *pagestr = webkit_web_page_get_uri(page->kit);
-
-	if (getsetbool(page, "reldomaindataonly"))
-	{
-
-		SoupURI *puri = soup_uri_new(pagestr);
 		SoupURI *ruri = soup_uri_new(reqstr);
+		const gchar *rhost = soup_uri_get_host(ruri);
 
-		const gchar *phost = soup_uri_get_host(puri);
+		ret = rhost && !g_str_has_suffix(rhost, phost);
 
-		if (phost)
-		{
-			gchar **cuts = g_strsplit(
-					getset(page, "reldomaincutheads") ?: "", ";", -1);
-			for (gchar **cut = cuts; *cut; cut++)
-				if (g_str_has_prefix(phost, *cut))
-				{
-					phost += strlen(*cut);
-					break;
-				}
-			g_strfreev(cuts);
-
-			const gchar *rhost = soup_uri_get_host(ruri);
-			ret = rhost && !g_str_has_suffix(rhost, phost);
-		}
-
-		soup_uri_free(puri);
 		soup_uri_free(ruri);
 	}
+	soup_uri_free(puri);
 
-	if (!ret && getsetbool(page, "adblock"))
-	{
-		bool (*checkf)(const char *, const char *) =
-			g_object_get_data(G_OBJECT(page->kit), "wyebcheck");
-		if (checkf)
-			ret = !checkf(reqstr, pagestr);
-	}
-
+out:
 	if (ret)
 		addwhite(page, reqstr);
 	else
 		addblack(page, reqstr);
 
-out:
 	if (!ret && head)
 	{
 		if (page->pagereq == 1 && (page->setagent || page->setagentprev))
