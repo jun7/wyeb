@@ -1625,7 +1625,8 @@ static void nextwin(Win *win, bool next)
 		g_ptr_array_remove(wins, win);
 		g_ptr_array_add(wins, win);
 		present(nextwin = list->data); //present first to keep focus on xfce
-		gdk_window_lower(gdkw(win->winw));
+		if (!plugto)
+			gdk_window_lower(gdkw(win->winw));
 	}
 	else
 		present(nextwin = g_slist_last(list)->data);
