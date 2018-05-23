@@ -1527,10 +1527,7 @@ static gboolean reqcb(
 	bool ret = false;
 	int check = checkwb(reqstr);
 	if (check == 0)
-	{
-		addwhite(page, reqstr);
 		ret = true;
-	}
 	else if (check == -1 && getsetbool(page, "adblock"))
 	{
 		bool (*checkf)(const char *, const char *) =
