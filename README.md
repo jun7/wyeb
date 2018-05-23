@@ -36,7 +36,7 @@ For example, context-menu items we added are just shell scripts.
 - [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
 - [Window List.](https://github.com/jun7/wyeb/wiki/img/windowlist.jpg) Key **z**
 - No tab. But keys J/K/x/X or button actions. 'tabbed wyeb plugto' works though.
-Make sure tabbed takes no notice of the reordering of wins. Adding `if(sel != c) focus(c);` to the configure event solves it(I'm new to tabbed);
+Make sure tabbed takes no notice of the reordering of wins without adding `if(sel != c) focus(c);` to the configure event;
 - Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
 Of course it is in the 'set:', so we can set it by uri.
 - Focused history. Instead of loaded history.

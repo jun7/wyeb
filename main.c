@@ -1765,10 +1765,6 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			win->cursory = yi + 1;
 		}
 
-		bool issuf =
-			gtk_widget_get_visible(lw->kitw) &&
-			gtk_widget_is_drawable(lw->kitw) ;
-
 		gdouble lww = gtk_widget_get_allocated_width(lw->kitw);
 		gdouble lwh = gtk_widget_get_allocated_height(lw->kitw);
 
@@ -1842,8 +1838,10 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		}
 		cairo_clip(cr);
 
-		if (issuf)
-		{
+		if (!plugto
+				&& gtk_widget_get_visible(lw->kitw)
+				&& gtk_widget_is_drawable(lw->kitw)
+		) {
 			cairo_scale(cr, scale, scale);
 
 			GdkPixbuf *pix =
