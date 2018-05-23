@@ -2589,18 +2589,15 @@ static bool setact(Win *win, gchar *key, const gchar *spare)
 //@@win and cbs:
 static gboolean focuscb(Win *win)
 {
+	if (LASTWIN->mode == Mlist && win != LASTWIN)
+		tonormal(LASTWIN);
+
 	g_ptr_array_remove(wins, win);
 	g_ptr_array_insert(wins, 0, win);
 
 	checkconf(NULL); //to create conf
 	fixhist(win);
 
-	return false;
-}
-static gboolean focusoutcb(Win *win)
-{
-	if (win->mode == Mlist)
-		tonormal(win);
 	return false;
 }
 
@@ -4420,7 +4417,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		gtk_widget_show(win->winw);
 
 	SIGW(win->wino, plugto ? "configure-event":"focus-in-event", focuscb, win);
-	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
 	if (!ctx)
 	{
