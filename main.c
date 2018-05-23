@@ -2200,15 +2200,15 @@ static gchar *ke2name(GdkEventKey *ke)
 static Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back);
 static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *exarg)
 {
+#define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
 	//D(action %s, action)
 	if (action == NULL) return false;
 	gchar **retv = NULL; //hintret
 
-#define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
-	//experimental
-	Z("plugto"      , plugto = atol(arg); if (plugto) return run(win, "new", NULL))
-	//nokey nowin
 	Z("new"         , win = newwin(arg, NULL, NULL, 0))
+	Z("plugto"      , plugto = atol(exarg ?: arg ?: "0");
+			return run(win, "new", exarg ? arg : NULL))
+
 #define CLIP(clip) \
 		gchar *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
 			gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
@@ -2222,7 +2222,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	if (win == NULL) return false;
 
 	//internal
-	Z("setreq" , send(win, Coverset, win->overset))
+	Z("setreq"     , send(win, Coverset, win->overset))
 	Z("textlinkon" , textlinkon(win))
 	Z("blocked"    ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
@@ -4419,7 +4419,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 	if (back != 2)
 		gtk_widget_show(win->winw);
 
-	SIGW(win->wino, "focus-in-event" , focuscb, win);
+	SIGW(win->wino, plugto ? "configure-event":"focus-in-event", focuscb, win);
 	SIGW(win->wino, "focus-out-event", focusoutcb, win);
 
 	if (!ctx)
@@ -4754,7 +4754,7 @@ int main(int argc, char **argv)
 	dlwins = g_ptr_array_new();
 	histimgs = g_queue_new();
 
-	if (run(NULL, action, uri))
+	if (_run(NULL, action, uri, cwd, *exarg ? exarg : NULL))
 		gtk_main();
 	else
 		exit(1);
