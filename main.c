@@ -635,7 +635,10 @@ static void colorf(Win *win, cairo_t *cr, double alpha)
 }
 static void colorb(Win *win, cairo_t *cr, double alpha)
 {
-	cairo_set_source_rgba(cr, 1, 1, 1, alpha);
+	if (win->rgba.red + win->rgba.green + win->rgba.blue < 1.5)
+		cairo_set_source_rgba(cr, 1, 1, 1, alpha);
+	else
+		cairo_set_source_rgba(cr, 0, 0, 0, alpha);
 }
 //monitor
 static GHashTable *monitored = NULL;
@@ -3229,14 +3232,14 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		colorb(win, cr, .6);
 		cairo_text_extents_t ex;
 		cairo_text_extents(cr, win->msg, &ex);
-		double m = fsize/4.0, m2 = m * 2;
+		double m = fsize/3.0;
 		cairo_rectangle(cr,
-				x + ex.x_bearing - m, y + ex.y_bearing - m,
-				ex.width + m2, ex.height + m2);
+				x + ex.x_bearing - m, y - ex.height - m,
+				ex.width + m*2, ex.height + m*2);
 		cairo_fill(cr);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, x, y);
+		cairo_move_to(cr, x, y - ex.height - ex.y_bearing);
 		cairo_show_text(cr, win->msg);
 	}
 	if (win->progd != 1)
@@ -3256,11 +3259,11 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdouble alpha = px > 0 && px < w &&
 			py > (gint)(h - fsize * 2) && py < h ? .4 : 1.0;
 
-		gdouble base = fsize/30.0 + (fsize/9.0) * (1 - win->progd);
+		gdouble base = MAX(fsize/16.0, (fsize/7.0) * (1 - win->progd));
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
 		gdouble y = h - base * 2;
-		cairo_set_line_width(cr, base * 2);
 
+		cairo_set_line_width(cr, base * 1.4);
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
 		colorb(win, cr, alpha - .2);
@@ -3268,6 +3271,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 
 		win->progrect = (GdkRectangle){0, y - base - 1, w, y + base * 2 + 2};
 
+		cairo_set_line_width(cr, base * 2);
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 		cairo_move_to(cr,     w/2 * win->progd, y);
 		cairo_line_to(cr, w - w/2 * win->progd, y);
