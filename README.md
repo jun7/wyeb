@@ -27,23 +27,31 @@ mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use
 ### Features
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
-- Editable main page. It is a markdown text and contains bookmarks. **e** key opens it by editor. As this all settings are thrown to editors.
-- Monitored conf files. For example, do `echo "* {color:red \!important}" >> user.css` on the conf dir. It should be applied immediately.
-- Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it. And another thing, Ctrl + i/s and v switch setting 'set:' can be edited.
+- Editable main page. It is a markdown text and contains bookmarks.
+**e** key opens it by editor. As this all settings are thrown to editors.
+- Monitored conf files. For example, do `echo "* {color:red \!important}" >> user.css` on the conf dir(**c**).
+It should be applied immediately.
+- Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it.
+And another thing, ctrl + **i/s** and **v** switch setting 'set:' can be edited.
 - Open actions. Most of actions assigned to keys can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
-- Suffix. 'wyeb X "" ""' spawns a process using different dirs added the suffix 'X' for all data.
-- [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png) For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
+- Suffix. `wyeb X "" ""` spawns a process using different dirs added the suffix 'X' for all data.
+- [Hacked Hinting.](https://github.com/jun7/wyeb/wiki/img/hackedhint.png)
+For pages having javascript. This screenshot's wyeb uses webkit2gtk version 2.17.4
 - [Window List.](https://github.com/jun7/wyeb/wiki/img/windowlist.jpg) Key **z**
-- No tab. But keys J/K/x/X or button actions. 'tabbed wyeb plugto' works though.
-Make sure tabbed takes no notice of the reordering of wins without adding `if(sel != c) focus(c);` to the configure event.
-- Rocker gesture and middle button gesture. We can change it even to call a script. (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
-Of course it is in the 'set:', so we can set it by uri.
+- No tab. But keys **J/K/x/X** or button actions. `tabbed wyeb plugto` works though.
+Make sure tabbed takes no notice of the reordering of wins
+without adding `if(sel != c) focus(c);` to the configure event.
+- Rocker gestures and middle button gestures. We can change it even to call a script.
+(e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
+Of course it is in the 'set;', so we can set it by uri.
 - Focused history. Instead of loaded history.
-- Pointer Mode. **p** makes pure click event for javascript pages. Also it moves pointer pos used by scroll and keeps pos last clicked for same layout pages.
-- Range hinting. ctrl-r. Also see hidden files in the menu dir, it has callback interface.
+- Pointer Mode. **p** makes pure click event for javascript pages.
+Also it moves pointer pos used by scroll and keeps pos last clicked for same layout pages.
+- Range hinting. ctrl-**r**. Also see hidden files in the menu dir, it has callback interface.
 - Lower memory usage. Just wyeb's default is multiwebprocs(WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES)=false.
-- Misc. saved search word for find, related domain only loading, whiteblack.conf, new window with clipboard text, hinting for callback script.
+- Misc. saved search word for find, related domain only loading,
+whiteblack.conf, new window with clipboard text, hinting for callback script.
 - [Adblock extension](https://github.com/jun7/wyebadblock).
 
 ### Installation
