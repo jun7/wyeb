@@ -2205,7 +2205,6 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	gchar **retv = NULL; //hintret
 
 	Z("new"         , win = newwin(arg, NULL, NULL, 0))
-	if (!strcmp(action, "-e")) action = "plugto";
 	Z("plugto"      , plugto = atol(exarg ?: arg ?: "0");
 			return run(win, "new", exarg ? arg : NULL))
 
