@@ -29,10 +29,10 @@ wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
 - Editable main page. It is a markdown text and contains bookmarks.
 **e** key opens it by editor. As this all settings are thrown to editors.
-- Monitored conf files. For example, do `echo "* {color:red \!important}" >> user.css` on the conf dir(**c**).
+- Monitored conf files. For example, do `echo "* {color:red \!important}" >> user.css` on the conf dir(key **c**).
 It should be applied immediately.
 - Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it.
-And another thing, ctrl + **i/s** and **v** switch setting 'set:' can be edited.
+And another thing, **ctrl-i/s** and **v** switch setting 'set:' can be edited.
 - Open actions. Most of actions assigned to keys can be accessed by shell.
 For example, context-menu items we added are just shell scripts.
 - Suffix. `wyeb X "" ""` spawns a process using different dirs added the suffix 'X' for all data.
@@ -48,7 +48,7 @@ Of course it is in the 'set;', so we can set it by uri.
 - Focused history. Instead of loaded history.
 - Pointer Mode. **p** makes pure click event for javascript pages.
 Also it moves pointer pos used by scroll and keeps pos last clicked for same layout pages.
-- Range hinting. ctrl-**r**. Also see hidden files in the menu dir, it has callback interface.
+- Range hinting. **ctrl-r**. Also see hidden files in the menu dir, it has callback interface.
 - Lower memory usage. Just wyeb's default is multiwebprocs(WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES)=false.
 - Misc. saved search word for find, related domain only loading,
 whiteblack.conf, new window with clipboard text, hinting for callback script.
