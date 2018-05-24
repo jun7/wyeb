@@ -2903,6 +2903,7 @@ static gchar *histdata(bool rest, bool all)
 			gchar **stra = g_strsplit(line, " ", 3);
 			if (stra[0] && stra[1])
 			{
+				if (stra[2]) g_strchomp(stra[2]);
 				lf = g_slist_prepend(lf, stra);
 				num++;
 			}
@@ -2929,7 +2930,7 @@ static gchar *histdata(bool rest, bool all)
 		"a {padding:.2em; color:inherit; text-decoration:none;}\n"
 		"a:hover {background-color:#faf6ff}\n"
 		"time {font-family:monospace;}\n"
-		"a > span {padding:0 0 0 .6em; white-space:normal; word-wrap:break-word;}\n"
+		"a > span {padding:0 .4em 0 .6em; white-space:normal; word-wrap:break-word;}\n"
 		"i {font-size:.79em; color:#43a;}\n"
 		//for img
 		"em {min-width:%dpx; text-align:center;}\n"
