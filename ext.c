@@ -780,6 +780,8 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 		WebKitDOMElement *te =
 			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i);
 
+
+		bool div = false;
 		gchar *tag = webkit_dom_element_get_tag_name(te);
 		if (isins(clicktags, tag))
 		{
@@ -789,11 +791,14 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 
 			g_free(tag);
 			continue;
-		}
+		} else if (!strcmp(tag, "DIV"))
+			div = true; //div is random
+
 		g_free(tag);
 
 		Elm elm = checkelm(win, frect, prect, te, true, true);
-		if (!elm.insight) continue;
+		if (!elm.insight && !div)
+			continue;
 
 		WebKitDOMHTMLCollection *ccl = webkit_dom_element_get_children(te);
 		Elm *crect = prect;
