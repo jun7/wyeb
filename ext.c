@@ -719,8 +719,10 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	ret.zi = atoi(zc);
 	g_free(zc);
 
-	if (prect)
-		trim(&ret, ret.zi > prect->zi ? frect : prect);
+	if (ret.zi > prect->zi || styleis(dec, "position", "absolute"))
+		trim(&ret, frect);
+	else
+		trim(&ret, prect);
 
 	if (js && (ret.h < 1 || ret.w < 1))
 		goto retfalse;
