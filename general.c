@@ -92,8 +92,6 @@ typedef enum {
 	Ctlget  = 'g',
 	Cwref   = 'W',
 	Cscroll = 'v',
-
-	Cfree   = 'F',
 } Coms;
 
 

@@ -3290,8 +3290,6 @@ static void destroycb(Win *win)
 
 	quitif(false);
 
-	send(win, Cfree, NULL);
-
 	g_free(win->pageid);
 	g_free(win->lasturiconf);
 	g_free(win->lastreset);

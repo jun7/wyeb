@@ -1490,11 +1490,6 @@ void ipccb(const gchar *line)
 	case Cscroll:
 		halfscroll(page, *arg == 'd');
 		break;
-
-	case Cfree:
-		freepage(page);
-		page = NULL;
-		break;
 	}
 
 	g_strfreev(args);
@@ -1642,6 +1637,7 @@ static void uricb(Page* page)
 static void initex(WebKitWebExtension *ex, WebKitWebPage *kp)
 {
 	Page *page = g_new0(Page, 1);
+	g_object_weak_ref(G_OBJECT(kp), (GWeakNotify)freepage, page);
 	page->kit = kp;
 	page->id = webkit_web_page_get_id(kp);
 	page->seto = g_object_new(G_TYPE_OBJECT, NULL);
