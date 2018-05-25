@@ -1055,6 +1055,8 @@ static void _modechanged(Win *win)
 		if (win->mode != Mpointer) win->pbtn = 0;
 	case Mhintrange:
 		send(win, Crm, NULL);
+		break;
+
 	case Mnormal:
 		gtk_window_remove_accel_group(win->win, accelg);
 		break;
@@ -1111,6 +1113,8 @@ static void _modechanged(Win *win)
 			send(win, win->com, arg);
 			g_free(arg);
 		}
+		break;
+
 	case Mnormal:
 		gtk_window_add_accel_group(win->win, accelg);
 		break;
