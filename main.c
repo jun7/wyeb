@@ -2285,7 +2285,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 				!g_str_has_prefix(ref, "file:"))
 			{
 				gchar *carg = g_strdup_printf("%s %s", ref, nrml);
-				send(win, Cwref, carg);
+				send(win, Cwithref, carg);
 				g_free(carg);
 			}
 			webkit_web_view_load_uri(win->kit, nrml);

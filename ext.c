@@ -51,6 +51,15 @@ typedef struct _WP {
 } Page;
 
 #include "general.c"
+static void loadconf()
+{
+	if (!confpath)
+		confpath = path2conf("main.conf");
+
+	GKeyFile *new = g_key_file_new();
+	g_key_file_load_from_file(new, confpath,G_KEY_FILE_NONE, NULL);
+	initconf(new);
+}
 static void resetconf(Page *page, const gchar *uri, bool force)
 {
 	page->setagentprev = page->setagent && !force;
@@ -1218,7 +1227,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 }
 
 
-//@dom cbs
+//@context
 static void domfocusincb(WebKitDOMDOMWindow *w, WebKitDOMEvent *e, Page *page)
 {
 	WebKitDOMDocument *doc = webkit_dom_dom_window_get_document(w);
@@ -1240,8 +1249,6 @@ static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 	if (page->apnode)
 		makehint(page, page->lasttype, NULL, NULL);
 }
-
-//@misc com funcs
 static void pagestart(Page *page)
 {
 	g_slist_free_full(page->black, g_free);
@@ -1249,7 +1256,6 @@ static void pagestart(Page *page)
 	page->black = NULL;
 	page->white = NULL;
 }
-
 static void frameon(Page *page, WebKitDOMDocument *doc)
 {
 	WebKitDOMEventTarget *emitter = WEBKIT_DOM_EVENT_TARGET(
@@ -1292,6 +1298,8 @@ static void pageon(Page *page)
 	frameon(page, webkit_web_page_get_dom_document(page->kit));
 }
 
+
+//@misc com funcs
 static void mode(Page *page)
 {
 	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
@@ -1360,16 +1368,6 @@ static void blur(Page *page)
 
 	g_object_unref(selection);
 	g_object_unref(win);
-}
-
-static void loadconf()
-{
-	if (!confpath)
-		confpath = path2conf("main.conf");
-
-	GKeyFile *new = g_key_file_new();
-	g_key_file_load_from_file(new, confpath,G_KEY_FILE_NONE, NULL);
-	initconf(new);
 }
 
 static void halfscroll(Page *page, bool d)
@@ -1447,13 +1445,16 @@ void ipccb(const gchar *line)
 			send(page, "tonormal", NULL);
 		}
 		break;
-
 	case Ctext:
 	{
 		WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
 		makelist(page, doc, Ctext, NULL, NULL);
 		break;
 	}
+	case Crm:
+		rmhint(page);
+		break;
+
 	case Cmode:
 		mode(page);
 		break;
@@ -1464,8 +1465,6 @@ void ipccb(const gchar *line)
 
 	case Cblur:
 		blur(page);
-	case Crm:
-		rmhint(page);
 		break;
 
 	case Cwhite:
@@ -1482,7 +1481,7 @@ void ipccb(const gchar *line)
 		textlinkset(page, arg);
 		break;
 
-	case Cwref:
+	case Cwithref:
 		g_strfreev(page->refreq);
 		page->refreq = g_strsplit(arg, " ", 2);
 		break;
@@ -1499,12 +1498,11 @@ void ipccb(const gchar *line)
 }
 
 
+//@page cbs
 static void headerout(const char *name, const char *value, gpointer p)
 {
 	g_print("%s : %s\n", name, value);
 }
-
-//@page cbs
 static gboolean reqcb(
 		WebKitWebPage *p,
 		WebKitURIRequest *req,
@@ -1634,7 +1632,7 @@ static void uricb(Page* page)
 	page->redirected = false;
 }
 
-static void initex(WebKitWebExtension *ex, WebKitWebPage *kp)
+static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 {
 	Page *page = g_new0(Page, 1);
 	g_object_weak_ref(G_OBJECT(kp), (GWeakNotify)freepage, page);
@@ -1686,6 +1684,6 @@ G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 
 	pages = g_ptr_array_new();
 
-	SIG(ex, "page-created", initex, NULL);
+	SIG(ex, "page-created", initpage, NULL);
 }
 

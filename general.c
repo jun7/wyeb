@@ -82,15 +82,15 @@ typedef enum {
 	Ctext   = 't',
 	Cspawn  = 'S',
 	Crange  = 'r',
+	Crm     = 'R',
 
 	Cmode   = 'm',
 	Cfocus  = 'f',
 	Cblur   = 'b',
-	Crm     = 'R',
 	Cwhite  = 'w',
 	Ctlset  = 'T',
 	Ctlget  = 'g',
-	Cwref   = 'W',
+	Cwithref= 'W',
 	Cscroll = 'v',
 } Coms;
 
