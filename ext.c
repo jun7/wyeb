@@ -681,17 +681,18 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 			goto retfalse;
 
 	ret = getrect(te);
-	ret.insight = true;
 
 	glong bottom = ret.y + ret.h;
 	glong right  = ret.x + ret.w;
 	if (
-		(ret.y <= 0         && bottom <= 0       ) ||
+		(ret.y <  0         && bottom <  0       ) ||
 		(ret.y >= frect->h  && bottom >= frect->h) ||
-		(ret.x <= 0         && right  <= 0       ) ||
+		(ret.x <  0         && right  <  0       ) ||
 		(ret.x >= frect->w  && right  >= frect->w)
 	)
 		goto retfalse;
+
+	ret.insight = true;
 
 #if ! NEWV
 	if (styleis(dec, "display", "inline"))
