@@ -685,10 +685,10 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	glong bottom = ret.y + ret.h;
 	glong right  = ret.x + ret.w;
 	if (
-		(ret.y < 0         && bottom < 0       ) ||
-		(ret.y > frect->h  && bottom > frect->h) ||
-		(ret.x < 0         && right  < 0       ) ||
-		(ret.x > frect->w  && right  > frect->w)
+		(ret.y < 0        && bottom < 0       ) ||
+		(ret.y > frect->h && bottom > frect->h) ||
+		(ret.x < 0        && right  < 0       ) ||
+		(ret.x > frect->w && right  > frect->w)
 	)
 		goto retfalse;
 
