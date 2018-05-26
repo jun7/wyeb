@@ -943,7 +943,7 @@ static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
 	return elms;
 }
 
-static void hintret(Page *page, Coms type, WebKitDOMElement *te)
+static void hintret(Page *page, Coms type, WebKitDOMElement *te, bool hasnext)
 {
 	gchar uritype = 'l';
 	gchar *uri = NULL;
@@ -999,7 +999,7 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te)
 	gchar *ouri = webkit_dom_document_get_document_uri(odoc);
 
 	gchar *suri = tofull(te, uri);
-	gchar *retstr = g_strdup_printf("%c%s %s %s", uritype, ouri, suri, label);
+	gchar *retstr = g_strdup_printf("%c%d%s %s %s", uritype, hasnext, ouri, suri, label);
 	send(page, "hintret", retstr);
 
 	g_free(uri);
@@ -1020,7 +1020,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 		if (dtype && strcmp("html", webkit_dom_document_type_get_name(dtype)))
 		{
 			//no elms may be;P
-			gchar *retstr = g_strdup_printf("l%s ", webkit_web_page_get_uri(page->kit));
+			gchar *retstr = g_strdup_printf("l0%s ", webkit_web_page_get_uri(page->kit));
 			send(page, "hintret", retstr);
 			g_free(retstr);
 
@@ -1194,7 +1194,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 				}
 				else
 				{
-					hintret(page, type, te);
+					hintret(page, type, te, false);
 					send(page, "tonormal", NULL);
 				}
 			}
@@ -1226,7 +1226,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 	for (GSList *next = rangeelms; next; next = next->next)
 	{
-		hintret(page, type, next->data);
+		hintret(page, type, next->data, next->next);
 		g_usleep(getsetint(page, "rangeloopusec"));
 	}
 	g_slist_free(rangeelms);
