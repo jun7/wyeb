@@ -1257,6 +1257,10 @@ static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 	if (page->apnode)
 		makehint(page, page->lasttype, NULL, NULL);
 }
+static void unloadcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+{
+	rmhint(page);
+}
 static void pagestart(Page *page)
 {
 	g_slist_free_full(page->black, g_free);
@@ -1288,6 +1292,9 @@ static void frameon(Page *page, WebKitDOMDocument *doc)
 //may be heavy
 //	webkit_dom_event_target_add_event_listener(emitter,
 //			"DOMSubtreeModified", G_CALLBACK(hintcb), false, page);
+
+	webkit_dom_event_target_add_event_listener(emitter,
+			"beforeunload", G_CALLBACK(unloadcb), false, page);
 
 	WebKitDOMHTMLCollection *cl =
 		webkit_dom_document_get_elements_by_tag_name_as_html_collection(
