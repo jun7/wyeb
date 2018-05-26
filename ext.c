@@ -734,8 +734,8 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	g_object_unref(dec);
 
 	ret.elm = te;
-	ret.fx = frect->x;
-	ret.fy = frect->y;
+	ret.fx = frect->fx;
+	ret.fy = frect->fy;
 	ret.ok = true;
 
 	return ret;
@@ -929,8 +929,9 @@ static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
 			cfrect.w = MIN(cfrect.w - cx, cw);
 			cfrect.h = MIN(cfrect.h - cy, ch);
 
-			cfrect.x += cfrect.fx + cx;
-			cfrect.y += cfrect.fy + cy;
+			cfrect.fx += cfrect.x + cx;
+			cfrect.fy += cfrect.y + cy;
+			cfrect.x = cfrect.y = 0;
 			elms = makelist(page, fdoc, type, &cfrect, elms);
 		}
 
