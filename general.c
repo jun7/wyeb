@@ -142,7 +142,7 @@ Conf dconf[] = {
 
 	{"search", "g"            , "https://www.google.com/search?q=%s"},
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
-	{"search", "u"            , "http://www.urbandictionary.com/define.php?term=%s"},
+	{"search", "u"            , "https://www.urbandictionary.com/define.php?term=%s"},
 
 	{"template", "na"         , "%s"},
 	{"template", "h"          , "http://%s"},
