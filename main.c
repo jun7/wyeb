@@ -245,6 +245,13 @@ static bool isin(GPtrArray *ary, void *v)
 		if (v == ary->pdata[i]) return true;
 	return false;
 }
+static Win *winbyid(const gchar *pageid)
+{
+	for (int i = 0; i < wins->len; i++)
+		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid))
+			return wins->pdata[i];
+	return NULL;
+}
 static void quitif(bool force)
 {
 	if (!force && (wins->len != 0 || dlwins->len != 0)) return;
@@ -2148,6 +2155,7 @@ static Keybind dkeys[]= {
 	{"download"      , 0, 0},
 	{"dlwithheaders" , 0, 0, "Current uri is sent as Referer. Also cookies"},
 	{"showmsg"       , 0, 0},
+	{"raise"         , 0, 0},
 	{"click"         , 0, 0, "x:y"},
 	{"openeditor"    , 0, 0},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
@@ -2164,11 +2172,9 @@ static Keybind dkeys[]= {
 			"\n  The stdout is not caller's but first process's stdout."},
 #endif
 
-
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //pageid
 //	{"windowlist"    , 0, 0}, //=>pageid uri title
-//	{"present"       , 0, 0}, //pageid
 };
 static gchar *ke2name(GdkEventKey *ke)
 {
@@ -2565,6 +2571,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("addblacklist", send(win, Cwhite, "black"))
 
 	Z("textlink", textlinktry(win));
+	Z("raise"   , present(arg ? winbyid(arg) ?: win : win))
 
 	gchar *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
 	showmsg(win, msg);
@@ -4633,13 +4640,6 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 
 
 //@main
-static Win *winbyid(const gchar *pageid)
-{
-	for (int i = 0; i < wins->len; i++)
-		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid))
-			return wins->pdata[i];
-	return NULL;
-}
 static void runline(const gchar *line, gchar *cdir, gchar *exarg)
 {
 	gchar **args = g_strsplit(line, ":", 3);
