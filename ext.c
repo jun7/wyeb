@@ -182,6 +182,7 @@ static bool isinput(WebKitDOMElement *te)
 		gchar *type = webkit_dom_element_get_attribute(te, "type");
 		if (!type || !isins(inottext, type))
 			ret = true;
+		g_free(type);
 	}
 	g_free(tag);
 
