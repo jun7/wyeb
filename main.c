@@ -1585,17 +1585,16 @@ static void present(Win *win)
 	if (confbool("pointerwarp") &&
 			pointer() != gtk_get_current_event_device())
 	{
-		gint wx, wy, px, py;
+		gint px, py;
 		gdk_device_get_position(pointer(), NULL, &px, &py);
-		gdk_window_get_position(gdkw(win->winw), &wx, &wy);
-		gint h = gtk_widget_get_allocated_height(win->winw);
-		gint w = gtk_widget_get_allocated_width(win->winw);
+		GdkRectangle rect;
+		gdk_window_get_frame_extents(gdkw(win->winw), &rect);
 
 		gdk_device_warp(pointer(),
 				gdk_display_get_default_screen(
 					gdk_window_get_display(gdkw(win->winw))),
-				CLAMP(px, wx, wx + w - 1),
-				CLAMP(py, wy, wy + h - 1));
+				CLAMP(px, rect.x, rect.x + rect.width  - 1),
+				CLAMP(py, rect.y, rect.y + rect.height - 1));
 	}
 }
 static gint inwins(Win *win, GSList **list, bool onlylen)
