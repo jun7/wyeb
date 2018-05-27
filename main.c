@@ -3215,17 +3215,11 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_move_to(cr, x - size, y);
 		cairo_line_to(cr, x + size, y);
 
-		if (win->mode == Mpointer)
-		{
-			cairo_set_line_width(cr, 6);
-			colorb(win, cr, .9);
-			cairo_stroke_preserve(cr);
-			colorf(win, cr, 1);
-		} else
-			colorf(win, cr, .3);
-
-		cairo_set_line_width(cr, 2);
-
+		cairo_set_line_width(cr, size / 6);
+		colorb(win, cr, 1);
+		cairo_stroke_preserve(cr);
+		colorf(win, cr, 1);
+		cairo_set_line_width(cr, size / 12);
 		cairo_stroke(cr);
 	}
 	if (win->msg)
