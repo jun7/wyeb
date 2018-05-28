@@ -472,7 +472,8 @@ static void _showmsg(Win *win, gchar *msg, bool small)
 	if (win->msgfunc) g_source_remove(win->msgfunc);
 	GFA(win->msg, msg)
 	win->smallmsg = small;
-	win->msgfunc = g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
+	win->msgfunc = !msg ? 0 :
+		g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->kitw);
 }
 static void showmsg(Win *win, const gchar *msg)
