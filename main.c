@@ -1054,7 +1054,6 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mpointer:
-		win->ppress = 0;
 		if (win->mode != Mhint) win->pbtn = 0;
 		gtk_widget_queue_draw(win->kitw);
 		break;
@@ -3363,6 +3362,7 @@ static void favcb(Win *win)
 static bool checkppress(Win *win, guint key)
 {
 	if (!win->ppress || (key && key != win->ppress)) return false;
+	win->ppress = 0;
 	putbtn(win, GDK_BUTTON_RELEASE, win->pbtn);
 	tonormal(win);
 	return true;
@@ -3687,7 +3687,7 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 	}
 	else drawprogif(win, false);
 
-	checkppress(win, 0);
+	checkppress(win, 0); //right click
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
