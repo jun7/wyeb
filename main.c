@@ -1583,7 +1583,7 @@ static void present(Win *win)
 {
 	gtk_window_present(win->win);
 	if (confbool("pointerwarp") &&
-			pointer() != gtk_get_current_event_device())
+			keyboard() == gtk_get_current_event_device())
 	{
 		gint px, py;
 		gdk_device_get_position(pointer(), NULL, &px, &py);
