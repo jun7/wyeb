@@ -774,8 +774,8 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 static void setcss(Win *win, gchar *namesstr); //declaration
 static void resetconf(Win *win, int type)
 { //type: 0: uri, 1:force, 2:overset, 3:file
-//	gchar *checks[] = {"reldomaindataonly", "reldomaincutheads", NULL};
-	gchar *checks[] = {"reldomaincutheads", "removeheaders", NULL};
+//	"reldomaindataonly", "removeheaders"
+	gchar *checks[] = {"reldomaincutheads", NULL};
 	guint hash = 0;
 	gchar *lastcss = g_strdup(getset(win, "usercss"));
 
