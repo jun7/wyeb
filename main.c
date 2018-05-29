@@ -3227,7 +3227,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		guint32 fsize = MAX(10,
 				webkit_settings_get_default_font_size(win->set));
 
-		gint x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x;
+		gint x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x*1.4;
 		y -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
