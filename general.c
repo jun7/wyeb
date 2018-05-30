@@ -170,6 +170,7 @@ Conf dconf[] = {
 	{DSET    , "stdoutheaders"    , "false"},
 	{DSET    , "removeheaders"    , "",
 		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
+	{DSET    , "rmnoscripttag"    , "false"},
 
 	//event
 	{DSET    , "multiplescroll"   , "2"},

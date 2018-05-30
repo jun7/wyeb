@@ -775,7 +775,7 @@ static void setcss(Win *win, gchar *namesstr); //declaration
 static void resetconf(Win *win, int type)
 { //type: 0: uri, 1:force, 2:overset, 3:file
 //	"reldomaindataonly", "removeheaders"
-	gchar *checks[] = {"reldomaincutheads", NULL};
+	gchar *checks[] = {"reldomaincutheads", "rmnoscripttag", NULL};
 	guint hash = 0;
 	gchar *lastcss = g_strdup(getset(win, "usercss"));
 

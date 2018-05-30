@@ -1253,7 +1253,27 @@ static void domfocusoutcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 { send(page, "focusuri", NULL); }
 //static void domactivatecb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 //{ DD(domactivate!) }
-//static void domloadcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page) {}
+
+static void rmtags(WebKitDOMDocument *doc, gchar *name)
+{
+	WebKitDOMHTMLCollection *cl =
+		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, name);
+
+	GSList *rms = NULL;
+	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
+		rms = g_slist_prepend(rms, webkit_dom_html_collection_item(cl, j));
+
+	for (GSList *next = rms; next; next = next->next)
+		webkit_dom_node_remove_child(
+			webkit_dom_node_get_parent_node(next->data), next->data, NULL);
+
+	g_slist_free(rms);
+	g_object_unref(cl);
+}
+static void domloadcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+{
+	rmtags(webkit_dom_dom_window_get_document(w), "NOSCRIPT");
+}
 static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 {
 	if (page->apnode)
@@ -1277,14 +1297,20 @@ static void frameon(Page *page, WebKitDOMDocument *doc)
 
 	page->emitters = g_slist_prepend(page->emitters, emitter);
 
+	if (getsetbool(page, "rmnoscripttag"))
+	{
+		rmtags(doc, "NOSCRIPT");
+		//have to monitor DOMNodeInserted or?
+		webkit_dom_event_target_add_event_listener(emitter,
+				"DOMContentLoaded", G_CALLBACK(domloadcb), false, page);
+	}
+
 	webkit_dom_event_target_add_event_listener(emitter,
 			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);
 	webkit_dom_event_target_add_event_listener(emitter,
 			"DOMFocusOut", G_CALLBACK(domfocusoutcb), false, page);
 //	webkit_dom_event_target_add_event_listener(emitter,
 //			"DOMActivate", G_CALLBACK(domactivatecb), false, page);
-//	webkit_dom_event_target_add_event_listener(emitter,
-//			"DOMContentLoaded", G_CALLBACK(domloadcb), false, page);
 
 	//for refresh hint
 	webkit_dom_event_target_add_event_listener(emitter,
