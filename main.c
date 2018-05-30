@@ -317,11 +317,12 @@ static void pushimg(Win *win, bool swap)
 	if (!(
 		gtk_widget_get_visible(win->kitw) &&
 		gtk_widget_is_drawable(win->kitw) &&
-		scale > 0.0 &&
-		ww > 0.0 &&
-		wh > 0.0
-	))
+		ww * scale >= 1 &&
+		wh * scale >= 1
+	)) {
+		g_queue_push_head(histimgs, NULL);
 		return;
+	}
 
 	Img *img = g_new(Img, 1);
 	static guint64 unique = 1;
@@ -3262,8 +3263,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdk_window_get_device_position(
 				gdkw(win->kitw), pointer(), &px, &py, NULL);
 
-		gdouble alpha = px > 0 && px < w &&
-			py > (gint)(h - fsize * 2) && py < h ? .4 : 1.0;
+		gdouble alpha = px > 0 && px < w ? .3 + ABS(h - py) / (h * .1): 1.0;
 
 		gdouble base = MAX(fsize/14.0, (fsize/7.0) * (1 - win->progd));
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
