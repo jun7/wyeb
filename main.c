@@ -2093,7 +2093,7 @@ static Keybind dkeys[]= {
 	//tab
 	{"nextwin"       , 'J', 0},
 	{"prevwin"       , 'K', 0},
-	{"quitnext"      , 'x', 0},
+	{"quitnext"      , 'x', 0, "Raise next win and quit current win"},
 	{"quitprev"      , 'X', 0},
 	{"winlist"       , 'z', 0},
 
@@ -2110,8 +2110,8 @@ static Keybind dkeys[]= {
 
 	{"open"          , 'o', 0},
 	{"opennew"       , 'w', 0, "New window"},
-	{"edituri"       , 'O', 0, "arg or focused link or Current"},
-	{"editurinew"    , 'W', 0, "arg or focused link or Current"},
+	{"edituri"       , 'O', 0, "Edit arg or focused link or current page's URI"},
+	{"editurinew"    , 'W', 0},
 
 //	{"showsource"    , 'S', 0}, //not good
 	{"showhelp"      , ':', 0},
@@ -2120,7 +2120,7 @@ static Keybind dkeys[]= {
 	{"showmainpage"  , 'm', 0},
 
 	{"clearallwebsitedata", 'C', GDK_CONTROL_MASK},
-	{"edit"          , 'e', 0},//normaly conf, if in main edit mainpage.
+	{"edit"          , 'e', 0, "Edit current uri conf or mainpage"},
 	{"editconf"      , 'E', 0},
 	{"openconfigdir" , 'c', 0},
 
@@ -2129,8 +2129,7 @@ static Keybind dkeys[]= {
 	{"setimage"      , 'i', GDK_CONTROL_MASK, "set:image"},
 	{"unset"         , 'u', 0},
 
-	{"addwhitelist"  , 'a', 0,
-		"URIs blocked by reldomain limitation and black list are added to whiteblack.conf"},
+	{"addwhitelist"  , 'a', 0, "Add URIs blocked to whiteblack.conf as white list"},
 	{"addblacklist"  , 'A', 0, "URIs loaded"},
 
 //insert
