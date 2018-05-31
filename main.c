@@ -2156,7 +2156,6 @@ static Keybind dkeys[]= {
 	{"showmsg"       , 0, 0},
 	{"raise"         , 0, 0},
 	{"click"         , 0, 0, "x:y"},
-	{"inspector"     , 0, 0},
 	{"openeditor"    , 0, 0},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
 	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $RESULT"},
