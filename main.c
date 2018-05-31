@@ -2156,6 +2156,7 @@ static Keybind dkeys[]= {
 	{"showmsg"       , 0, 0},
 	{"raise"         , 0, 0},
 	{"click"         , 0, 0, "x:y"},
+	{"inspector"     , 0, 0},
 	{"openeditor"    , 0, 0},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
 	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $RESULT"},
@@ -3262,7 +3263,8 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		gdk_window_get_device_position(
 				gdkw(win->kitw), pointer(), &px, &py, NULL);
 
-		gdouble alpha = px > 0 && px < w ? .3 + ABS(h - py) / (h * .1): 1.0;
+		gdouble alpha = !gtk_widget_has_focus(win->kitw) ? .6 :
+			px > 0 && px < w ? .3 + ABS(h - py) / (h * .1): 1.0;
 
 		gdouble base = MAX(fsize/14.0, (fsize/7.0) * (1 - win->progd));
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
@@ -3271,7 +3273,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_set_line_width(cr, base * 1.4);
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, w, y);
-		colorb(win, cr, alpha - .2);
+		colorb(win, cr, alpha * .6);
 		cairo_stroke(cr);
 
 		win->progrect = (GdkRectangle){0, y - base - 1, w, y + base * 2 + 2};
@@ -3280,7 +3282,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 		cairo_move_to(cr,     w/2 * win->progd, y);
 		cairo_line_to(cr, w - w/2 * win->progd, y);
-		colorf(win, cr, alpha / (gtk_widget_has_focus(win->kitw) ? 1 : 3));
+		colorf(win, cr, alpha);
 		cairo_stroke(cr);
 	} else
 		win->progrect.width = 0;
