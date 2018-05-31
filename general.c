@@ -135,7 +135,7 @@ Conf dconf[] = {
 //			"reload last window when whiteblack.conf or reldomain are changed"},
 
 	{"boot"  , "enablefavicon", "true"},
-	{"boot"  , "extensionargs", ";"},
+	{"boot"  , "extensionargs", "adblock:true;"},
 	{"boot"  , "multiwebprocs", "false"},
 	{"boot"  , "ephemeral"    , "false"},
 	{"boot"  , "unsetGTK_OVERLAY_SCROLLING", "true", "workaround"},
