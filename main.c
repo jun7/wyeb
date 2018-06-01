@@ -156,7 +156,7 @@ static gchar *lastmsg = NULL;
 static gchar *mdpath = NULL;
 static gchar *accelp = NULL;
 
-static gchar *hists[]  = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
+static gchar *hists[]  = {"h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9", NULL};
 static gint   histfnum = sizeof(hists) / sizeof(*hists) - 1;
 static gchar *histdir  = NULL;
 
@@ -350,7 +350,7 @@ static gboolean histcb(Win *win)
 	if (!isin(wins, win)) return false;
 	win->histcb = 0;
 
-#define MAXSIZE 33333
+#define MAXSIZE 22222
 	static gint ci = -1;
 	static gint csize = 0;
 	if (!histfile || !g_file_test(histdir, G_FILE_TEST_EXISTS))
