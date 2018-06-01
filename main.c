@@ -156,7 +156,7 @@ static gchar *lastmsg = NULL;
 static gchar *mdpath = NULL;
 static gchar *accelp = NULL;
 
-static gchar *hists[]  = {"h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9", NULL};
+static gchar *hists[]  = {"h1", "h2", "h3", "h4", "h5", "h6", NULL};
 static gint   histfnum = sizeof(hists) / sizeof(*hists) - 1;
 static gchar *histdir  = NULL;
 
