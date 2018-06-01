@@ -3263,7 +3263,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 				gdkw(win->kitw), pointer(), &px, &py, NULL);
 
 		gdouble alpha = !gtk_widget_has_focus(win->kitw) ? .6 :
-			px > 0 && px < w ? .3 + ABS(h - py) / (h * .1): 1.0;
+			px > 0 && px < w ? MIN(1, .3 + ABS(h - py) / (h * .1)): 1.0;
 
 		gdouble base = MAX(fsize/14.0, (fsize/7.0) * (1 - win->progd));
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
