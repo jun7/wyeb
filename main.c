@@ -1480,7 +1480,7 @@ void pmove(Win *win, guint key)
 	)
 		win->lastdelta /= 2;
 
-	guint32 unit = MAX(10, webkit_settings_get_default_font_size(win->set)) / 2;
+	guint32 unit = MAX(10, webkit_settings_get_default_font_size(win->set)) / 3;
 	if (win->lastdelta < unit) win->lastdelta = unit;
 	gdouble d = win->lastdelta;
 	if (key == GDK_KEY_Up   ) win->py -= d;
