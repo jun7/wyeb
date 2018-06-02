@@ -447,6 +447,8 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_comment(conf, DSET, NULL,
 			"Default of 'set's\n"
 			"You can use set;'s keys in set:* and uri:*", NULL);
+	g_key_file_set_comment(conf, DSET, "hardware-acceleration-policy",
+			"ON_DEMAND | ALWAYS | NEVER", NULL);
 
 	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
 
