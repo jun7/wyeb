@@ -254,7 +254,7 @@ static Win *winbyid(const gchar *pageid)
 }
 static void quitif(bool force)
 {
-	if (!force && (wins->len != 0 || dlwins->len != 0)) return;
+	if (!force && (wins->len > 0 || dlwins->len > 0)) return;
 
 	gtk_main_quit();
 }
