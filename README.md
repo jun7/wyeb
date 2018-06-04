@@ -27,8 +27,8 @@ mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use
 ### Features
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
-- Editable main page. It is a markdown text and contains bookmarks.
-**e** key opens it by editor. As this all settings are thrown to editors.
+- Editable main page. It is a markdown text contains bookmarks.
+**e** key opens it by an editor. As this all settings are thrown to editors.
 - Monitored conf files. For example, do `echo "* {color:red \!important}" >> user.css` on the conf dir(key **c**).
 It should be applied immediately.
 - Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it.
