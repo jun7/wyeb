@@ -4729,14 +4729,20 @@ int main(int argc, char **argv)
 	g_set_prgname(fullname);
 	gtk_init(0, NULL);
 	checkconf(NULL);
+	ipcwatch("main");
+
+	close(lock);
 
 	if (g_key_file_get_boolean(conf, "boot",
 				"unsetGTK_OVERLAY_SCROLLING", NULL))
 		g_unsetenv("GTK_OVERLAY_SCROLLING");
 
-	ipcwatch("main");
-
-	close(lock);
+	GtkCssProvider *cssp = gtk_css_provider_new();
+	gtk_css_provider_load_from_data(cssp, "tooltip * {padding:0;}", -1, NULL);
+	gtk_style_context_add_provider_for_screen(
+			gdk_display_get_default_screen(gdk_display_get_default()),
+			(void *)cssp, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	g_object_unref(cssp);
 
 	//icon
 	GdkPixbuf *pix = gtk_icon_theme_load_icon(
