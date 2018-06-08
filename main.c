@@ -4745,7 +4745,10 @@ int main(int argc, char **argv)
 		g_unsetenv("GTK_OVERLAY_SCROLLING");
 
 	GtkCssProvider *cssp = gtk_css_provider_new();
-	gtk_css_provider_load_from_data(cssp, "tooltip * {padding:0;}", -1, NULL);
+	gtk_css_provider_load_from_data(cssp,
+			"tooltip *{padding:0;font:.9em Sans;color:midnightblue}"
+			"tooltip{background:white;opacity:.7;border:0;border-radius:0}"
+			"menuitem{padding:.2em}", -1, NULL);
 	gtk_style_context_add_provider_for_screen(
 			gdk_display_get_default_screen(gdk_display_get_default()),
 			(void *)cssp, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
