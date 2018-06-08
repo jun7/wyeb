@@ -1900,9 +1900,16 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	preparemd();
 	if (uri)
 	{
-		gchar *escttl = title ? g_markup_escape_text(title, -1) : NULL;
-		if (!escttl || !*escttl)
+		gchar *escttl;
+		if (title && *title)
+		{
+			gchar *tmp = g_markup_escape_text(title, -1);
+			escttl = _escape(tmp, "[]");
+			g_free(tmp);
+		}
+		else
 			escttl = g_strdup(uri);
+
 		gchar *fav = g_strdup_printf(APP":f/%s", uri);
 
 		gchar *items = getset(win, "linkdata") ?: "tu";
