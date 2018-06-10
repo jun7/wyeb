@@ -217,8 +217,8 @@ static gchar *mainmdstr =
 "["APP"](https://github.com/jun7/"APP")\n"
 "[![]("APP":i/accessories-dictionary) Wiki](https://github.com/jun7/"APP"/wiki)\n"
 "[Adblock](https://github.com/jun7/"APP"adblock)\n"
-"[![](wyeb:F) Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
-"[![](wyeb:f/https://www.archlinux.org/) Arch Linux](https://www.archlinux.org/)\n"
+"[![]("APP":F) Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
+"[![]("APP":f/https://www.archlinux.org/) Arch Linux](https://www.archlinux.org/)\n"
 ;
 
 //@misc

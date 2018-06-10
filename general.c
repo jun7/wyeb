@@ -150,7 +150,7 @@ Conf dconf[] = {
 	{"set:v"     , "enable-caret-browsing", "true"},
 	{"set:script", "enable-javascript"    , "true"},
 	{"set:image" , "auto-load-images"     , "true"},
-	{"set:image" , "linkformat"   , "[![](wyeb:F) %.40s](%s)"},
+	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s](%s)"},
 	{"set:image" , "linkdata"     , "tu"},
 	{"set:image" , "hintstyle"    ,
 		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
