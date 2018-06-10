@@ -19,8 +19,8 @@ mdlbtn2winlist of the conf is removed. set new key mdlbtnleft=winlist if you use
 
 ![Hinting](https://github.com/jun7/wyeb/wiki/img/hinting.png)
 
-[Screenshot](https://github.com/jun7/wyeb/wiki/img/favicon.png)
-/ [OwnStyleBookmarks](https://github.com/jun7/wyeb/wiki/img/bookmark.jpg)
+[Screenshot](https://github.com/jun7/wyeb/wiki/img/favicon.jpg)
+/ [OwnStyleBookmarks](https://github.com/jun7/wyeb/wiki/img/bookmark.png)
 / [ContextMenuInFileManager](https://github.com/jun7/wyeb/wiki/img/contextmenu.jpg)
 / [History](https://github.com/jun7/wyeb/wiki/img/history.jpg)
 
