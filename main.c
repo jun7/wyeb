@@ -197,7 +197,7 @@ static gchar *mainmdstr =
 "a{background:linear-gradient(to right top, #ddf, white, white, white);\n"
 " color:#109; padding:.2em; text-decoration:none; display:inline-block}\n"
 "a:hover{text-decoration:underline}\n"
-"img{height:1em; width:1em; margin-bottom:-.1em}\n"
+"img{height:1em; width:1em; margin:-.1em}\n"
 "strong > code{font-size:1.4em}\n"
 "</style>\n\n"
 "###Specific Keys:\n"
@@ -215,7 +215,8 @@ static gchar *mainmdstr =
 "and luakit, usage is similar to them.\n"
 "\n---\n\n"
 "["APP"](https://github.com/jun7/"APP")\n"
-"["APP"adblock](https://github.com/jun7/"APP"adblock)\n"
+"[![]("APP":i/accessories-dictionary) Wiki](https://github.com/jun7/"APP"/wiki)\n"
+"[Adblock](https://github.com/jun7/"APP"adblock)\n"
 "[Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
 "[![](wyeb:f/https://www.archlinux.org/) Arch Linux](https://www.archlinux.org/)\n"
 ;
@@ -3144,23 +3145,29 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 			else if (!clp || !clp->data || ((Img *)clp->data)->id < id)
 				clp = cr;
 
-			Img *img = NULL;
 			for (; clp; clp = clp->next)
-				if (clp->data && ((Img *)clp->data)->id == id)
-				{
-					img = clp->data;
-					clp = clp->next;
-					break;
-				}
-
-			if (img)
 			{
+				Img *img = clp->data;
+				clp = clp->next;
+				if (!img || img->id != id) continue;
+
 				type = "image/jpeg";
-				len = img->size;
-				data = g_memdup(img->buf, len);
+				data = g_memdup(img->buf, len = img->size);
+				break;
 			}
 		}
 		g_strfreev(args);
+	}
+	else if (g_str_has_prefix(path, "i/"))
+	{
+		GdkPixbuf *pix = gtk_icon_theme_load_icon(
+			gtk_icon_theme_get_default(), path + 2, 256, 0, NULL);
+		if (pix)
+		{
+			type = "image/png";
+			gdk_pixbuf_save_to_buffer(pix, &data, &len, "png", NULL, NULL);
+			g_object_unref(pix);
+		}
 	}
 	if (!type)
 	{
