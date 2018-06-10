@@ -1,4 +1,7 @@
 ## Changes
+jun 10, 2018:
+wyeb:F which short uri of favicon for wyeb:main is added. It is converted parent anchor's favicon uri.
+
 may 12, 2018:
 conf group raw -> template
 It still works though.

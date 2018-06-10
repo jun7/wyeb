@@ -1334,11 +1334,41 @@ static void frameon(Page *page, WebKitDOMDocument *doc)
 
 	g_object_unref(cl);
 }
-static void pageon(Page *page)
+static void pageon(Page *page, bool finished)
 {
 	g_slist_free_full(page->emitters, g_object_unref);
 	page->emitters = NULL;
 	frameon(page, webkit_web_page_get_dom_document(page->kit));
+
+	if (!finished
+		|| !g_str_has_prefix(webkit_web_page_get_uri(page->kit), APP":main")
+		|| !g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL)
+	)
+		return;
+
+	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
+	WebKitDOMHTMLCollection *cl =
+		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IMG");
+	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
+	{
+		WebKitDOMElement *elm = (void *)webkit_dom_html_collection_item(cl, j);
+		gchar *uri = webkit_dom_element_get_attribute(elm, "SRC");
+		if (!g_strcmp0(uri, APP":F"))
+		{
+			WebKitDOMElement *pe =
+				webkit_dom_node_get_parent_element((WebKitDOMNode *)elm);
+			g_free(uri);
+			uri = webkit_dom_element_get_attribute(pe, "HREF");
+			gchar *esc = g_uri_escape_string(uri, NULL, true);
+			gchar *f = g_strdup_printf(APP":f/%s", esc);
+			g_free(esc);
+			webkit_dom_element_set_attribute(elm, "SRC", f, NULL);
+			g_free(f);
+		}
+		g_free(uri);
+	}
+
+	g_object_unref(cl);
 }
 
 
@@ -1459,7 +1489,7 @@ void ipccb(const gchar *line)
 		g_strfreev(page->refreq);
 		page->refreq = NULL;
 
-		pageon(page);
+		pageon(page, *arg == 'f');
 		break;
 
 	case Ckey:
@@ -1554,11 +1584,14 @@ static gboolean reqcb(
 {
 	page->pagereq++;
 	const gchar *reqstr = webkit_uri_request_get_uri(req);
-	const gchar *pagestr = webkit_web_page_get_uri(page->kit);
-
-	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
-	if (!head && g_str_has_prefix(reqstr, APP":"))
+	if (g_str_has_prefix(reqstr, APP":"))
+	{
+		if (!strcmp(reqstr, APP":F"))
+			return true;
 		return false;
+	}
+	const gchar *pagestr = webkit_web_page_get_uri(page->kit);
+	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
 
 	bool ret = false;
 	int check = checkwb(reqstr);

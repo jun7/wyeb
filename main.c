@@ -217,7 +217,7 @@ static gchar *mainmdstr =
 "["APP"](https://github.com/jun7/"APP")\n"
 "[![]("APP":i/accessories-dictionary) Wiki](https://github.com/jun7/"APP"/wiki)\n"
 "[Adblock](https://github.com/jun7/"APP"adblock)\n"
-"[Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
+"[![](wyeb:F) Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
 "[![](wyeb:f/https://www.archlinux.org/) Arch Linux](https://www.archlinux.org/)\n"
 ;
 
@@ -1902,7 +1902,9 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 		else
 			escttl = g_strdup(uri);
 
-		gchar *fav = g_strdup_printf(APP":f/%s", uri);
+		gchar *esc = g_uri_escape_string(uri, "/:=&", true);
+		gchar *fav = g_strdup_printf(APP":f/%s", esc);
+		g_free(esc);
 
 		gchar *items = getset(win, "linkdata") ?: "tu";
 		int i = 0;
@@ -3091,19 +3093,16 @@ static cairo_status_t faviconcairocb(void *p,
 static void faviconcb(GObject *src, GAsyncResult *res, gpointer p)
 {
 	WebKitURISchemeRequest *req = p;
-	cairo_surface_t * suf = webkit_favicon_database_get_favicon_finish(
+	cairo_surface_t *suf = webkit_favicon_database_get_favicon_finish(
 			webkit_web_context_get_favicon_database(ctx), res, NULL);
-
 	GInputStream *st = g_memory_input_stream_new();
-
-	if (!suf)
-		suf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-
-	cairo_surface_write_to_png_stream(suf, faviconcairocb, st);
-
+	if (suf)
+	{
+		cairo_surface_write_to_png_stream(suf, faviconcairocb, st);
+		cairo_surface_destroy(suf);
+	}
 	webkit_uri_scheme_request_finish(req, st, -1, "image/png");
 
-	cairo_surface_destroy(suf);
 	g_object_unref(st);
 	g_object_unref(req);
 }
@@ -3117,10 +3116,12 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 
 	if (g_str_has_prefix(path, "f/"))
 	{
+		gchar *unesc = g_uri_unescape_string(path + 2, NULL);
 		g_object_ref(req);
 		webkit_favicon_database_get_favicon(
 				webkit_web_context_get_favicon_database(ctx),
-				path + 2, NULL, faviconcb, req);
+				unesc, NULL, faviconcb, req);
+		g_free(unesc);
 		return;
 	}
 
@@ -3962,7 +3963,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			break;
 		}
 
-		send(win, Con, NULL);
+		send(win, Con, "c");
 
 		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
 			if (win->tlserr) showmsg(win, "TLS Error");
@@ -3981,7 +3982,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		{
 			fixhist(win);
 			setspawn(win, "onloadedmenu");
-			send(win, Con, NULL); //for iframe
+			send(win, Con, "f");
 		}
 
 		win->progd = 1;
