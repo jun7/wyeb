@@ -1600,7 +1600,7 @@ static gboolean reqcb(
 	else if (check == -1 && getsetbool(page, "adblock"))
 	{
 		bool (*checkf)(const char *, const char *) =
-			g_object_get_data(G_OBJECT(page->kit), "wyebcheck");
+			g_object_get_data(G_OBJECT(page->kit), APP"check");
 		if (checkf)
 			ret = !checkf(reqstr, pagestr);
 	}

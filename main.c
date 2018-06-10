@@ -2311,7 +2311,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			const gchar *ref = retv ? retv[0] : URI(win);
 			WebKitURIRequest *req = webkit_uri_request_new(arg);
 			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
-			if (hdrs && //scheme wyeb: returns NULL
+			if (hdrs && //scheme APP: returns NULL
 				!g_str_has_prefix(ref, APP":") &&
 				!g_str_has_prefix(ref, "file:"))
 				soup_message_headers_append(hdrs, "Referer", ref);
@@ -4475,7 +4475,7 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		gchar *args = g_strjoinv(";", argv);
 		g_strfreev(argv);
 		gchar *udata = g_strconcat(args,
-				";wyebabapi;", shared ? "s" : "m", fullname, NULL);
+				";"APP"abapi;", shared ? "s" : "m", fullname, NULL);
 		g_free(args);
 
 		webkit_web_context_set_web_extensions_initialization_user_data(
