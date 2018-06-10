@@ -3068,7 +3068,7 @@ static gchar *helpdata()
 
 	for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
 	{
-		gchar *tmp = g_strdup_printf("%d - %-11s: %-22s : %s\n",
+		gchar *tmp = g_strdup_printf("%d - %-11s: %-19s: %s\n",
 				dkeys[i].mask,
 				gdk_keyval_name(dkeys[i].key),
 				dkeys[i].name,
