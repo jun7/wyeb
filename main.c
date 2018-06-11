@@ -2878,55 +2878,52 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 static gchar *histdata(bool rest, bool all)
 {
 	GSList *hist = NULL;
-	gint start = 0;
 	gint num = 0;
-	__time_t mtime = 0;
 	gint size = all ? 0 : confint("histviewsize");
 
-	bool imgs = confint("histimgs");
-
+	gint start = 0;
+	__time_t mtime = 0;
 	for (int j = 2; j > 0; j--) for (int i = histfnum - 1; i >= 0; i--)
 	{
 		if (!rest && size && num >= size) break;
+		if (start >= histfnum) break;
 
 		gchar *path = g_build_filename(histdir, hists[i], NULL);
 		bool exists = g_file_test(path, G_FILE_TEST_EXISTS);
 
-		if (!start) {
-			if (exists)
-			{
-				struct stat info;
-				stat(path, &info);
-				if (mtime && mtime <= info.st_mtime)
-					start = 1;
-				mtime = info.st_mtime;
-			}
-		} else start++;
-
-		if (!start) continue;
-		if (!exists) continue;
-		if (start > histfnum) break;
-
-		GSList *lf = NULL;
-		GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
-		gchar *line;
-		while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
-				== G_IO_STATUS_NORMAL)
+		if (start) start++;
+		else if (exists)
 		{
-			gchar **stra = g_strsplit(line, " ", 3);
-			if (stra[0] && stra[1])
-			{
-				if (stra[2]) g_strchomp(stra[2]);
-				lf = g_slist_prepend(lf, stra);
-				num++;
-			}
-			else
-				g_strfreev(stra);
-
-			g_free(line);
+			struct stat info;
+			stat(path, &info);
+			if (mtime && mtime <= info.st_mtime)
+				start = 1;
+			mtime = info.st_mtime;
 		}
-		if (lf) hist = g_slist_append(hist, lf);
-		g_io_channel_unref(io);
+
+		if (start && exists)
+		{
+			GSList *lf = NULL;
+			GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
+			gchar *line;
+			while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
+					== G_IO_STATUS_NORMAL)
+			{
+				gchar **stra = g_strsplit(line, " ", 3);
+				if (stra[0] && stra[1])
+				{
+					if (stra[2]) g_strchomp(stra[2]);
+					lf = g_slist_prepend(lf, stra);
+					num++;
+				}
+				else
+					g_strfreev(stra);
+
+				g_free(line);
+			}
+			if (lf) hist = g_slist_append(hist, lf);
+			g_io_channel_unref(io);
+		}
 		g_free(path);
 	}
 
@@ -2957,31 +2954,29 @@ static gchar *histdata(bool rest, bool all)
 
 	int resti = 0;
 	int i = 0;
-	GList *il = imgs ? g_queue_peek_head_link(histimgs) : NULL;
+	GList *il = confint("histimgs") ? g_queue_peek_head_link(histimgs) : NULL;
 	for (GSList *ns = hist; ns; ns = ns->next)
 		for (GSList *next = ns->data; next; next = next->next)
 	{
-		if (size)
+		if (!size) ;
+		else if (rest)
 		{
-			if (rest)
+			if (resti++ < size)
 			{
-				if (resti++ < size)
-				{
-					if (il) il = il->next;
-					continue;
-				}
+				if (il) il = il->next;
+				continue;
 			}
-			else if (size == i)
-			{
-				if (num > size)
-					sv[++i] = g_strdup(
-							"<h3><i>"
-							"<a href="APP":history/rest>Show Rest</a>"
-							"&nbsp|&nbsp;"
-							"<a href="APP":history/all>Show All</a>"
-							"</i></h3>");
-				goto loopout;
-			}
+		}
+		else if (size == i)
+		{
+			if (num > size)
+				sv[++i] = g_strdup(
+						"<h3><i>"
+						"<a href="APP":history/rest>Show Rest</a>"
+						"&nbsp|&nbsp;"
+						"<a href="APP":history/all>Show All</a>"
+						"</i></h3>");
+			goto loopout;
 		}
 
 		gchar **stra = next->data;
@@ -2989,18 +2984,17 @@ static gchar *histdata(bool rest, bool all)
 
 		if (il)
 		{
-			Img *img = il ? il->data : NULL;
-			if (il) il = il->next;
-			gchar *itag = img ?
-				g_strdup_printf("<em><img src="APP":histimg/%"
-						G_GUINT64_FORMAT"></img></em>", img->id)
-				: g_strdup("<em>-</em>");
+			gchar *itag = !il->data ? NULL : g_strdup_printf(
+					"<img src="APP":histimg/%"G_GUINT64_FORMAT"></img>",
+					((Img *)il->data)->id);
 
 			sv[++i] = g_strdup_printf(
-					"<p><a href=%s>%s"
+					"<p><a href=%s><em>%s</em>"
 					"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a>\n",
-					stra[1], itag ?: "", escpd, stra[1], stra[0]);
+					stra[1], itag ?: "-", escpd, stra[1], stra[0]);
+
 			g_free(itag);
+			il = il->next;
 		} else
 			sv[++i] = g_strdup_printf(
 					"<p><a href=%s><time>%.11s</time>"
