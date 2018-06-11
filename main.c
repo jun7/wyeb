@@ -195,7 +195,7 @@ static gchar *mainmdstr =
 "<style>\n"
 "body{overflow-y:scroll} /*workaround for the delaying of the context-menu*/\n"
 "a{background:linear-gradient(to right top, #ddf, white, white, white);\n"
-" color:#109; padding:.2em; text-decoration:none; display:inline-block}\n"
+" color:#109; margin:.2em; text-decoration:none; display:inline-block}\n"
 "a:hover{text-decoration:underline}\n"
 "img{height:1em; width:1em; margin:-.1em}\n"
 "strong > code{font-size:1.4em}\n"
@@ -4342,9 +4342,9 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		}
 	case GDK_KEY_u:
 	{
-		GFA(buf, g_strdup(
-		  gtk_editable_get_chars(e, wpos, pos)));
-		gtk_editable_delete_text(e, wpos, pos); break;
+		GFA(buf, g_strdup(gtk_editable_get_chars(e, wpos, pos)));
+		gtk_editable_delete_text(e, wpos, pos);
+		break;
 	}
 	case GDK_KEY_y:
 	{
