@@ -194,7 +194,7 @@ static gchar *mainmdstr =
 "<meta charset=utf8>\n"
 "<style>\n"
 "body{overflow-y:scroll} /*workaround for the delaying of the context-menu*/\n"
-"a{background:linear-gradient(to right top, #ddf, white, white, white);\n"
+"a{background:linear-gradient(to right top, #ddf, white, white);\n"
 " color:#109; margin:.2em; text-decoration:none; display:inline-block}\n"
 "a:hover{text-decoration:underline}\n"
 "img{height:1em; width:1em; margin:-.1em}\n"
