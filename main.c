@@ -2234,16 +2234,16 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	if (win == NULL) return false;
 
 	//internal
-	Z("setreq"     , send(win, Coverset, win->overset))
-	Z("textlinkon" , textlinkon(win))
-	Z("blocked"    ,
+	Z("_setreq"    , send(win, Coverset, win->overset))
+	Z("_textlinkon", textlinkon(win))
+	Z("_blocked"   ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
 			return true;)
-	Z("reloadlast" , reloadlast())
-	Z("focusuri"   , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
+	Z("_reloadlast", reloadlast())
+	Z("_focusuri"  , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
 
 	gchar *result = NULL;
-	if (!strcmp(action, "hintret"))
+	if (!strcmp(action, "_hintret"))
 	{
 		const gchar *orgarg = arg;
 		result = *++arg == '0' ? "0" : "1";

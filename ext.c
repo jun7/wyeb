@@ -247,7 +247,7 @@ static void setwblist(bool reload)
 	g_io_channel_unref(io);
 
 	if (reload)
-		send(*pages->pdata, "reloadlast", NULL);
+		send(*pages->pdata, "_reloadlast", NULL);
 }
 static int checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
 {
@@ -266,7 +266,7 @@ static void addwhite(Page *page, const gchar *uri)
 {
 	//D(blocked %s, uri)
 	if (getsetbool(page, "showblocked"))
-		send(page, "blocked", uri);
+		send(page, "_blocked", uri);
 	page->white = g_slist_prepend(page->white, g_strdup(uri));
 }
 static void addblack(Page *page, const gchar *uri)
@@ -364,7 +364,7 @@ static void textlinkget(Page *page, gchar *path)
 	g_io_channel_unref(io);
 	g_free(text);
 
-	send(page, "textlinkon", NULL);
+	send(page, "_textlinkon", NULL);
 }
 
 
@@ -1000,7 +1000,7 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te, bool hasnext)
 
 	gchar *suri = tofull(te, uri);
 	gchar *retstr = g_strdup_printf("%c%d%s %s %s", uritype, hasnext, ouri, suri, label);
-	send(page, "hintret", retstr);
+	send(page, "_hintret", retstr);
 
 	g_free(uri);
 	g_free(label);
@@ -1021,7 +1021,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 		{
 			//no elms may be;P
 			gchar *retstr = g_strdup_printf("l0%s ", webkit_web_page_get_uri(page->kit));
-			send(page, "hintret", retstr);
+			send(page, "_hintret", retstr);
 			g_free(retstr);
 
 			g_free(ipkeys);
@@ -1244,13 +1244,13 @@ static void domfocusincb(WebKitDOMDOMWindow *w, WebKitDOMEvent *e, Page *page)
 	WebKitDOMElement *te = webkit_dom_document_get_active_element(doc);
 	gchar *href = te ? webkit_dom_element_get_attribute(te, "HREF") : NULL;
 	gchar *uri = tofull(te, href);
-	send(page, "focusuri", uri);
+	send(page, "_focusuri", uri);
 
 	g_free(uri);
 	g_free(href);
 }
 static void domfocusoutcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
-{ send(page, "focusuri", NULL); }
+{ send(page, "_focusuri", NULL); }
 //static void domactivatecb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 //{ DD(domactivate!) }
 
@@ -1727,7 +1727,7 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 		ipcwatch(name);
 	}
 	loadconf();
-	send(page, "setreq", NULL);
+	send(page, "_setreq", NULL);
 
 	GMainContext *ctx = g_main_context_new();
 	page->sync = g_main_loop_new(ctx, true);
