@@ -594,14 +594,15 @@ static WebKitDOMElement *makehintelm(Page *page,
 		g_object_unref(hint);
 	}
 
-	return ret;
 #else
 
-	return _makehintelm(page, doc, center,
+	ret = _makehintelm(page, doc, center,
 			elm->y + elm->fy + pagey,
 			elm->x + elm->fx + pagex, elm->h, elm->w, uri, text, len, true);
 #endif
 	g_free(uri);
+
+	return ret;
 }
 
 
