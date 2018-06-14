@@ -2241,12 +2241,10 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			return true;)
 	Z("_reloadlast", reloadlast())
 	Z("_focusuri"  , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
-
-	gchar *result = NULL;
 	if (!strcmp(action, "_hintret"))
 	{
 		const gchar *orgarg = arg;
-		result = *++arg == '0' ? "0" : "1";
+		exarg = *++arg == '0' ? "0" : "1";
 		retv = g_strsplit(++arg, " ", 3);
 		arg = retv[1];
 
@@ -2330,7 +2328,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			g_strfreev(xy);
 		)
 		Z("openeditor", openeditor(win, arg, NULL))
-		Z("spawn"   , spawnwithenv(win, arg, cdir, true, result, NULL, 0))
+		Z("spawn"   , spawnwithenv(win, arg, cdir, true, exarg, NULL, 0))
 		Z("jscallback"    ,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
 				g_slist_prepend(g_slist_prepend(NULL,
