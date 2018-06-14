@@ -195,7 +195,7 @@ static gchar *mainmdstr =
 "<style>\n"
 "body{overflow-y:scroll} /*workaround for the delaying of the context-menu*/\n"
 "a{background:linear-gradient(to right top, #ddf, white, white, white);\n"
-" color:#109; margin:.1em; padding: .1em; text-decoration:none; display:inline-block}\n"
+" color:#109; margin:1px; padding:2px; text-decoration:none; display:inline-block}\n"
 "a:hover{text-decoration:underline}\n"
 "img{height:1em; width:1em; margin:-.1em}\n"
 "strong > code{font-size:1.4em}\n"
