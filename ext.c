@@ -799,7 +799,7 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 		g_free(tag);
 
 		Elm elm = checkelm(win, frect, prect, te, true, true);
-		if (!elm.insight && !div)
+		if (!elm.insight && (!div || elm.y > 1))
 			continue;
 
 		WebKitDOMHTMLCollection *ccl = webkit_dom_element_get_children(te);
