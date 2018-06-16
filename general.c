@@ -580,7 +580,10 @@ static bool ipcsend(gchar *name, gchar *str) {
 		//D(send start %s %s, name, str)
 		char *esc = g_strescape(str, "");
 		gchar *send = g_strconcat(esc, "\n", NULL);
-		ret = write(cpipe, send, strlen(send)) != -1;
+		int len = strlen(send);
+		if (len > PIPE_BUF)
+			fcntl(cpipe, F_SETFL, 0);
+		ret = write(cpipe, send, len) == len;
 		g_free(send);
 		g_free(esc);
 		close(cpipe);
