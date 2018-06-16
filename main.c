@@ -3509,11 +3509,17 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		win->cursorx = win->cursory = 0;
 		if (e->button == 1)
 			win->cancelbtn1r = true;
-		if ((e->button == 1 || e->button == 3) &&
-				winlist(win, e->button, NULL))
-			return true;
+		if ((e->button != 1 && e->button != 3)
+				|| !winlist(win, e->button, NULL))
+			tonormal(win);
 
-		tonormal(win);
+		if (e->button == 3)
+		{
+			GdkEvent *ne = gdk_event_peek();
+			if (ne->type == GDK_2BUTTON_PRESS || ne->type == GDK_3BUTTON_PRESS)
+				win->cancelcontext = true;
+			gdk_event_free(ne);
+		}
 		return true;
 	}
 
