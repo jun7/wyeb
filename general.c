@@ -47,9 +47,20 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
-# define NEWV 1
+# define V18 1
 #else
-# define NEWV 0
+# define V18 0
+#endif
+#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 20
+# define V22 1
+#else
+# define V22 0
+#endif
+
+#ifdef MAINC
+#if ! v22
+#include <JavaScriptCore/JSStringRef.h>
+#endif
 #endif
 
 

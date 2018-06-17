@@ -15,10 +15,10 @@ wyeb: main.c general.c makefile
 		-DEXTENSION_DIR=\"$(EXTENSION_DIR)\" \
 		$(DDEBUG) -lm
 
-ext.so: ext.c general.c makefile
+ext.so: ext.c general.c makefile ext2.22.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -shared -fPIC \
 		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
-		$(DDEBUG)
+		$(DDEBUG) -DEXT22=0
 
 clean:
 	rm -f wyeb ext.so

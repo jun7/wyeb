@@ -18,7 +18,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <webkit2/webkit2.h>
-#include <JavaScriptCore/JSStringRef.h>
 #include <gdk/gdkx.h>
 
 //flock
@@ -172,7 +171,6 @@ static long plugto = 0;
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group);
 #define MAINC
 #include "general.c"
-
 
 static gchar *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
@@ -1940,6 +1938,10 @@ static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 	gchar *resstr = NULL;
 	if (res)
 	{
+#if V22
+		resstr = jsc_value_to_string(
+				webkit_javascript_result_get_js_value(res));
+#else
 		JSValueRef jv = webkit_javascript_result_get_value(res);
 		JSGlobalContextRef jctx =
 			webkit_javascript_result_get_global_context(res);
@@ -1954,7 +1956,7 @@ static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 		}
 		else
 			resstr = g_strdup("unsupported return value");
-
+#endif
 		webkit_javascript_result_unref(res);
 	}
 	else
@@ -4096,7 +4098,7 @@ static GSList *dirmenu(
 
 			if (menu && *org != '.')
 			{
-#if NEWV
+#if V18
 				GSimpleAction *gsa = g_simple_action_new(laccelp, NULL);
 				SIGW(gsa, "activate", actioncb, path);
 				webkit_context_menu_append(menu,
