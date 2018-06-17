@@ -688,17 +688,7 @@ static char *makehintelm(Page *page, Elm *elm,
 	}
 	g_object_unref(rects);
 
-	char *ret = g_strdup_printf(
-			"<DIV style="
-			"position:absolute;"
-			"overflow:visible;"
-			"top:0px;"
-			"left:0px;"
-			"height:10px;"
-			"width:10px;"
-			">%s</DIV>"
-			, str->str);
-
+	char *ret = str->str;
 	g_string_free(str, false);
 	g_free(uri);
 
