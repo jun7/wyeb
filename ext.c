@@ -18,15 +18,13 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#if EXT22
-//the ext2.22 is 4 times slower so don't use it
-#include "ext2.22.c"
-
-static void __attribute__((constructor)) ext22()
-{ g_print("this is ext22\n"); }
+//Make sure JSC is 4 times slower and lacks features we using
+//So even JSC is true, there are the DOM funcs left and slow
+#if JSC
+#define let JSCValue *
 #else
-
-
+#define let void *
+#endif
 
 #include <ctype.h>
 #include <webkit2/webkit-web-extension.h>
@@ -34,28 +32,30 @@ static void __attribute__((constructor)) ext22()
 typedef struct _WP {
 	WebKitWebPage *kit;
 	guint64        id;
+#if JSC
+	WebKitFrame   *mf;
+#endif
+	let            apnode;
+	let            apchild;
+	char          *apkeys;
 
-	WebKitDOMNode *apnode;
-	WebKitDOMNode *apchild;
-	gchar         *apkeys;
-
-	gchar          lasttype;
-	gchar         *lasthintkeys;
-	WebKitDOMElement *rangestart; //not ref
+	char           lasttype;
+	char          *lasthintkeys;
+	let            rangestart; //not ref
 	bool           script;
 	GSList        *black;
 	GSList        *white;
 	GSList        *emitters;
 
-	gint           pagereq;
+	int            pagereq;
 	bool           redirected;
-	gchar        **refreq;
+	char         **refreq;
 
 	//conf
 	GObject       *seto;
-	gchar         *lasturiconf;
-	gchar         *lastreset;
-	gchar         *overset;
+	char          *lasturiconf;
+	char          *lastreset;
+	char          *overset;
 	bool           setagent;
 	bool           setagentprev;
 	GMainLoop     *sync;
@@ -71,7 +71,7 @@ static void loadconf()
 	g_key_file_load_from_file(new, confpath,G_KEY_FILE_NONE, NULL);
 	initconf(new);
 }
-static void resetconf(Page *page, const gchar *uri, bool force)
+static void resetconf(Page *page, const char *uri, bool force)
 {
 	page->setagentprev = page->setagent && !force;
 	page->setagent = false;
@@ -89,6 +89,7 @@ static void freepage(Page *page)
 {
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
+
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
 	g_slist_free_full(page->emitters, g_object_unref);
@@ -106,41 +107,39 @@ static void freepage(Page *page)
 typedef struct {
 	bool ok;
 	bool insight;
-	WebKitDOMElement *elm;
-	glong fx;
-	glong fy;
-	glong x;
-	glong y;
-	glong w;
-	glong h;
-	glong zi;
+	let  elm;
+	double fx;
+	double fy;
+	double x;
+	double y;
+	double w;
+	double h;
+	double zi;
 } Elm;
 
-static void clearelm(Elm *elm) {}
-
-static const gchar *clicktags[] = {
+static const char *clicktags[] = {
 	"INPUT", "TEXTAREA", "SELECT", "BUTTON", "A", "AREA", NULL};
-static const gchar *linktags[] = {
+static const char *linktags[] = {
 	"A", "AREA", NULL};
-static const gchar *uritags[] = {
+static const char *uritags[] = {
 	"A", "AREA", "IMG", "VIDEO", "AUDIO", NULL};
 
-static const gchar *texttags[] = {
+static const char *texttags[] = {
 	"INPUT", "TEXTAREA", NULL};
 
-static const gchar *inputtags[] = {
+static const char *inputtags[] = {
 	"INPUT", "TEXTAREA", "SELECT", NULL};
 
 // input types
 /*
-static const gchar *itext[] = { //no name is too
+static const char *itext[] = { //no name is too
 	"search", "text", "url", "email",  "password", "tel", NULL
 };
-static const gchar *ilimitedtext[] = {
+static const char *ilimitedtext[] = {
 	"month",  "number", "time", "week", "date", "datetime-local", NULL
 };
 */
-static const gchar *inottext[] = {
+static const char *inottext[] = {
 	"color", "file", "radio", "range", "checkbox", "button", "reset", "submit",
 
 	// unknown
@@ -150,57 +149,265 @@ static const gchar *inottext[] = {
 	NULL
 };
 
-//@misc
-static void send(Page *page, gchar *action, const gchar *arg)
+
+#if JSC
+
+
+static void __attribute__((constructor)) ext22()
+{ g_print("this is ext22\n"); }
+
+
+static JSCValue *pagejsv(Page *page, char *name)
 {
-	gchar *ss = g_strdup_printf("%"G_GUINT64_FORMAT":%s:%s",
+	return jsc_context_get_value(webkit_frame_get_js_context(page->mf), name);
+}
+static JSCValue *sdoc(Page *page)
+{
+	static JSCValue *s = NULL;
+	if (s) g_object_unref(s);
+	return s = pagejsv(page, "document");
+}
+
+#define invoker(...) jsc_value_object_invoke_method(__VA_ARGS__, G_TYPE_NONE)
+#define invoke(...) g_object_unref(invoker(__VA_ARGS__))
+#define isdef(v) (!jsc_value_is_undefined(v) && !jsc_value_is_null(v))
+
+#define aB(s) G_TYPE_BOOLEAN, s
+#define aL(s) G_TYPE_LONG, s
+#define aD(s) G_TYPE_DOUBLE, s
+#define aS(s) G_TYPE_STRING, s
+#define aJ(s) JSC_TYPE_VALUE, s
+
+static let prop(let v, char *name)
+{
+	let retv = jsc_value_object_get_property(v, name);
+	if (isdef(retv)) return retv;
+	g_object_unref(retv);
+	return NULL;
+}
+static let propunref(let v, char *name)
+{
+	let retv = prop(v, name);
+	g_object_unref(v);
+	return retv;
+}
+static double propd(let v, char *name)
+{
+	let retv = jsc_value_object_get_property(v, name);
+	double ret = jsc_value_to_double(retv);
+	g_object_unref(retv);
+	return ret;
+}
+static char *props(let v, char *name)
+{
+	char *ret = NULL;
+	let retv = jsc_value_object_get_property(v, name);
+	if (isdef(retv))
+		ret = jsc_value_to_string(retv);
+
+	g_object_unref(retv);
+	return ret;
+}
+static void setprop_s(let v, char *name, char *data)
+{
+	let dv = jsc_value_new_string(jsc_value_get_context(v), data);
+	jsc_value_object_set_property(v, name, dv);
+	g_object_unref(dv);
+}
+static char *attr(let v, char *name)
+{
+	let retv = invoker(v, "getAttribute", aS(name));
+	char *ret = isdef(retv) ? jsc_value_to_string(retv) : NULL;
+	g_object_unref(retv);
+	return ret;
+}
+
+
+static void __attribute__ ((unused)) proplist(JSCValue *v)
+{
+	if (jsc_value_is_undefined(v))
+	{
+		DD(undefined value)
+		return;
+	}
+
+	char **ps = jsc_value_object_enumerate_properties(v);
+	if (ps)
+		for (char **pr = ps; *pr; pr++)
+			D(p %s, *pr)
+	else
+		DD(no props)
+	g_strfreev(ps);
+}
+
+#define jscunref(v) if (v) g_object_unref(v)
+#define docelm(v) prop(v, "documentElement")
+#define focuselm(t) invoke(t, "focus")
+#define getelms(doc, name) invoker(doc, "getElementsByTagName", aS(name))
+#define defaultview(doc) prop(doc, "defaultView")
+#else
+
+#define defaultview(doc) webkit_dom_document_get_default_view(doc)
+#define getelms(doc, name) \
+	webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, name)
+#define focuselm(t) webkit_dom_element_focus(t)
+#define docelm(v) webkit_dom_document_get_document_element(v)
+#define jscunref(v) ;
+#define attr webkit_dom_element_get_attribute
+#define sdoc(v) webkit_web_page_get_dom_document(v->kit)
+
+#endif
+
+static void clearelm(Elm *elm)
+{
+	if (elm->elm) g_object_unref(elm->elm);
+}
+
+static char *stag(let elm)
+{
+	static char *name = NULL;
+	g_free(name);
+#if JSC
+	name = props(elm, "tagName");
+#else
+	name = webkit_dom_element_get_tag_name(elm);
+#endif
+	return name;
+}
+static bool hasattr(let v, char *name)
+{
+	char *str = attr(v, name);
+	g_free(str);
+	return str;
+}
+static bool attrb(let v, char *name)
+{
+	char *str = attr(v, name);
+	bool ret = !g_strcmp0(str, "true");
+	g_free(str);
+	return ret;
+}
+static let idx(let cl, int i)
+{
+#if JSC
+	char buf[9];
+	snprintf(buf, 9, "%d", i);
+	return prop(cl, buf);
+#else
+	return webkit_dom_html_collection_item(cl, i);
+#endif
+
+//	let retv = jsc_value_object_get_property_at_index(cl, i);
+//	if (isdef(retv))
+//		return retv;
+//	g_object_unref(retv);
+//	return NULL;
+}
+
+static let activeelm(let doc)
+{
+#if JSC
+	let te = prop(doc, "activeElement");
+#else
+	let te = webkit_dom_document_get_active_element(doc);
+#endif
+
+	if (te && (!g_strcmp0(stag(te), "IFRAME") || !g_strcmp0(stag(te), "BODY")))
+	{
+		jscunref(te);
+		return NULL;
+	}
+	return te;
+}
+
+
+
+
+//@misc
+static void send(Page *page, char *action, const char *arg)
+{
+	char *ss = g_strdup_printf("%"G_GUINT64_FORMAT":%s:%s",
 			page->id, action, arg ?: "");
 	//D(send to main %s, ss)
 	ipcsend("main", ss);
 	g_free(ss);
 }
-static bool isins(const gchar **ary, gchar *val)
+static bool isins(const char **ary, char *val)
 {
 	if (!val) return false;
 	for (;*ary; ary++)
 		if (!strcmp(val, *ary)) return true;
 	return false;
 }
-static bool isinput(WebKitDOMElement *te)
+static bool isinput(let te)
 {
-	gchar *tag = webkit_dom_element_get_tag_name(te);
 	bool ret = false;
+	char *tag = stag(te);
 	if (isins(inputtags, tag))
 	{
 		if (strcmp(tag, "INPUT"))
-		{
-			g_free(tag);
 			return true;
-		}
 
-		gchar *type = webkit_dom_element_get_attribute(te, "type");
+		char *type = attr(te, "TYPE");
 		if (!type || !isins(inottext, type))
 			ret = true;
 		g_free(type);
 	}
-	g_free(tag);
 
 	return ret;
 }
-static gchar *tofull(WebKitDOMElement *te, gchar *uri)
+static char *tofull(let te, char *uri)
 {
 	if (!te || !uri) return NULL;
-	gchar *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
+#if JSC
+	char *bases = props(te, "baseURI");
+#else
+	char *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
+#endif
 	SoupURI *base = soup_uri_new(bases);
 	SoupURI *full = soup_uri_new_with_base(base, uri);
 
-	gchar *ret = soup_uri_to_string(full, false);
+	char *ret = soup_uri_to_string(full, false);
 
 	g_free(bases);
 	soup_uri_free(base);
 	soup_uri_free(full);
 	return ret;
 }
+
+//func is void *(*func)(let doc, Page *page)
+static void *_eachframes(let doc, Page *page, void *func)
+{
+	void *ret;
+	if ((ret = ((void *(*)(let doc, Page *page))func)(doc, page))) return ret;
+
+	let cl = getelms(doc, "IFRAME");
+	let te;
+	for (int i = 0; (te = idx(cl, i)); i++)
+	{
+#if JSC
+		WebKitDOMHTMLIFrameElement *tfe = (void *)webkit_dom_node_for_js_value(te);
+		let fdoc = webkit_frame_get_js_value_for_dom_object(page->mf,
+			(void *)webkit_dom_html_iframe_element_get_content_document(tfe));
+#else
+		let fdoc = webkit_dom_html_iframe_element_get_content_document(te);
+#endif
+
+		ret = _eachframes(fdoc, page, func);
+
+		jscunref(fdoc);
+		jscunref(te);
+		if (ret) break;
+	}
+	g_object_unref(cl);
+
+	return ret;
+}
+static void *eachframes(Page *page, void *func)
+{
+	return _eachframes(sdoc(page), page, func);
+}
+
 
 
 //@whiteblack
@@ -214,7 +421,7 @@ static void clearwb(Wb *wb)
 	g_free(wb);
 }
 static GSList *wblist = NULL;
-static gchar  *wbpath = NULL;
+static char   *wbpath = NULL;
 static void setwblist(bool reload)
 {
 	if (wblist)
@@ -224,7 +431,7 @@ static void setwblist(bool reload)
 	if (!g_file_test(wbpath, G_FILE_TEST_EXISTS)) return;
 
 	GIOChannel *io = g_io_channel_new_file(wbpath, "r", NULL);
-	gchar *line;
+	char *line;
 	while (g_io_channel_read_line(io, &line, NULL, NULL, NULL)
 			== G_IO_STATUS_NORMAL)
 	{
@@ -248,7 +455,7 @@ static void setwblist(bool reload)
 	if (reload)
 		send(*pages->pdata, "_reloadlast", NULL);
 }
-static int checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
+static int checkwb(const char *uri) // -1 no result, 0 black, 1 white;
 {
 	if (!wblist) return -1;
 
@@ -261,14 +468,14 @@ static int checkwb(const gchar *uri) // -1 no result, 0 black, 1 white;
 
 	return -1;
 }
-static void addwhite(Page *page, const gchar *uri)
+static void addwhite(Page *page, const char *uri)
 {
 	//D(blocked %s, uri)
 	if (getsetbool(page, "showblocked"))
 		send(page, "_blocked", uri);
 	page->white = g_slist_prepend(page->white, g_strdup(uri));
 }
-static void addblack(Page *page, const gchar *uri)
+static void addblack(Page *page, const char *uri)
 {
 	page->black = g_slist_prepend(page->black, g_strdup(uri));
 }
@@ -287,7 +494,7 @@ static void showwhite(Page *page, bool white)
 	if (white)
 		send(page, "wbnoreload", NULL);
 
-	gchar pre = white ? 'w' : 'b';
+	char pre = white ? 'w' : 'b';
 	fprintf(f, "\n# %s in %s\n",
 			white ? "blocked" : "loaded",
 			webkit_web_page_get_uri(page->kit));
@@ -295,8 +502,8 @@ static void showwhite(Page *page, bool white)
 	list = g_slist_reverse(g_slist_copy(list));
 	for (GSList *next = list; next; next = next->next)
 	{
-		gchar *esc = regesc(next->data);
-		gchar *line = g_strdup_printf("%c^%s\n", pre, esc);
+		char *esc = regesc(next->data);
+		char *line = g_strdup_printf("%c^%s\n", pre, esc);
 		g_free(esc);
 
 		fputs(line, f);
@@ -312,51 +519,73 @@ static void showwhite(Page *page, bool white)
 
 
 //@textlink
-static WebKitDOMElement *tldoc;
+static let tldoc;
+#if JSC
+static let tlelm;
+#else
 static WebKitDOMHTMLTextAreaElement *tlelm;
 static WebKitDOMHTMLInputElement *tlielm;
-static void textlinkset(Page *page, gchar *path)
+#endif
+static void textlinkset(Page *page, char *path)
 {
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-	if (tldoc != webkit_dom_document_get_document_element(doc)) return;
+	let doc = sdoc(page);
+	let cdoc = docelm(doc);
+	jscunref(cdoc);
+	if (tldoc != cdoc) return;
 
 	GIOChannel *io = g_io_channel_new_file(path, "r", NULL);
-	gchar *text;
+	char *text;
 	g_io_channel_read_to_end(io, &text, NULL, NULL);
 	g_io_channel_unref(io);
 
+#if JSC
+	setprop_s(tlelm, "value", text);
+#else
 	if (tlelm)
 		webkit_dom_html_text_area_element_set_value(tlelm, text);
 	else
 		webkit_dom_html_input_element_set_value(tlielm, text);
+#endif
 	g_free(text);
 }
-static void textlinkget(Page *page, gchar *path)
+static void textlinkget(Page *page, char *path)
 {
-	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMElement   *te = webkit_dom_document_get_active_element(doc);
-	gchar *tag = webkit_dom_element_get_tag_name(te);
-	bool ista = !strcmp(tag, "TEXTAREA");
-	g_free(tag);
+	let te = eachframes(page, activeelm);
+
+#if JSC
+	if (tlelm) g_object_unref(tlelm);
+	if (tldoc) g_object_unref(tldoc);
+	tlelm = NULL;
+	tldoc = NULL;
+
+	if (isinput(te))
+		tlelm = te;
+#else
 
 	tlelm = NULL;
 	tlielm = NULL;
 
-	if (ista)
+	if (!strcmp(stag(te), "TEXTAREA"))
 		tlelm = (WebKitDOMHTMLTextAreaElement *)te;
 	else if (isinput(te))
 		tlielm = (WebKitDOMHTMLInputElement *)te;
+#endif
 	else
 	{
 		send(page, "showmsg", "Not a text");
 		return;
 	}
 
-	tldoc = webkit_dom_document_get_document_element(doc);
-
-	gchar *text = tlelm ?
+	let doc = sdoc(page);
+	tldoc = docelm(doc);
+	char *text =
+#if JSC
+		props(tlelm, "value");
+#else
+		tlelm ?
 		webkit_dom_html_text_area_element_get_value(tlelm) :
 		webkit_dom_html_input_element_get_value(tlielm);
+#endif
 
 	GIOChannel *io = g_io_channel_new_file(path, "w", NULL);
 	g_io_channel_write_chars(io, text ?: "", -1, NULL, NULL);
@@ -368,20 +597,49 @@ static void textlinkget(Page *page, gchar *path)
 
 
 //@hinting
-static bool styleis(WebKitDOMCSSStyleDeclaration *dec, gchar* name, gchar *pval)
+#if JSC
+static char *getstyleval(let style, char *name)
 {
-	gchar *val = webkit_dom_css_style_declaration_get_property_value(dec, name);
+	char *ret = NULL;
+	let retv = invoker(style, "getPropertyValue", aS(name));
+	ret = jsc_value_to_string(retv);
+	g_object_unref(retv);
+	return ret;
+}
+#else
+#define getstyleval webkit_dom_css_style_declaration_get_property_value
+#endif
+static bool styleis(let dec, char* name, char *pval)
+{
+	char *val = getstyleval(dec, name);
 	bool ret = (val && !strcmp(pval, val));
 	g_free(val);
 
 	return ret;
 }
 
-static Elm getrect(WebKitDOMElement *te)
+static Elm getrect(let te)
 {
 	Elm elm = {0};
 
-#if ! V18
+#if V18
+#if JSC
+	let rect = invoker(te, "getBoundingClientRect");
+	elm.x = propd(rect, "left");
+	elm.y = propd(rect, "top");
+	elm.w = propd(rect, "width");
+	elm.h = propd(rect, "height");
+#else
+	WebKitDOMClientRect *rect =
+		webkit_dom_element_get_bounding_client_rect(te);
+
+	elm.y = webkit_dom_client_rect_get_top(rect);
+	elm.x = webkit_dom_client_rect_get_left(rect);
+	elm.h = webkit_dom_client_rect_get_height(rect);
+	elm.w = webkit_dom_client_rect_get_width(rect);
+#endif
+	g_object_unref(rect);
+#else
 	elm.h = webkit_dom_element_get_offset_height(te);
 	elm.w = webkit_dom_element_get_offset_width(te);
 
@@ -395,25 +653,15 @@ static Elm getrect(WebKitDOMElement *te)
 			webkit_dom_element_get_offset_left(le) -
 			webkit_dom_element_get_scroll_left(le);
 	}
-#else
-	WebKitDOMClientRect *rect =
-		webkit_dom_element_get_bounding_client_rect(te);
-
-	elm.y = webkit_dom_client_rect_get_top(rect);
-	elm.x = webkit_dom_client_rect_get_left(rect);
-	elm.h = webkit_dom_client_rect_get_height(rect);
-	elm.w = webkit_dom_client_rect_get_width(rect);
-
-	g_object_unref(rect);
 #endif
 
 	return elm;
 }
 
-static void _trim(glong *tx, glong *tw, glong *px, glong *pw)
+static void _trim(double *tx, double *tw, double *px, double *pw)
 {
-	glong right = *tx + *tw;
-	glong pr    = *px + *pw;
+	double right = *tx + *tw;
+	double pr    = *px + *pw;
 	if (pr < right)
 		*tw -= right - pr;
 
@@ -504,18 +752,28 @@ out:
 static char *makehintelm(Page *page, Elm *elm,
 		const char* text, int len, double pagex, double pagey)
 {
-	gchar *tag = webkit_dom_element_get_tag_name(elm->elm);
+	char *tag = stag(elm->elm);
 	bool center = isins(uritags, tag) && !isins(linktags, tag);
-	g_free(tag);
 
-	gchar *uri =
-		webkit_dom_element_get_attribute(elm->elm, "ONCLICK") ?:
-		webkit_dom_element_get_attribute(elm->elm, "HREF") ?:
-		webkit_dom_element_get_attribute(elm->elm, "SRC");
+	char *uri =
+		attr(elm->elm, "ONCLICK") ?:
+		attr(elm->elm, "HREF") ?:
+		attr(elm->elm, "SRC");
 
 #if V18
 	GString *str = g_string_new(NULL);
 
+#if JSC
+	let rects = invoker(elm->elm, "getClientRects");
+	let rect;
+	for (int i = 0; (rect = idx(rects, i)); i++)
+	{
+		double x = propd(rect, "left");
+		double y = propd(rect, "top");
+		double w = propd(rect, "width");
+		double h = propd(rect, "height");
+		g_object_unref(rect);
+#else
 	WebKitDOMClientRectList *rects = webkit_dom_element_get_client_rects(elm->elm);
 	gulong l = webkit_dom_client_rect_list_get_length(rects);
 	for (gulong i = 0; i < l; i++)
@@ -523,11 +781,12 @@ static char *makehintelm(Page *page, Elm *elm,
 		WebKitDOMClientRect *rect =
 			webkit_dom_client_rect_list_item(rects, i);
 
-		glong
+		double
 			y = webkit_dom_client_rect_get_top(rect),
 			x = webkit_dom_client_rect_get_left(rect),
 			h = webkit_dom_client_rect_get_height(rect),
 			w = webkit_dom_client_rect_get_width(rect);
+#endif
 
 		_trim(&x, &w, &elm->x, &elm->w);
 		_trim(&y, &h, &elm->y, &elm->h);
@@ -559,26 +818,26 @@ static char *makehintelm(Page *page, Elm *elm,
 }
 
 
-static gint getdigit(gint len, gint num)
+static int getdigit(int len, int num)
 {
-	gint tmp = num;
-	gint digit = 1;
+	int tmp = num - 1;
+	int digit = 1;
 	while ((tmp = tmp / len)) digit++;
 	return digit;
 }
 
-static gchar *makekey(gchar *keys, gint len, gint max, gint tnum, gint digit)
+static char *makekey(char *keys, int len, int max, int tnum, int digit)
 {
-	gchar ret[digit + 1];
+	char ret[digit + 1];
 	ret[digit] = '\0';
 
-	gint llen = len;
+	int llen = len;
 	while (llen--)
 		if (pow(llen, digit) < max) break;
 
 	llen++;
 
-	gint tmp = tnum;
+	int tmp = tnum;
 	for (int i = digit - 1; i >= 0; i--)
 	{
 		ret[i] = toupper(keys[tmp % llen]);
@@ -592,15 +851,19 @@ static void rmhint(Page *page)
 {
 	if (!page->apnode) return;
 
-	WebKitDOMDocument *doc  = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMElement  *elm  = webkit_dom_document_get_document_element(doc);
-	WebKitDOMNode     *node = (WebKitDOMNode *)elm;
+	let doc = sdoc(page);
+	let cdoc = docelm(doc);
+	jscunref(cdoc);
 
-	if (page->apnode == node && page->apchild)
+	if (page->apnode == cdoc && page->apchild)
+#if JSC
+		invoke(page->apnode, "removeChild", aJ(page->apchild));
+#else
 		webkit_dom_node_remove_child(page->apnode, page->apchild, NULL);
+#endif
 
-	if (page->apchild)
-		g_object_unref(page->apchild);
+	jscunref(page->apnode);
+	jscunref(page->apchild);
 	g_free(page->apkeys);
 	page->apchild = NULL;
 	page->apnode = NULL;
@@ -612,28 +875,14 @@ static void trim(Elm *te, Elm *prect)
 	_trim(&te->x, &te->w, &prect->x, &prect->w);
 	_trim(&te->y, &te->h, &prect->y, &prect->h);
 }
-static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
-		WebKitDOMElement *te, bool js, bool notttag)
+static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
+		bool js, bool notttag)
 {
-	Elm ret = {0};
+	let dec = NULL;
+	Elm ret = getrect(te);
 
-	//elms visibility hidden have size also opacity
-	WebKitDOMCSSStyleDeclaration *dec =
-		webkit_dom_dom_window_get_computed_style(win, te, NULL);
-
-	static gchar *check[][2] = {
-		{"visibility", "hidden"},
-		{"opacity"   , "0"},
-		{"display"   , "none"},
-	};
-	for (int k = 0; k < sizeof(check) / sizeof(*check); k++)
-		if (styleis(dec, check[k][0], check[k][1]))
-			goto retfalse;
-
-	ret = getrect(te);
-
-	glong bottom = ret.y + ret.h;
-	glong right  = ret.x + ret.w;
+	double bottom = ret.y + ret.h;
+	double right  = ret.x + ret.w;
 	if (
 		(ret.y < 0        && bottom < 0       ) ||
 		(ret.y > frect->h && bottom > frect->h) ||
@@ -643,6 +892,23 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 		goto retfalse;
 
 	ret.insight = true;
+
+	//elms visibility hidden have size also opacity
+#if JSC
+	dec = invoker(win, "getComputedStyle", aJ(te));
+#else
+	dec = webkit_dom_dom_window_get_computed_style(win, te, NULL);
+#endif
+
+	static char *check[][2] = {
+		{"visibility", "hidden"},
+		{"opacity"   , "0"},
+		{"display"   , "none"},
+	};
+	for (int k = 0; k < sizeof(check) / sizeof(*check); k++)
+		if (styleis(dec, check[k][0], check[k][1]))
+			goto retfalse;
+
 
 #if ! V18
 	if (styleis(dec, "display", "inline"))
@@ -665,7 +931,7 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 	}
 #endif
 
-	gchar *zc = webkit_dom_css_style_declaration_get_property_value(dec, "z-index");
+	char *zc = getstyleval(dec, "z-index");
 	ret.zi = atoi(zc);
 	g_free(zc);
 
@@ -682,7 +948,7 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 
 	g_object_unref(dec);
 
-	ret.elm = te;
+	ret.elm = g_object_ref(te);
 	ret.fx = frect->fx;
 	ret.fy = frect->fy;
 	ret.ok = true;
@@ -691,7 +957,7 @@ static Elm checkelm(WebKitDOMDOMWindow *win, Elm *frect, Elm *prect,
 
 retfalse:
 	clearelm(&ret);
-	g_object_unref(dec);
+	if (dec) g_object_unref(dec);
 	return ret;
 }
 
@@ -720,40 +986,44 @@ static bool addelm(Elm *pelm, GSList **elms)
 	return true;
 }
 
-static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
+static bool eachclick(let win, let cl,
 		Coms type, GSList **elms, Elm *frect, Elm *prect)
 {
 	bool ret = false;
 
-	for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
+	let te;
+	for (int j = 0; (te = idx(cl, j)); j++)
 	{
-		WebKitDOMElement *te =
-			(WebKitDOMElement *)webkit_dom_html_collection_item(cl, i);
-
-
 		bool div = false;
-		gchar *tag = webkit_dom_element_get_tag_name(te);
+		char *tag = stag(te);
 		if (isins(clicktags, tag))
 		{
 			Elm elm = checkelm(win, frect, prect, te, true, false);
 			if (elm.ok)
 				addelm(&elm, elms);
 
-			g_free(tag);
+			jscunref(te);
 			continue;
 		} else if (!strcmp(tag, "DIV"))
 			div = true; //div is random
 
-		g_free(tag);
-
 		Elm elm = checkelm(win, frect, prect, te, true, true);
 		if (!elm.insight && (!div || elm.y > 1))
+		{
+			jscunref(te);
 			continue;
+		}
 
-		WebKitDOMHTMLCollection *ccl = webkit_dom_element_get_children(te);
 		Elm *crect = prect;
+#if JSC
+		let ccl = prop(te, "children");
+		let dec = invoker(win, "getComputedStyle", aJ(te));
+#else
+		WebKitDOMHTMLCollection *ccl = webkit_dom_element_get_children(te);
 		WebKitDOMCSSStyleDeclaration *dec =
 			webkit_dom_dom_window_get_computed_style(win, te, NULL);
+#endif
+		jscunref(te);
 		if (
 				elm.zi > prect->zi ||
 				styleis(dec, "overflow", "hidden") ||
@@ -781,12 +1051,10 @@ static bool eachclick(WebKitDOMDOMWindow *win, WebKitDOMHTMLCollection *cl,
 	}
 	return ret;
 }
-static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
+static GSList *_makelist(Page *page, let doc, let win,
 		Coms type, GSList *elms, Elm *frect, Elm *prect)
 {
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
-
-	const gchar **taglist = clicktags; //Cclick
+	const char **taglist = clicktags; //Cclick
 	if (type == Clink ) taglist = linktags;
 	if (type == Curi  ) taglist = uritags;
 	if (type == Cspawn) taglist = uritags;
@@ -795,31 +1063,40 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 
 	if (type == Cclick && page->script)
 	{
+#if JSC
+		let body = prop(doc , "body");
+		let cl = prop(body, "children");
+		g_object_unref(body);
+#else
 		WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(
 				(WebKitDOMElement *)webkit_dom_document_get_body(doc));
+#endif
 		eachclick(win, cl, type, &elms, frect, prect);
 		g_object_unref(cl);
 	}
-	else for (const gchar **tag = taglist; *tag; tag++)
+	else for (const char **tag = taglist; *tag; tag++)
 	{
-		WebKitDOMHTMLCollection *cl =
-			webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, *tag);
-
-		for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
+		let cl = getelms(doc, *tag);
+		let te;
+		for (int j = 0; (te = idx(cl, j)); j++)
 		{
-			WebKitDOMNode *tn = webkit_dom_html_collection_item(cl, j);
-			WebKitDOMElement *te = (void *)tn;
-
 			Elm elm = checkelm(win, frect, prect, te, false, false);
+			jscunref(te);
 			if (elm.ok)
 			{
 				if (type == Ctext)
 				{
-					clearelm(&elm);
-					if (!isinput(te)) continue;
+					if (!isinput(elm.elm))
+					{
+						clearelm(&elm);
+						continue;
+					}
 
-					webkit_dom_element_focus(te);
+					focuselm(elm.elm);
+					clearelm(&elm);
+
 					g_object_unref(win);
+					g_object_unref(cl);
 					return NULL;
 				}
 
@@ -830,50 +1107,48 @@ static GSList *_makelist(Page *page, WebKitDOMDocument *doc,
 		g_object_unref(cl);
 	}
 
-	g_object_unref(win);
 	return elms;
 }
 
-static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
-		Elm *frect, GSList *elms)
+static GSList *makelist(Page *page, let doc, let win,
+		Coms type, Elm *frect, GSList *elms)
 {
 	Elm frectr = {0};
 	if (!frect)
 	{
-		WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+#if JSC
+		frectr.w = propd(win, "innerWidth");
+		frectr.h = propd(win, "innerHeight");
+#else
 		frectr.w = webkit_dom_dom_window_get_inner_width(win);
 		frectr.h = webkit_dom_dom_window_get_inner_height(win);
+#endif
 		frect = &frectr;
-		g_object_unref(win);
 	}
 	Elm prect = *frect;
 	prect.x = prect.y = 0;
 
 	//D(rect %d %d %d %d, rect.y, rect.x, rect.h, rect.w)
-	elms = _makelist(page, doc, type, elms, frect, &prect);
+	elms = _makelist(page, doc, win, type, elms, frect, &prect);
 
-	WebKitDOMHTMLCollection *cl =
-		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IFRAME");
-
-	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
+	let cl = getelms(doc, "IFRAME");
+	let te;
+	for (int j = 0; (te = idx(cl, j)); j++)
 	{
-		void *tn = webkit_dom_html_collection_item(cl, j);
-		WebKitDOMHTMLIFrameElement *tfe = tn;
-		WebKitDOMElement *te = tn;
-
-		WebKitDOMDocument *fdoc =
-			webkit_dom_html_iframe_element_get_content_document(tfe);
-
-		WebKitDOMDOMWindow *fwin = webkit_dom_document_get_default_view(fdoc);
-		Elm cfrect = checkelm(fwin, frect, &prect, te, false, false);
-		g_object_unref(fwin);
-
+		Elm cfrect = checkelm(win, frect, &prect, te, false, false);
 		if (cfrect.ok)
 		{
-			gdouble cx = webkit_dom_element_get_client_left(te);
-			gdouble cy = webkit_dom_element_get_client_top(te);
-			gdouble cw = webkit_dom_element_get_client_width(te);
-			gdouble ch = webkit_dom_element_get_client_height(te);
+#if JSC
+			double cx = propd(te, "clientLeft");
+			double cy = propd(te, "clientTop");
+			double cw = propd(te, "clientWidth");
+			double ch = propd(te, "clientHeight");
+#else
+			double cx = webkit_dom_element_get_client_left(te);
+			double cy = webkit_dom_element_get_client_top(te);
+			double cw = webkit_dom_element_get_client_width(te);
+			double ch = webkit_dom_element_get_client_height(te);
+#endif
 
 			cfrect.w = MIN(cfrect.w - cx, cw);
 			cfrect.h = MIN(cfrect.h - cy, ch);
@@ -881,41 +1156,63 @@ static GSList *makelist(Page *page, WebKitDOMDocument *doc, Coms type,
 			cfrect.fx += cfrect.x + cx;
 			cfrect.fy += cfrect.y + cy;
 			cfrect.x = cfrect.y = 0;
-			elms = makelist(page, fdoc, type, &cfrect, elms);
+
+#if JSC
+			//some times can't get content
+			//let fdoc = prop(te, "contentDocument");
+			//if (!fdoc) continue;
+			WebKitDOMHTMLIFrameElement *tfe =
+				(void *)webkit_dom_node_for_js_value(te);
+			let fdoc = webkit_frame_get_js_value_for_dom_object(page->mf,
+				(void *)webkit_dom_html_iframe_element_get_content_document(tfe));
+
+			//fwin can't get style vals
+			//let fwin = prop(fdoc, "defaultView");
+			//et fwin = prop(te, "contentWindow");
+			let fwin = g_object_ref(win);
+#else
+			WebKitDOMDocument *fdoc =
+				webkit_dom_html_iframe_element_get_content_document(te);
+			WebKitDOMDOMWindow *fwin = defaultview(fdoc);
+#endif
+
+			elms = makelist(page, fdoc, win, type, &cfrect, elms);
+			g_object_unref(fwin);
+			jscunref(fdoc);
 		}
 
+		jscunref(te);
 		clearelm(&cfrect);
 	}
-
 	g_object_unref(cl);
 
 	return elms;
 }
 
-static void hintret(Page *page, Coms type, WebKitDOMElement *te, bool hasnext)
+static void hintret(Page *page, Coms type, let te, bool hasnext)
 {
-	gchar uritype = 'l';
-	gchar *uri = NULL;
-	gchar *label = NULL;
+	char uritype = 'l';
+	char *uri = NULL;
+	char *label = NULL;
 	if (type == Curi || type == Cspawn || type == Crange)
 	{
-		uri = webkit_dom_element_get_attribute(te, "SRC");
+		uri = attr(te, "SRC");
 
 		if (!uri)
 		{
+#if JSC
+			let cl = prop(te, "children");
+#else
 			WebKitDOMHTMLCollection *cl = webkit_dom_element_get_children(te);
-
-			for (gint i = 0; i < webkit_dom_html_collection_get_length(cl); i++)
+#endif
+			let le;
+			for (int j = 0; (le = idx(cl, j)); j++)
 			{
-				WebKitDOMElement *le = (void *)webkit_dom_html_collection_item(cl, i);
-				gchar *tag = webkit_dom_element_get_tag_name(le);
-				if (g_strcmp0(tag, "SOURCE") == 0 &&
-						(uri = webkit_dom_element_get_attribute(le, "SRC")))
-				{
-					g_free(tag);
-					break;
-				}
-				g_free(tag);
+				if (!g_strcmp0(stag(le), "SOURCE"))
+					uri = attr(le, "SRC");
+
+				jscunref(le);
+				if (uri) break;
 			}
 
 			g_object_unref(cl);
@@ -923,32 +1220,39 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te, bool hasnext)
 
 		if (uri && (type == Cspawn || type == Crange))
 		{
-			gchar *tag = webkit_dom_element_get_tag_name(te);
-			if (!strcmp(tag, "IMG"))
+			if (!strcmp(stag(te), "IMG"))
 				uritype = 'i';
 			else
 				uritype = 'm';
-
-			g_free(tag);
 		}
 	}
 
 	if (!uri)
-		uri = webkit_dom_element_get_attribute(te, "HREF");
+		uri = attr(te, "HREF");
 
 	if (!uri)
 		uri = g_strdup("about:blank");
 
 	label =
+#if JSC
+		props(te, "innerText") ?:
+#else
 		webkit_dom_html_element_get_inner_text((WebKitDOMHTMLElement *)te) ?:
-		webkit_dom_element_get_attribute(te, "ALT") ?:
-		webkit_dom_element_get_attribute(te, "TITLE");
+#endif
+		attr(te, "ALT") ?:
+		attr(te, "TITLE");
 
+#if JSC
+	let odoc = prop(te, "ownerDocument");
+	char *ouri = props(odoc, "documentURI");
+	g_object_unref(odoc);
+#else
 	WebKitDOMDocument *odoc = webkit_dom_node_get_owner_document((void *)te);
-	gchar *ouri = webkit_dom_document_get_document_uri(odoc);
+	char *ouri = webkit_dom_document_get_document_uri(odoc);
+#endif
 
-	gchar *suri = tofull(te, uri);
-	gchar *retstr = g_strdup_printf("%c%d%s %s %s", uritype, hasnext, ouri, suri, label);
+	char *suri = tofull(te, uri);
+	char *retstr = g_strdup_printf("%c%d%s %s %s", uritype, hasnext, ouri, suri, label);
 	send(page, "_hintret", retstr);
 
 	g_free(uri);
@@ -958,24 +1262,40 @@ static void hintret(Page *page, Coms type, WebKitDOMElement *te, bool hasnext)
 	g_free(retstr);
 }
 
-static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
+static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 {
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
+	let doc = sdoc(page);
 	page->lasttype = type;
 
 	if (type != Cclick)
 	{
+#if JSC
+		let dtype = prop(doc, "doctype");
+		char *name = NULL;
+		if (dtype)
+		{
+			name = props(dtype, "name");
+			g_object_unref(dtype);
+		}
+		if (name && strcmp("html", name))
+		{
+			g_free(name);
+#else
 		WebKitDOMDocumentType *dtype = webkit_dom_document_get_doctype(doc);
 		if (dtype && strcmp("html", webkit_dom_document_type_get_name(dtype)))
 		{
+#endif
 			//no elms may be;P
-			gchar *retstr = g_strdup_printf("l0%s ", webkit_web_page_get_uri(page->kit));
+			char *retstr = g_strdup_printf("l0%s ", webkit_web_page_get_uri(page->kit));
 			send(page, "_hintret", retstr);
 			g_free(retstr);
 
 			g_free(ipkeys);
 			return false;
 		}
+#if JSC
+		g_free(name);
+#endif
 	}
 
 	if (hintkeys)
@@ -990,28 +1310,33 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	rmhint(page);
 	page->apkeys = ipkeys;
 
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
-	glong pagex = webkit_dom_dom_window_get_scroll_x(win);
-	glong pagey = webkit_dom_dom_window_get_scroll_y(win);
+	let win = defaultview(doc);
+#if JSC
+	double pagex = propd(win, "scrollX");
+	double pagey = propd(win, "scrollY");
+#else
+	double pagex = webkit_dom_dom_window_get_scroll_x(win);
+	double pagey = webkit_dom_dom_window_get_scroll_y(win);
+#endif
+	GSList *elms = makelist(page, doc, win, type, NULL, NULL);
 	g_object_unref(win);
 
-	GSList *elms = makelist(page, doc, type, NULL, NULL);
 	guint tnum = g_slist_length(elms);
 
-	page->apnode = (WebKitDOMNode *)webkit_dom_document_get_document_element(doc);
+	page->apnode = docelm(doc);
 	GString *hintstr = g_string_new(NULL);
 
-	gint keylen = strlen(hintkeys);
-	gint iplen = ipkeys ? strlen(ipkeys) : 0;
-	gint digit = getdigit(keylen, tnum);
+	int  keylen = strlen(hintkeys);
+	int  iplen = ipkeys ? strlen(ipkeys) : 0;
+	int  digit = getdigit(keylen, tnum);
 	bool last = iplen == digit;
 	elms = g_slist_reverse(elms);
-	gint i = -1;
+	int  i = -1;
 	bool ret = false;
 
 	bool rangein = false;
-	gint rangeleft = getsetint(page, "hintrangemax");
-	WebKitDOMElement *rangeend = NULL;
+	int  rangeleft = getsetint(page, "hintrangemax");
+	let rangeend = NULL;
 
 	//tab key
 	bool focused = false;
@@ -1019,14 +1344,14 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	if (dofocus)
 		ipkeys[strlen(ipkeys) - 1] = '\0';
 
-	gchar enterkey[2] = {0};
-	*enterkey = (gchar)GDK_KEY_Return;
+	char enterkey[2] = {0};
+	*enterkey = (char)GDK_KEY_Return;
 	bool enter = page->rangestart && !g_strcmp0(enterkey, ipkeys);
 	if (type == Crange && (last || enter))
 		for (GSList *next = elms; next; next = next->next)
 	{
 		Elm *elm = (Elm *)next->data;
-		WebKitDOMElement *te = elm->elm;
+		let te = elm->elm;
 
 		rangein |= te == page->rangestart;
 
@@ -1041,7 +1366,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 			continue;
 		}
 
-		gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
+		char *key = makekey(hintkeys, keylen, tnum, i, digit);
 		if (!strcmp(key, ipkeys))
 		{
 			ipkeys = NULL;
@@ -1067,12 +1392,12 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 	for (GSList *next = elms; next; next = next->next)
 	{
 		Elm *elm = (Elm *)next->data;
-		WebKitDOMElement *te = elm->elm;
+		let te = elm->elm;
 
 		rangein |= te == page->rangestart;
 
 		i++;
-		gchar *key = makekey(hintkeys, keylen, tnum, i, digit);
+		char *key = makekey(hintkeys, keylen, tnum, i, digit);
 
 		if (dofocus)
 		{
@@ -1080,7 +1405,7 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					(type != Crange || !page->rangestart || rangein) &&
 					g_str_has_prefix(key, ipkeys ?: ""))
 			{
-				webkit_dom_element_focus(te);
+				focuselm(te);
 				focused = true;
 			}
 		}
@@ -1089,37 +1414,45 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 			if (!ret && !strcmp(key, ipkeys))
 			{
 				ret = true;
-
-				webkit_dom_element_focus(te);
+				focuselm(te);
 				if (type == Cclick)
 				{
 					bool isi = isinput(te);
 #if V18
 					if (page->script && !isi)
 					{
+#if JSC
+						let rects = invoker(elm->elm, "getClientRects");
+						let rect = idx(rects, 0);
+						double x = propd(rect, "left");
+						double y = propd(rect, "top");
+						double w = propd(rect, "width");
+						double h = propd(rect, "height");
+						g_object_unref(rect);
+						g_object_unref(rects);
+#else
 						WebKitDOMClientRectList *rects =
 							webkit_dom_element_get_client_rects(elm->elm);
 						WebKitDOMClientRect *rect =
 							webkit_dom_client_rect_list_item(rects, 0);
 						g_object_unref(rects);
 
-						gdouble x = webkit_dom_client_rect_get_left(rect);
-						gdouble y = webkit_dom_client_rect_get_top(rect);
-						gdouble w = webkit_dom_client_rect_get_width(rect);
-						gdouble h = webkit_dom_client_rect_get_height(rect);
+						double x = webkit_dom_client_rect_get_left(rect);
+						double y = webkit_dom_client_rect_get_top(rect);
+						double w = webkit_dom_client_rect_get_width(rect);
+						double h = webkit_dom_client_rect_get_height(rect);
+#endif
 
-						gchar *arg = g_strdup_printf("%f:%f",
+						char *arg = g_strdup_printf("%f:%f",
 							x + elm->fx + w / 2.0 + 1.0,
 							y + elm->fy + h / 2.0 + 1.0
 						);
 #else
-					gchar *tag = webkit_dom_element_get_tag_name(te);
-					bool isa = !strcmp(tag, "A");
-					g_free(tag);
+					bool isa = !strcmp(stag(te), "A");
 
 					if (page->script && !isi && !isa)
 					{
-						gchar *arg = g_strdup_printf("%ld:%ld",
+						char *arg = g_strdup_printf("%ld:%ld",
 								elm->x + elm->fx + elm->w / 2,
 								elm->y + elm->fy + 1);
 #endif
@@ -1128,15 +1461,22 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 					}
 					else
 					{
-						if (webkit_dom_element_has_attribute(te, "TARGET") &&
-								!getsetbool(page, "javascript-can-open-windows-automatically"))
+						if (!getsetbool(page,
+									"javascript-can-open-windows-automatically")
+								&& hasattr(te, "TARGET"))
 							send(page, "showmsg", "The element has target, may have to type the enter key.");
 
+#if JSC
+						let ce = invoker(doc, "createEvent", aS("MouseEvent"));
+						invoke(ce, "initEvent", aB(true), aB(true));
+						invoke(te, "dispatchEvent", aJ(ce));
+#else
 						WebKitDOMEvent *ce =
 							webkit_dom_document_create_event(doc, "MouseEvent", NULL);
 						webkit_dom_event_init_event(ce, "click", true, true);
 						webkit_dom_event_target_dispatch_event(
 							(WebKitDOMEventTarget *)te, ce, NULL);
+#endif
 						g_object_unref(ce);
 					}
 
@@ -1181,9 +1521,15 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 	if (hintstr->len)
 	{
+#if JSC
+		page->apchild = invoker(doc, "createElement", aS("DIV"));
+		setprop_s(page->apchild, "innerHTML", hintstr->str);
+		invoke(page->apnode, "appendChild", aJ(page->apchild));
+#else
 		page->apchild = (void *)webkit_dom_document_create_element(doc, "div", NULL);
 		webkit_dom_element_set_inner_html((void *)page->apchild, hintstr->str, NULL);
 		webkit_dom_node_append_child(page->apnode, page->apchild, NULL);
+#endif
 	}
 	g_string_free(hintstr, true);
 
@@ -1201,48 +1547,58 @@ static bool makehint(Page *page, Coms type, gchar *hintkeys, gchar *ipkeys)
 
 
 //@context
-static void domfocusincb(WebKitDOMDOMWindow *w, WebKitDOMEvent *e, Page *page)
-{
-	WebKitDOMDocument *doc = webkit_dom_dom_window_get_document(w);
-	WebKitDOMElement *te = webkit_dom_document_get_active_element(doc);
-	gchar *href = te ? webkit_dom_element_get_attribute(te, "HREF") : NULL;
-	gchar *uri = tofull(te, href);
-	send(page, "_focusuri", uri);
 
-	g_free(uri);
+static void domfocusincb(let w, let e, Page *page)
+{
+	let te = eachframes(page, activeelm);
+
+	char *href = te ? attr(te, "HREF") : NULL;
+	char *uri = tofull(te, href);
 	g_free(href);
+
+	send(page, "_focusuri", uri);
+	g_free(uri);
+	jscunref(te);
 }
-static void domfocusoutcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+static void domfocusoutcb(let w, let e, Page *page)
 { send(page, "_focusuri", NULL); }
 //static void domactivatecb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
 //{ DD(domactivate!) }
-
-static void rmtags(WebKitDOMDocument *doc, gchar *name)
+static void rmtags(let doc, char *name)
 {
-	WebKitDOMHTMLCollection *cl =
-		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, name);
+	let cl = getelms(doc, name);
 
 	GSList *rms = NULL;
-	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
-		rms = g_slist_prepend(rms, webkit_dom_html_collection_item(cl, j));
+	let te;
+	for (int i = 0; (te = idx(cl, i)); i++)
+		rms = g_slist_prepend(rms, te);
 
 	for (GSList *next = rms; next; next = next->next)
+	{
+#if JSC
+		let pn = prop(next->data, "parentNode");
+		invoke(pn, "removeChiled", aJ(next->data));
+		g_object_unref(pn);
+		g_object_unref(next->data);
+#else
 		webkit_dom_node_remove_child(
 			webkit_dom_node_get_parent_node(next->data), next->data, NULL);
+#endif
+	}
 
 	g_slist_free(rms);
 	g_object_unref(cl);
 }
-static void domloadcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+static void domloadcb(let w, let e, let doc)
 {
-	rmtags(webkit_dom_dom_window_get_document(w), "NOSCRIPT");
+	rmtags(doc, "NOSCRIPT");
 }
-static void hintcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+static void hintcb(let w, let e, Page *page)
 {
 	if (page->apnode)
 		makehint(page, page->lasttype, NULL, NULL);
 }
-static void unloadcb(WebKitDOMDOMWindow *w, WebKitDOMEvent *ev, Page *page)
+static void unloadcb(let w, let e, Page *page)
 {
 	rmhint(page);
 }
@@ -1253,55 +1609,70 @@ static void pagestart(Page *page)
 	page->black = NULL;
 	page->white = NULL;
 }
-static void frameon(Page *page, WebKitDOMDocument *doc)
-{
-	WebKitDOMEventTarget *emitter = WEBKIT_DOM_EVENT_TARGET(
-			webkit_dom_document_get_default_view(doc));
 
-	page->emitters = g_slist_prepend(page->emitters, emitter);
+static void addlistener(void *emt, char *name, void *func, void *data)
+{
+#if JSC
+//this is disabled when javascript disabled
+//also data is only sent once
+//	let f = jsc_value_new_function(jsc_value_get_context(emt), NULL,
+//			func, data, NULL,
+//			G_TYPE_NONE, 1, JSC_TYPE_VALUE, JSC_TYPE_VALUE);
+//	invoke(emt, "addEventListener", aS(name), aJ(f));
+//	g_object_unref(f);
+
+//	webkit_dom_event_target_add_event_listener(
+//		(void *)webkit_dom_node_for_js_value(emt), name, func, false, data);
+#else
+#endif
+	webkit_dom_event_target_add_event_listener(emt, name, func, false, data);
+}
+
+static void *frameon(let doc, Page *page)
+{
+	if (!doc) return NULL;
+	void *emt =
+		//have to be a view not a doc for beforeunload
+#if JSC
+		//Somehow JSC's defaultView(conveted to the DOM) is not a event target
+		//Even it is, JSC's beforeunload may be killed
+		webkit_dom_document_get_default_view(
+			(void *)webkit_dom_node_for_js_value(g_object_ref(doc)));
+#else
+		defaultview(doc);
+#endif
+
+	page->emitters = g_slist_prepend(page->emitters, emt);
 
 	if (getsetbool(page, "rmnoscripttag"))
 	{
 		rmtags(doc, "NOSCRIPT");
 		//have to monitor DOMNodeInserted or?
-		webkit_dom_event_target_add_event_listener(emitter,
-				"DOMContentLoaded", G_CALLBACK(domloadcb), false, page);
+		addlistener(emt, "DOMContentLoaded", domloadcb, doc);
 	}
 
-	webkit_dom_event_target_add_event_listener(emitter,
-			"DOMFocusIn", G_CALLBACK(domfocusincb), false, page);
-	webkit_dom_event_target_add_event_listener(emitter,
-			"DOMFocusOut", G_CALLBACK(domfocusoutcb), false, page);
-//	webkit_dom_event_target_add_event_listener(emitter,
-//			"DOMActivate", G_CALLBACK(domactivatecb), false, page);
+	addlistener(emt, "DOMFocusIn"  , domfocusincb , page);
+	addlistener(emt, "DOMFocusOut" , domfocusoutcb, page);
+	//addlistener(emt, "DOMActivate" , domactivatecb, page);
 
-	//for refresh hint
-	webkit_dom_event_target_add_event_listener(emitter,
-			"resize", G_CALLBACK(hintcb), false, page);
-	webkit_dom_event_target_add_event_listener(emitter,
-			"scroll", G_CALLBACK(hintcb), false, page);
-//may be heavy
-//	webkit_dom_event_target_add_event_listener(emitter,
-//			"DOMSubtreeModified", G_CALLBACK(hintcb), false, page);
+	//for hint
+	addlistener(emt, "resize"      , hintcb  , page);
+	addlistener(emt, "scroll"      , hintcb  , page);
+	addlistener(emt, "beforeunload", unloadcb, page);
+	//heavy
+	//addlistener(emt, "DOMSubtreeModified", hintcb, page);
 
-	webkit_dom_event_target_add_event_listener(emitter,
-			"beforeunload", G_CALLBACK(unloadcb), false, page);
-
-	WebKitDOMHTMLCollection *cl =
-		webkit_dom_document_get_elements_by_tag_name_as_html_collection(
-				doc, "IFRAME");
-	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
-		frameon(page,
-				webkit_dom_html_iframe_element_get_content_document(
-					(void *)webkit_dom_html_collection_item(cl, j)));
-
-	g_object_unref(cl);
+	return NULL;
 }
+
+
 static void pageon(Page *page, bool finished)
 {
 	g_slist_free_full(page->emitters, g_object_unref);
 	page->emitters = NULL;
-	frameon(page, webkit_web_page_get_dom_document(page->kit));
+
+	eachframes(page, frameon);
+//	frameon(page, sdoc(page));
 
 	if (!finished
 		|| !g_str_has_prefix(webkit_web_page_get_uri(page->kit), APP":main")
@@ -1309,26 +1680,37 @@ static void pageon(Page *page, bool finished)
 	)
 		return;
 
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMHTMLCollection *cl =
-		webkit_dom_document_get_elements_by_tag_name_as_html_collection(doc, "IMG");
-	for (gint j = 0; j < webkit_dom_html_collection_get_length(cl); j++)
+	let doc = sdoc(page);
+
+	let cl = getelms(doc, "IMG");
+	let te;
+	for (int j = 0; (te = idx(cl, j)); j++)
 	{
-		WebKitDOMElement *elm = (void *)webkit_dom_html_collection_item(cl, j);
-		gchar *uri = webkit_dom_element_get_attribute(elm, "SRC");
+		char *uri = attr(te, "SRC");
+
 		if (!g_strcmp0(uri, APP":F"))
 		{
+#if JSC
+			let pe = prop(te, "parentElement");
+#else
 			WebKitDOMElement *pe =
-				webkit_dom_node_get_parent_element((WebKitDOMNode *)elm);
+				webkit_dom_node_get_parent_element((WebKitDOMNode *)te);
+#endif
 			g_free(uri);
-			uri = webkit_dom_element_get_attribute(pe, "HREF");
-			gchar *esc = g_uri_escape_string(uri, NULL, true);
-			gchar *f = g_strdup_printf(APP":f/%s", esc);
+			uri = attr(pe, "HREF");
+			char *esc = g_uri_escape_string(uri, NULL, true);
+			char *f = g_strdup_printf(APP":f/%s", esc);
 			g_free(esc);
-			webkit_dom_element_set_attribute(elm, "SRC", f, NULL);
+#if JSC
+			invoke(te, "setAttribute", aS("SRC"), aS(f));
+#else
+			webkit_dom_element_set_attribute(te, "SRC", f, NULL);
+#endif
 			g_free(f);
+			jscunref(pe);
 		}
 		g_free(uri);
+		jscunref(te);
 	}
 
 	g_object_unref(cl);
@@ -1338,27 +1720,46 @@ static void pageon(Page *page, bool finished)
 //@misc com funcs
 static void mode(Page *page)
 {
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMElement  *te = webkit_dom_document_get_active_element(doc);
+	let te = eachframes(page, activeelm);
 
-	if (te)
-	{
-		gchar *type = webkit_dom_element_get_attribute(te, "contenteditable");
-		bool iseditable = type && !strcmp(type, "true");
-		g_free(type);
+	if (te && (isinput(te) || attrb(te, "contenteditable")))
+		send(page, "toinsert", NULL);
+	else
+		send(page, "tonormal", NULL);
 
-		if (iseditable || isinput(te))
-			return send(page, "toinsert", NULL);
-	}
-
-	send(page, "tonormal", NULL);
+	jscunref(te);
 }
 
-static void focus(Page *page)
+static void *focusselection(let doc)
 {
-	WebKitDOMDocument  *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+	void *ret = NULL;
+	let win = defaultview(doc);
 
+#if JSC
+	let selection = invoker(win, "getSelection");
+
+	let an =
+		   prop(selection, "anchorNode")
+		?: prop(selection, "focusNode" )
+		?: prop(selection, "baseNode"  )
+		?: prop(selection, "extentNode");
+
+	if (an) do
+	{
+		let pe = prop(an, "parentElement");
+		if (!pe) continue;
+
+		if (isins(clicktags , stag(pe)))
+		{
+			focuselm(pe);
+			g_object_unref(pe);
+			ret = pe;
+			break;
+		}
+		g_object_unref(pe);
+	} while ((an = propunref(an, "parentNode")));
+
+#else
 	WebKitDOMDOMSelection *selection =
 		webkit_dom_dom_window_get_selection(win);
 
@@ -1371,57 +1772,77 @@ static void focus(Page *page)
 
 	if (an) do
 	{
-		WebKitDOMElement *elm = webkit_dom_node_get_parent_element(an);
-		if (!elm) continue;
-		gchar *tag = webkit_dom_element_get_tag_name(elm);
+		WebKitDOMElement *pe = webkit_dom_node_get_parent_element(an);
+		if (!pe) continue;
 
-		if (isins(clicktags , tag))
+		if (isins(clicktags , stag(pe)))
 		{
-			webkit_dom_element_focus(elm);
-			g_free(tag);
+			focuselm(pe);
+			ret = pe;
 			break;
 		}
-		g_free(tag);
 
 	} while ((an = webkit_dom_node_get_parent_node(an)));
 
+#endif
+
 	g_object_unref(selection);
 	g_object_unref(win);
+	return ret;
 }
 
-static void blur(Page *page)
+
+static void blur(let doc)
 {
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMElement  *elm = webkit_dom_document_get_active_element(doc);
-	if (elm)
-		webkit_dom_element_blur(elm);
+	let te = activeelm(doc);
+	if (te)
+	{
+#if JSC
+		invoke(te, "blur");
+		g_object_unref(te);
+#else
+		webkit_dom_element_blur(te);
+#endif
+	}
 
 	//clear selection
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
+
+	let win = defaultview(doc);
+#if JSC
+	let selection = invoker(win, "getSelection");
+	invoke(selection, "empty");
+#else
 	WebKitDOMDOMSelection *selection =
 		webkit_dom_dom_window_get_selection(win);
 	webkit_dom_dom_selection_empty(selection);
-
-	g_object_unref(selection);
+#endif
 	g_object_unref(win);
+	g_object_unref(selection);
 }
 
 static void halfscroll(Page *page, bool d)
 {
-	WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-	WebKitDOMDOMWindow *win = webkit_dom_document_get_default_view(doc);
-	glong y = webkit_dom_dom_window_get_scroll_y(win);
-	glong x = webkit_dom_dom_window_get_scroll_x(win);
-	glong h = webkit_dom_dom_window_get_inner_height(win);
-	y += (d ? h/2 : - h/2);
-	webkit_dom_dom_window_scroll_to(win, x, y);
+	let win = defaultview(sdoc(page));
+
+#if JSC
+	double h = propd(win, "innerHeight");
+	invoke(win, "scrollTo",
+			aD(propd(win, "scrollX")),
+			aD(propd(win, "scrollY") + (d ? h/2 : - h/2)));
+#else
+	double h = webkit_dom_dom_window_get_inner_height(win);
+	double y = webkit_dom_dom_window_get_scroll_y(win);
+	double x = webkit_dom_dom_window_get_scroll_x(win);
+	webkit_dom_dom_window_scroll_to(win, x, y + (d ? h/2 : - h/2));
+#endif
+
 	g_object_unref(win);
 }
 
 //@ipccb
-void ipccb(const gchar *line)
+void ipccb(const char *line)
 {
-	gchar **args = g_strsplit(line, ":", 3);
+	char **args = g_strsplit(line, ":", 3);
 
 	Page *page = NULL;
 	long lid = atol(args[0]);
@@ -1432,9 +1853,9 @@ void ipccb(const gchar *line)
 	if (!page) return;
 
 	Coms type = *args[1];
-	gchar *arg = args[2];
+	char *arg = args[2];
 
-	gchar *ipkeys = NULL;
+	char *ipkeys = NULL;
 	switch (type) {
 	case Cload:
 		loadconf();
@@ -1457,7 +1878,7 @@ void ipccb(const gchar *line)
 
 	case Ckey:
 	{
-		gchar key[2] = {0};
+		char key[2] = {0};
 		key[0] = toupper(arg[0]);
 		ipkeys = page->apkeys ?
 			g_strconcat(page->apkeys, key, NULL) : g_strdup(key);
@@ -1485,8 +1906,10 @@ D(time %f, (g_get_monotonic_time() - start) / 1000000.0)
 		break;
 	case Ctext:
 	{
-		WebKitDOMDocument *doc = webkit_web_page_get_dom_document(page->kit);
-		makelist(page, doc, Ctext, NULL, NULL);
+		let doc = sdoc(page);
+		let win = defaultview(doc);
+		makelist(page, doc, win, Ctext, NULL, NULL);
+		g_object_unref(win);
 		break;
 	}
 	case Crm:
@@ -1498,11 +1921,11 @@ D(time %f, (g_get_monotonic_time() - start) / 1000000.0)
 		break;
 
 	case Cfocus:
-		focus(page);
+		eachframes(page, focusselection);
 		break;
 
 	case Cblur:
-		blur(page);
+		eachframes(page, blur);
 		break;
 
 	case Cwhite:
@@ -1548,14 +1971,14 @@ static gboolean reqcb(
 		Page *page)
 {
 	page->pagereq++;
-	const gchar *reqstr = webkit_uri_request_get_uri(req);
+	const char *reqstr = webkit_uri_request_get_uri(req);
 	if (g_str_has_prefix(reqstr, APP":"))
 	{
 		if (!strcmp(reqstr, APP":F"))
 			return true;
 		return false;
 	}
-	const gchar *pagestr = webkit_web_page_get_uri(page->kit);
+	const char *pagestr = webkit_web_page_get_uri(page->kit);
 	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
 
 	bool ret = false;
@@ -1589,12 +2012,12 @@ static gboolean reqcb(
 
 	//reldomainonly
 	SoupURI *puri = soup_uri_new(pagestr);
-	const gchar *phost = soup_uri_get_host(puri);
+	const char *phost = soup_uri_get_host(puri);
 	if (phost)
 	{
-		gchar **cuts = g_strsplit(
+		char **cuts = g_strsplit(
 				getset(page, "reldomaincutheads") ?: "", ";", -1);
-		for (gchar **cut = cuts; *cut; cut++)
+		for (char **cut = cuts; *cut; cut++)
 			if (g_str_has_prefix(phost, *cut))
 			{
 				phost += strlen(*cut);
@@ -1603,7 +2026,7 @@ static gboolean reqcb(
 		g_strfreev(cuts);
 
 		SoupURI *ruri = soup_uri_new(reqstr);
-		const gchar *rhost = soup_uri_get_host(ruri);
+		const char *rhost = soup_uri_get_host(ruri);
 
 		ret = rhost && !g_str_has_suffix(rhost, phost);
 
@@ -1623,11 +2046,11 @@ out:
 			soup_message_headers_replace(head, "User-Agent",
 					getset(page, "user-agent") ?: "");
 
-		gchar *rmhdrs = getset(page, "removeheaders");
+		char *rmhdrs = getset(page, "removeheaders");
 		if (rmhdrs)
 		{
-			gchar **rms = g_strsplit(rmhdrs, ";", -1);
-			for (gchar **rm = rms; *rm; rm++)
+			char **rms = g_strsplit(rmhdrs, ";", -1);
+			for (char **rm = rms; *rm; rm++)
 				soup_message_headers_remove(head, *rm);
 			g_strfreev(rms);
 		}
@@ -1679,13 +2102,16 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	g_object_weak_ref(G_OBJECT(kp), (GWeakNotify)freepage, page);
 	page->kit = kp;
 	page->id = webkit_web_page_get_id(kp);
+#if JSC
+	page->mf = webkit_web_page_get_main_frame(kp);
+#endif
 	page->seto = g_object_new(G_TYPE_OBJECT, NULL);
 	g_ptr_array_add(pages, page);
 
 	wbpath = path2conf("whiteblack.conf");
 	setwblist(false);
 
-	gchar *name = NULL;
+	char *name = NULL;
 	if (!shared)
 	{
 		name = g_strdup_printf("%"G_GUINT64_FORMAT, page->id);
@@ -1715,7 +2141,7 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 		WebKitWebExtension *ex, const GVariant *v)
 {
-	const gchar *str = g_variant_get_string((GVariant *)v, NULL);
+	const char *str = g_variant_get_string((GVariant *)v, NULL);
 	fullname = g_strdup(g_strrstr(str, ";") + 1);
 	shared = fullname[0] == 's';
 	fullname = fullname + 1;
@@ -1728,4 +2154,3 @@ G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 	SIG(ex, "page-created", initpage, NULL);
 }
 
-#endif
