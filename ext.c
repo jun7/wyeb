@@ -245,6 +245,7 @@ static void __attribute__ ((unused)) proplist(JSCValue *v)
 #define focuselm(t) invoke(t, "focus")
 #define getelms(doc, name) invoker(doc, "getElementsByTagName", aS(name))
 #define defaultview(doc) prop(doc, "defaultView")
+
 #else
 
 #define defaultview(doc) webkit_dom_document_get_default_view(doc)
@@ -253,6 +254,7 @@ static void __attribute__ ((unused)) proplist(JSCValue *v)
 #define focuselm(t) webkit_dom_element_focus(t)
 #define docelm(v) webkit_dom_document_get_document_element(v)
 #define jscunref(v) ;
+
 #define attr webkit_dom_element_get_attribute
 #define sdoc(v) webkit_web_page_get_dom_document(v->kit)
 
@@ -1672,7 +1674,6 @@ static void pageon(Page *page, bool finished)
 	page->emitters = NULL;
 
 	eachframes(page, frameon);
-//	frameon(page, sdoc(page));
 
 	if (!finished
 		|| !g_str_has_prefix(webkit_web_page_get_uri(page->kit), APP":main")

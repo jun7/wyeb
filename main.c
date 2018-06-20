@@ -2273,9 +2273,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 	if (arg != NULL) {
 		Z("find"  ,
+				const char *u = arg;
+				do if (g_ascii_isupper(*u)) break; while (*++u);
 				GFA(win->lastfind, g_strdup(arg))
 				webkit_find_controller_search(win->findct, arg,
-					WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
+					(*u ? 0 : WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE) |
 					WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT))
 
 		Z("open"   , openuri(win, arg))
