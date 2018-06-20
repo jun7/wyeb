@@ -2158,6 +2158,8 @@ static Keybind dkeys[]= {
 	{"dlwithheaders" , 0, 0, "Current uri is sent as Referer. Also cookies"},
 	{"showmsg"       , 0, 0},
 	{"raise"         , 0, 0},
+	{"winpos"        , 0, 0, "x:y"},
+	{"winsize"       , 0, 0, "w:h"},
 	{"click"         , 0, 0, "x:y"},
 	{"openeditor"    , 0, 0},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
@@ -2217,7 +2219,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 #define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
 	//D(action %s, action)
 	if (action == NULL) return false;
-	gchar **retv = NULL; //hintret
+	gchar **agv = NULL;
 
 	Z("new"         , win = newwin(arg, NULL, NULL, 0))
 	Z("plugto"      , plugto = atol(exarg ?: arg ?: "0");
@@ -2247,8 +2249,8 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	{
 		const gchar *orgarg = arg;
 		exarg = *++arg == '0' ? "0" : "1";
-		retv = g_strsplit(++arg, " ", 3);
-		arg = retv[1];
+		agv = g_strsplit(++arg, " ", 3);
+		arg = agv[1];
 
 		action = win->action;
 		if (!strcmp(action, "bookmark"))
@@ -2256,7 +2258,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		else if (!strcmp(action, "spawn"))
 		{
 			setresult(win, NULL);
-			win->linklabel = g_strdup(retv[2]);
+			win->linklabel = g_strdup(agv[2]);
 
 			switch (*orgarg) {
 			case 'l':
@@ -2284,16 +2286,13 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 		Z("opennew", newwin(arg, NULL, win, 0))
 
 		Z("bookmark",
-			gchar **args = g_strsplit(arg, " ", 2);
-			addlink(win, args[1], args[0]);
-			g_strfreev(args);
-		)
+				agv = g_strsplit(arg, " ", 2); addlink(win, agv[1], *agv);)
 
 		//nokey
 		Z("openback",
 			altcur(win, 0,0); showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
 		Z("openwithref",
-			const gchar *ref = retv ? retv[0] : URI(win);
+			const gchar *ref = agv ? *agv : URI(win);
 			gchar *nrml = soup_uri_normalize(arg, NULL);
 			if (!g_str_has_prefix(ref, APP":") &&
 				!g_str_has_prefix(ref, "file:"))
@@ -2310,7 +2309,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			Win *dlw = newwin(NULL, win, win, 2);
 			dlw->fordl = true;
 
-			const gchar *ref = retv ? retv[0] : URI(win);
+			const gchar *ref = agv ? *agv : URI(win);
 			WebKitURIRequest *req = webkit_uri_request_new(arg);
 			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
 			if (hdrs && //scheme APP: returns NULL
@@ -2324,12 +2323,11 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 		Z("showmsg" , showmsg(win, arg))
 		Z("click",
-			gchar **xy = g_strsplit(arg ?: "100:100", ":", 2);
+			agv = g_strsplit(arg ?: "100:100", ":", 2);
 			gdouble z = webkit_web_view_get_zoom_level(win->kit);
-			win->px = atof(*xy) * z;
-			win->py = atof(*(xy + 1)) * z;
+			win->px = atof(*agv) * z;
+			win->py = atof(agv[1] ?: exarg) * z;
 			makeclick(win, win->pbtn ?: 1);
-			g_strfreev(xy);
 		)
 		Z("openeditor", openeditor(win, arg, NULL))
 		Z("spawn"   , spawnwithenv(win, arg, cdir, true, exarg, NULL, 0))
@@ -2574,6 +2572,13 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 
 	Z("textlink", textlinktry(win));
 	Z("raise"   , present(arg ? winbyid(arg) ?: win : win))
+	if (!strcmp(action, "winpos") || !strcmp(action, "winsize"))
+	{
+		agv = g_strsplit(arg ?: "100:100", ":", 2);
+		(!strcmp(action, "winpos") ? gtk_window_move : gtk_window_resize)
+			(win->win, atoi(*agv), atoi(agv[1] ?: exarg));
+		goto out;
+	}
 
 	gchar *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
 	showmsg(win, msg);
@@ -2584,8 +2589,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 #undef Z
 out:
 	update(win);
-	if (retv)
-		g_strfreev(retv);
+	if (agv) g_strfreev(agv);
 	return true;
 }
 bool run(Win *win, gchar* action, const gchar *arg)
