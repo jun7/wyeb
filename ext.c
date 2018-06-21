@@ -151,10 +151,8 @@ static const char *inottext[] = {
 
 
 #if JSC
-
-
 static void __attribute__((constructor)) ext22()
-{ g_print("this is ext22\n"); }
+{ DD("this is ext22\n"); }
 
 
 static JSCValue *pagejsv(Page *page, char *name)
@@ -185,12 +183,6 @@ static let prop(let v, char *name)
 	g_object_unref(retv);
 	return NULL;
 }
-static let propunref(let v, char *name)
-{
-	let retv = prop(v, name);
-	g_object_unref(v);
-	return retv;
-}
 static double propd(let v, char *name)
 {
 	let retv = jsc_value_object_get_property(v, name);
@@ -200,11 +192,8 @@ static double propd(let v, char *name)
 }
 static char *props(let v, char *name)
 {
-	char *ret = NULL;
 	let retv = jsc_value_object_get_property(v, name);
-	if (isdef(retv))
-		ret = jsc_value_to_string(retv);
-
+	char *ret = isdef(retv) ? jsc_value_to_string(retv) : NULL;
 	g_object_unref(retv);
 	return ret;
 }
@@ -1748,17 +1737,16 @@ static void *focusselection(let doc)
 	if (an) do
 	{
 		let pe = prop(an, "parentElement");
-		if (!pe) continue;
-
-		if (isins(clicktags , stag(pe)))
+		if (pe && isins(clicktags, stag(pe)))
 		{
 			focuselm(pe);
 			g_object_unref(pe);
 			ret = pe;
-			break;
+			pe = NULL;
 		}
-		g_object_unref(pe);
-	} while ((an = propunref(an, "parentNode")));
+		g_object_unref(an);
+		an = pe;
+	} while (an);
 
 #else
 	WebKitDOMDOMSelection *selection =
@@ -1774,9 +1762,7 @@ static void *focusselection(let doc)
 	if (an) do
 	{
 		WebKitDOMElement *pe = webkit_dom_node_get_parent_element(an);
-		if (!pe) continue;
-
-		if (isins(clicktags , stag(pe)))
+		if (pe && isins(clicktags , stag(pe)))
 		{
 			focuselm(pe);
 			ret = pe;
