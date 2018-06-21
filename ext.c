@@ -20,6 +20,12 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 //Make sure JSC is 4 times slower and lacks features we using
 //So even JSC is true, there are the DOM funcs left and slow
+
+#if ! JSC + 0
+#undef JSC
+#define JSC 0
+#endif
+
 #if JSC
 #define let JSCValue *
 #else

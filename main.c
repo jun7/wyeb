@@ -4684,7 +4684,7 @@ int main(int argc, char **argv)
 {
 #if DEBUG
 	g_log_set_always_fatal(G_LOG_LEVEL_CRITICAL);
-	DD(This bin is compiled with DEBUG=1)
+	DD(This bin is compiled with DEBUG)
 #endif
 
 	if (argc == 2 && (

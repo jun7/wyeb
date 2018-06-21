@@ -2,10 +2,8 @@ EXTENSION_DIR=$(DESTDIR)/usr/lib/wyebrowser
 ifeq ($(DEBUG), 1)
 	CFLAGS += -Wall -Wno-deprecated-declarations
 else
-	DEBUG = 0
 	CFLAGS += -Wno-deprecated-declarations
 endif
-DDEBUG=-DDEBUG=${DEBUG}
 
 all: wyeb ext.so
 
@@ -13,12 +11,12 @@ wyeb: main.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< \
 		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
 		-DEXTENSION_DIR=\"$(EXTENSION_DIR)\" \
-		$(DDEBUG) -lm
+		-DDEBUG=${DEBUG} -lm
 
 ext.so: ext.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -shared -fPIC \
 		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
-		$(DDEBUG) -DJSC=0
+		-DDEBUG=${DEBUG} -DJSC=${JSC}
 
 clean:
 	rm -f wyeb ext.so

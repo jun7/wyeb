@@ -33,6 +33,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define HINTKEYS "fsedagwrvxqcz"
 //bt324"
 
+#if ! DEBUG + 0
+#undef DEBUG
+#define DEBUG 0
+#endif
+
 #if DEBUG
 # define D(f, ...) g_print("#"#f"\n", __VA_ARGS__);
 # define DNN(f, ...) g_print(#f, __VA_ARGS__);
