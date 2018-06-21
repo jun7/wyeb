@@ -77,6 +77,14 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
 #define GFA(p, v) {void *__b = p; p = v; g_free(__b);}
 
+//the responsibility is on the one who using this for args
+static char *sfree(char *p)
+{
+	static void *s = NULL;
+	g_free(s);
+	return s = p;
+}
+
 static gchar *fullname = "";
 static bool shared = true;
 static GKeyFile *conf = NULL;
@@ -585,7 +593,7 @@ static gboolean ipcgencb(GIOChannel *ch, GIOCondition c, gpointer p)
 	return true;
 }
 
-static bool ipcsend(gchar *name, gchar *str) {
+static bool ipcsend(gchar *name, gchar *str) { //str is eaten
 	gchar *path = ipcpath(name);
 	bool ret = false;
 	int cpipe = 0;
@@ -606,6 +614,7 @@ static bool ipcsend(gchar *name, gchar *str) {
 
 		//D(send -end- %s %s, name, str)
 	}
+	g_free(str);
 	return ret;
 }
 static GSource *_ipcwatch(gchar *name, GMainContext *ctx) {

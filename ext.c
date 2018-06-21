@@ -218,7 +218,7 @@ static char *attr(let v, char *name)
 }
 
 
-static void __attribute__ ((unused)) proplist(JSCValue *v)
+static void __attribute__((unused)) proplist(JSCValue *v)
 {
 	if (jsc_value_is_undefined(v))
 	{
@@ -262,6 +262,7 @@ static void clearelm(Elm *elm)
 
 static char *stag(let elm)
 {
+	if (!elm) return NULL;
 	static char *name = NULL;
 	g_free(name);
 #if JSC
@@ -271,18 +272,9 @@ static char *stag(let elm)
 #endif
 	return name;
 }
-static bool hasattr(let v, char *name)
-{
-	char *str = attr(v, name);
-	g_free(str);
-	return str;
-}
 static bool attrb(let v, char *name)
 {
-	char *str = attr(v, name);
-	bool ret = !g_strcmp0(str, "true");
-	g_free(str);
-	return ret;
+	return !g_strcmp0(sfree(attr(v, name)), "true");
 }
 static let idx(let cl, int i)
 {
@@ -323,11 +315,9 @@ static let activeelm(let doc)
 //@misc
 static void send(Page *page, char *action, const char *arg)
 {
-	char *ss = g_strdup_printf("%"G_GUINT64_FORMAT":%s:%s",
-			page->id, action, arg ?: "");
 	//D(send to main %s, ss)
-	ipcsend("main", ss);
-	g_free(ss);
+	ipcsend("main", g_strdup_printf(
+		"%"G_GUINT64_FORMAT":%s:%s", page->id, action, arg ?: ""));
 }
 static bool isins(const char **ary, char *val)
 {
@@ -338,20 +328,15 @@ static bool isins(const char **ary, char *val)
 }
 static bool isinput(let te)
 {
-	bool ret = false;
 	char *tag = stag(te);
 	if (isins(inputtags, tag))
 	{
 		if (strcmp(tag, "INPUT"))
 			return true;
-
-		char *type = attr(te, "TYPE");
-		if (!type || !isins(inottext, type))
-			ret = true;
-		g_free(type);
+		else if (!isins(inottext, sfree(attr(te, "TYPE"))))
+			return true;
 	}
-
-	return ret;
+	return false;
 }
 static char *tofull(let te, char *uri)
 {
@@ -498,15 +483,9 @@ static void showwhite(Page *page, bool white)
 
 	list = g_slist_reverse(g_slist_copy(list));
 	for (GSList *next = list; next; next = next->next)
-	{
-		char *esc = regesc(next->data);
-		char *line = g_strdup_printf("%c^%s\n", pre, esc);
-		g_free(esc);
+		fputs(sfree(g_strdup_printf(
+			"%c^%s\n", pre, sfree(regesc(next->data)))), f);
 
-		fputs(line, f);
-
-		g_free(line);
-	}
 	g_slist_free(list);
 
 	fclose(f);
@@ -742,9 +721,7 @@ static char *_makehintelm(Page *page,
 out:
 	g_string_append(str, "</div>");
 
-	char *ret = str->str;
-	g_string_free(str, false);
-	return ret;
+	return g_string_free(str, false);
 }
 static char *makehintelm(Page *page, Elm *elm,
 		const char* text, int len, double pagex, double pagey)
@@ -788,20 +765,19 @@ static char *makehintelm(Page *page, Elm *elm,
 		_trim(&x, &w, &elm->x, &elm->w);
 		_trim(&y, &h, &elm->y, &elm->h);
 
-		char *hint = _makehintelm(page, center,
-				y + elm->fy + pagey,
-				x + elm->fx + pagex,
-				h,
-				w,
-				uri, text, len, i == 0);
 
-		g_string_append(str, hint);
-		g_free(hint);
+		g_string_append(str, sfree(
+			_makehintelm(page, center,
+					y + elm->fy + pagey,
+					x + elm->fx + pagex,
+					h,
+					w,
+					uri, text, len, i == 0)
+		));
 	}
 	g_object_unref(rects);
 
-	char *ret = str->str;
-	g_string_free(str, false);
+	char *ret = g_string_free(str, false);
 
 #else
 	char *ret = _makehintelm(page, doc, center,
@@ -928,9 +904,7 @@ static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
 	}
 #endif
 
-	char *zc = getstyleval(dec, "z-index");
-	ret.zi = atoi(zc);
-	g_free(zc);
+	ret.zi = atoi(sfree(getstyleval(dec, "z-index")));
 
 	if (ret.zi > prect->zi || styleis(dec, "position", "absolute"))
 		trim(&ret, frect);
@@ -1283,9 +1257,8 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		{
 #endif
 			//no elms may be;P
-			char *retstr = g_strdup_printf("l0%s ", webkit_web_page_get_uri(page->kit));
-			send(page, "_hintret", retstr);
-			g_free(retstr);
+			send(page, "_hintret", sfree(g_strdup_printf(
+							"l0%s ", webkit_web_page_get_uri(page->kit))));
 
 			g_free(ipkeys);
 			return false;
@@ -1363,8 +1336,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 			continue;
 		}
 
-		char *key = makekey(hintkeys, keylen, tnum, i, digit);
-		if (!strcmp(key, ipkeys))
+		if (!strcmp(sfree(makekey(hintkeys, keylen, tnum, i, digit)), ipkeys))
 		{
 			ipkeys = NULL;
 			iplen = 0;
@@ -1376,10 +1348,8 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 			else
 				rangeend = te;
 
-			g_free(key);
 			break;
 		}
-		g_free(key);
 	}
 
 	GSList *rangeelms = NULL;
@@ -1460,7 +1430,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 					{
 						if (!getsetbool(page,
 									"javascript-can-open-windows-automatically")
-								&& hasattr(te, "TARGET"))
+								&& sfree(attr(te, "TARGET")))
 							send(page, "showmsg", "The element has target, may have to type the enter key.");
 
 #if JSC
@@ -1497,15 +1467,10 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		else if (!page->rangestart || (rangein && !rangeend))
 		{
 			bool has = g_str_has_prefix(key, ipkeys ?: "");
+			ret |= has;
 			if (has || rangein)
-			{
-				char *ne = makehintelm(page,
-						elm, has ? key : NULL, iplen, pagex, pagey);
-
-				g_string_append(hintstr, ne);
-				g_free(ne);
-				ret |= has;
-			}
+				g_string_append(hintstr, sfree(makehintelm(page,
+						elm, has ? key : NULL, iplen, pagex, pagey)));
 		}
 
 		g_free(key);
@@ -1548,13 +1513,8 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 static void domfocusincb(let w, let e, Page *page)
 {
 	let te = eachframes(page, activeelm);
-
-	char *href = te ? attr(te, "HREF") : NULL;
-	char *uri = tofull(te, href);
-	g_free(href);
-
-	send(page, "_focusuri", uri);
-	g_free(uri);
+	send(page, "_focusuri",
+			sfree(tofull(te, te ? sfree(attr(te, "HREF")) : NULL)));
 	jscunref(te);
 }
 static void domfocusoutcb(let w, let e, Page *page)
@@ -1682,9 +1642,7 @@ static void pageon(Page *page, bool finished)
 	let te;
 	for (int j = 0; (te = idx(cl, j)); j++)
 	{
-		char *uri = attr(te, "SRC");
-
-		if (!g_strcmp0(uri, APP":F"))
+		if (!g_strcmp0(sfree(attr(te, "SRC")), APP":F"))
 		{
 #if JSC
 			let pe = prop(te, "parentElement");
@@ -1692,11 +1650,10 @@ static void pageon(Page *page, bool finished)
 			WebKitDOMElement *pe =
 				webkit_dom_node_get_parent_element((WebKitDOMNode *)te);
 #endif
-			g_free(uri);
-			uri = attr(pe, "HREF");
-			char *esc = g_uri_escape_string(uri, NULL, true);
-			char *f = g_strdup_printf(APP":f/%s", esc);
-			g_free(esc);
+			char *f = g_strdup_printf(
+					APP":f/%s", sfree(
+						g_uri_escape_string(
+							sfree(attr(pe, "HREF")) ?: "", NULL, true)));
 #if JSC
 			invoke(te, "setAttribute", aS("SRC"), aS(f));
 #else
@@ -1705,7 +1662,6 @@ static void pageon(Page *page, bool finished)
 			g_free(f);
 			jscunref(pe);
 		}
-		g_free(uri);
 		jscunref(te);
 	}
 

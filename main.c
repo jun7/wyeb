@@ -276,7 +276,7 @@ static void append(gchar *path, const gchar *str)
 	FILE *f = fopen(path, "a");
 	if (!f)
 	{
-		alert(g_strdup_printf("fopen %s failed", path));
+		alert(sfree(g_strdup_printf("fopen %s failed", path)));
 		return;
 	}
 	if (str)
@@ -438,11 +438,8 @@ static void fixhist(Win *win)
 static void removehistory()
 {
 	for (gchar **file = hists; *file; file++)
-	{
-		gchar *tmp = g_build_filename(histdir, *file, NULL);
-		remove(tmp);
-		g_free(tmp);
-	}
+		remove(sfree(g_build_filename(histdir, *file, NULL)));
+
 	GFA(histfile, NULL)
 	GFA(lasthist, NULL)
 }
@@ -483,8 +480,6 @@ static void send(Win *win, Coms type, gchar *args)
 		alert("Failed to communicate with the Web Extension.\n"
 				"Make sure ext.so is in "EXTENSION_DIR".");
 	}
-
-	g_free(arg);
 }
 typedef struct {
 	Win   *win;
@@ -647,9 +642,9 @@ static void monitorcb(GFileMonitor *m, GFile *f, GFile *o, GFileMonitorEvent e,
 	if (e != G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT &&
 			e != G_FILE_MONITOR_EVENT_DELETED) return;
 
-	char *path = g_file_get_path(f);
 	//delete event's path is old and chenge event's path is new,
 	//when renamed out new is useless, renamed in old is useless.
+	char *path = g_file_get_path(f);
 	if (g_hash_table_lookup(monitored, path))
 		func(path);
 	g_free(path);
@@ -709,13 +704,9 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, gchar *group)
 			break;
 		case G_TYPE_STRING:
 			if (set) {
-				gchar *v = g_key_file_get_string(kf, group, key, NULL);
-				if (!strcmp(g_value_get_string(&gv), v)) {
-					g_free(v);
-					continue;;
-				}
+				gchar *v = sfree(g_key_file_get_string(kf, group, key, NULL));
+				if (!strcmp(g_value_get_string(&gv), v)) continue;;
 				g_value_set_string(&gv, v);
-				g_free(v);
 			} else
 				g_key_file_set_string(kf, group, key, g_value_get_string(&gv));
 			break;
@@ -903,12 +894,7 @@ static void checkcss(const gchar *mp)
 		bool changed = false;
 		gchar **names = g_strsplit(us, ";", -1);
 		for (gchar **name = names; *name; name++)
-		{
-			gchar *path = path2conf(*name);
-			changed = !strcmp(mp, path);
-			g_free(path);
-			if (changed) break;
-		}
+			if ((changed = !strcmp(mp, sfree(path2conf(*name))))) break;
 		g_strfreev(names);
 
 		if (changed)
@@ -927,24 +913,20 @@ void setcss(Win *win, gchar *namesstr)
 	{
 		gchar *path = path2conf(*name);
 		monitor(path, checkcss); //even not exists
-		if (!g_file_test(path, G_FILE_TEST_EXISTS))
-		{
-			g_free(path);
-			continue;
-		}
 
 		gchar *str;
-		if (!g_file_get_contents(path, &str, NULL, NULL)) return;
+		if (g_file_test(path, G_FILE_TEST_EXISTS)
+				&& g_file_get_contents(path, &str, NULL, NULL))
+		{
+			WebKitUserStyleSheet *css =
+				webkit_user_style_sheet_new(str,
+						WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+						WEBKIT_USER_STYLE_LEVEL_USER,
+						NULL, NULL);
 
-		WebKitUserStyleSheet *css =
-			webkit_user_style_sheet_new(str,
-					WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
-					WEBKIT_USER_STYLE_LEVEL_USER,
-					NULL, NULL);
-
-		webkit_user_content_manager_add_style_sheet(cmgr, css);
-
-		g_free(str);
+			webkit_user_content_manager_add_style_sheet(cmgr, css);
+			g_free(str);
+		}
 		g_free(path);
 	}
 	g_strfreev(names);
@@ -1078,12 +1060,8 @@ static void _modechanged(Win *win)
 	case Mopennew:
 		enticon(win, NULL);
 		if (win->mode != Mfind)
-		{
-			gchar *setstr = g_key_file_get_string(conf, DSET, "search", NULL);
-			if (g_strcmp0(setstr, getset(win, "search")))
+			if (g_strcmp0(getset(NULL, "search"), getset(win, "search")))
 				enticon(win, "system-search");
-			g_free(setstr);
-		}
 
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
@@ -1104,13 +1082,9 @@ static void _modechanged(Win *win)
 		if (win->crashed)
 			win->mode = Mnormal;
 		else
-		{
-			gchar *arg = g_strdup_printf("%c",
-					win->pbtn > 1 ||
-					getsetbool(win, "hackedhint4js") ? 'y' : 'n');
-			send(win, win->com, arg);
-			g_free(arg);
-		}
+			send(win, win->com, sfree(g_strdup_printf("%c",
+					win->pbtn > 1 || getsetbool(win, "hackedhint4js") ?
+					'y' : 'n')));
 		break;
 
 	case Mnormal:
@@ -1134,9 +1108,7 @@ static void update(Win *win)
 
 	case Mpointer:
 		if (win->link) goto normal;
-		gchar *tmp = g_strdup_printf("-- POINTER MODE %d --", win->pbtn);
-		settitle(win, tmp);
-		g_free(tmp);
+		settitle(win, sfree(g_strdup_printf("-- POINTER MODE %d --", win->pbtn)));
 		break;
 
 	case Mhintrange:
@@ -1158,10 +1130,8 @@ normal:
 	if (win->focusuri || win->link)
 	{
 		bool f = (win->usefocus && win->focusuri) || !win->link;
-		gchar *str = g_strconcat(f ? "Focus" : "Link",
-				": ", f ? win->focusuri : win->link, NULL);
-		settitle(win, str);
-		g_free(str);
+		settitle(win, sfree(g_strconcat(f ? "Focus" : "Link",
+				": ", f ? win->focusuri : win->link, NULL)));
 	}
 	else
 		settitle(win, NULL);
@@ -1179,7 +1149,7 @@ static bool run(Win *win, gchar* action, const gchar *arg); //declaration
 static int formaturi(char **uri, char *key, const char *arg, char *spare)
 {
 	int checklen = 1;
-	char *format, *esc = NULL;
+	char *format;
 
 	if      ((format = g_key_file_get_string(conf, "template", key, NULL))) ;
 	else if ((format = g_key_file_get_string(conf, "raw"     , key, NULL))) ; //backward
@@ -1187,12 +1157,11 @@ static int formaturi(char **uri, char *key, const char *arg, char *spare)
 				g_strdup(spare)))
 	{
 		checklen = strlen(arg) ?: 1; //only search else are 1 even ""
-		arg = esc = g_uri_escape_string(arg, NULL, false);
+		arg = sfree(g_uri_escape_string(arg, NULL, false));
 	}
 	else return 0;
 
 	*uri = g_strdup_printf(format, arg);
-	g_free(esc);
 	g_free(format);
 	return checklen;
 }
@@ -1315,9 +1284,7 @@ static void spawnwithenv(Win *win, const gchar *shell, gchar* path,
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
 	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
 	envp = g_environ_setenv(envp, "DLDIR"  , dldir(win), true);
-	gchar *confdir = path2conf(NULL);
-	envp = g_environ_setenv(envp, "CONFDIR", confdir, true);
-	g_free(confdir);
+	envp = g_environ_setenv(envp, "CONFDIR", sfree(path2conf(NULL)), true);
 	envp = g_environ_setenv(envp, "CANBACK",
 			webkit_web_view_can_go_back(   win->kit) ? "1" : "0", true);
 	envp = g_environ_setenv(envp, "CANFORWARD",
@@ -1512,14 +1479,12 @@ static void command(Win *win, const gchar *cmd, const gchar *arg)
 {
 	_showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg), false);
 
-	gchar *str = g_strdup_printf(cmd, arg);
 	GError *err = NULL;
-	if (!g_spawn_command_line_async(str, &err))
+	if (!g_spawn_command_line_async(sfree(g_strdup_printf(cmd, arg)), &err))
 	{
 		alert(err->message);
 		g_error_free(err);
 	}
-	g_free(str);
 }
 
 static void openeditor(Win *win, const gchar *path, gchar *editor)
@@ -1554,16 +1519,9 @@ static void openconf(Win *win, bool shift)
 		path = confpath;
 		if (!shift)
 		{
-			gchar *esc = regesc(uri);
-			gchar *name = g_strdup_printf("uri:^%s", esc);
+			gchar *name = sfree(g_strdup_printf("uri:^%s", sfree(regesc(uri))));
 			if (!g_key_file_has_group(conf, name))
-			{
-				gchar *str = g_strdup_printf("\n[%s]", name);
-				append(path, str);
-				g_free(str);
-			}
-			g_free(name);
-			g_free(esc);
+				append(path, sfree(g_strdup_printf("\n[%s]", name)));
 		}
 	}
 
@@ -1814,10 +1772,8 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			else
 				tonormal(win);
 		} else {
-			gchar *title = g_strdup_printf("LIST| %s",
-					webkit_web_view_get_title(lw->kit));
-			settitle(win, title);
-			g_free(title);
+			settitle(win, sfree(g_strdup_printf("LIST| %s",
+					webkit_web_view_get_title(lw->kit))));
 
 			win->cursorx = xi + 1;
 			win->cursory = yi + 1;
@@ -1892,17 +1848,12 @@ static void addlink(Win *win, const gchar *title, const gchar *uri)
 	{
 		gchar *escttl;
 		if (title && *title)
-		{
-			gchar *tmp = g_markup_escape_text(title, -1);
-			escttl = _escape(tmp, "[]");
-			g_free(tmp);
-		}
+			escttl = _escape(sfree(g_markup_escape_text(title, -1)), "[]");
 		else
 			escttl = g_strdup(uri);
 
-		gchar *esc = g_uri_escape_string(uri, "/:=&", true);
-		gchar *fav = g_strdup_printf(APP":f/%s", esc);
-		g_free(esc);
+		gchar *fav = g_strdup_printf(APP":f/%s",
+				sfree(g_uri_escape_string(uri, "/:=&", true)));
 
 		gchar *items = getset(win, "linkdata") ?: "tu";
 		int i = 0;
@@ -2295,12 +2246,9 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 			const gchar *ref = agv ? *agv : URI(win);
 			gchar *nrml = soup_uri_normalize(arg, NULL);
 			if (!g_str_has_prefix(ref, APP":") &&
-				!g_str_has_prefix(ref, "file:"))
-			{
-				gchar *carg = g_strdup_printf("%s %s", ref, nrml);
-				send(win, Cwithref, carg);
-				g_free(carg);
-			}
+				!g_str_has_prefix(ref, "file:")
+			) send(win, Cwithref, sfree(g_strdup_printf("%s %s", ref, nrml)));
+
 			webkit_web_view_load_uri(win->kit, nrml);
 			g_free(nrml);
 		)
@@ -2526,10 +2474,7 @@ static bool _run(Win *win, gchar* action, const gchar *arg, gchar *cdir, gchar *
 	Z("edit"        , openconf(win, false))
 	Z("editconf"    , openconf(win, true))
 	Z("openconfigdir",
-			gchar *dir = path2conf(arg);
-			command(win, confcstr("diropener"), dir);
-			g_free(dir);
-	)
+			command(win, confcstr("diropener"), sfree(path2conf(arg))))
 
 	Z("setv"        , return run(win, "set", "v"))
 	Z("setscript"   , return run(win, "set", "script"))
@@ -2706,10 +2651,7 @@ static void dlfincb(DLWin *win)
 			gtk_widget_hide(win->entw);
 		}
 
-		gchar *pathstr = g_strdup_printf("=>  %s", nfn);
-		addlabel(win, pathstr);
-
-		g_free(pathstr);
+		addlabel(win, sfree(g_strdup_printf("=>  %s", nfn)));
 		g_free(fn);
 
 		g_timeout_add(confint("dlwinclosemsec"), (GSourceFunc)dlclosecb, win);
@@ -2727,46 +2669,36 @@ static void dlfailcb(WebKitDownload *wd, GError *err, DLWin *win)
 	win->finished = true;
 
 	addlabel(win, err->message);
-
-	gchar *title;
-	title = g_strdup_printf("DL: Failed: %s - %s", win->dispname, err->message);
-	gtk_window_set_title(win->win, title);
-	g_free(title);
+	gtk_window_set_title(win->win, sfree(g_strdup_printf(
+					"DL: Failed: %s - %s", win->dispname, err->message)));
 }
 static void dldatacb(DLWin *win)
 {
 	gdouble p = webkit_download_get_estimated_progress(win->dl);
 	gtk_progress_bar_set_fraction(win->prog, p);
 
-	gchar *title = g_strdup_printf(
-			"DL: %.2f%%: %s ", (p * 100), win->dispname);
-	gtk_window_set_title(win->win, title);
-	g_free(title);
+	gtk_window_set_title(win->win, sfree(g_strdup_printf(
+					"DL: %.2f%%: %s ", (p * 100), win->dispname)));
 }
 //static void dlrescb(DLWin *win) {}
 static void dldestcb(DLWin *win)
 {
-	gchar *fn = g_filename_from_uri(
-			webkit_download_get_destination(win->dl), NULL, NULL);
 
 	win->entw = gtk_entry_new();
-	gtk_entry_set_text(win->ent, fn);
+	gtk_entry_set_text(win->ent, sfree(g_filename_from_uri(
+			webkit_download_get_destination(win->dl), NULL, NULL)));
 	gtk_entry_set_alignment(win->ent, .5);
 
 	gtk_box_pack_start(win->box, win->entw, true, true, 4);
 	gtk_widget_show_all(win->entw);
-
-	g_free(fn);
 }
 static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 {
 	const gchar *base = win->dldir ?: dldir(NULL);
 	gchar *path = g_build_filename(base, name, NULL);
 
-	gchar *check = g_path_get_dirname(path);
-	if (strcmp(base, check))
+	if (strcmp(base, sfree(g_path_get_dirname(path))))
 		GFA(path, g_build_filename(base, name = "noname", NULL))
-	g_free(check);
 
 	mkdirif(path);
 
@@ -2780,11 +2712,10 @@ static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 		GFA(path, g_strdup_printf("%s.%d%s", org, i, dot))
 	g_free(org);
 
-	gchar *uri = g_filename_to_uri(path, NULL, NULL);
-	webkit_download_set_destination(pdl, uri);
+	webkit_download_set_destination(pdl, sfree(
+				g_filename_to_uri(path, NULL, NULL)));
 
 	g_free(path);
-	g_free(uri);
 
 
 	//set view data
@@ -2799,13 +2730,8 @@ static gboolean dldecidecb(WebKitDownload *pdl, gchar *name, DLWin *win)
 	win->len =  webkit_uri_response_get_content_length(res);
 
 	if (win->len)
-	{
-		gdouble m = win->len / 1000000.0;
-
-		gchar *sizestr = g_strdup_printf("size: %.3f MB", m);
-		addlabel(win, sizestr);
-		g_free(sizestr);
-	}
+		addlabel(win, sfree(g_strdup_printf(
+						"size: %.3f MB", win->len / 1000000.0)));
 	return true;
 }
 static gboolean dlkeycb(GtkWidget *w, GdkEventKey *ek, DLWin *win)
@@ -2936,8 +2862,8 @@ static gchar *histdata(bool rest, bool all)
 	if (!num)
 		return g_strdup("<h1>No Data</h1>");
 
-	gchar *sv[num + 2];
-	sv[0] = g_strdup_printf(
+	GString *ret = g_string_new(NULL);
+	g_string_append_printf(ret,
 		"<html><meta charset=utf8>\n"
 		"<style>\n"
 		"* {border-radius:.4em;}\n"
@@ -2958,7 +2884,6 @@ static gchar *histdata(bool rest, bool all)
 		"</style>\n"
 		, confint("histimgsize"));
 
-	int resti = 0;
 	int i = 0;
 	GList *il = confint("histimgs") ? g_queue_peek_head_link(histimgs) : NULL;
 	for (GSList *ns = hist; ns; ns = ns->next)
@@ -2967,16 +2892,16 @@ static gchar *histdata(bool rest, bool all)
 		if (!size) ;
 		else if (rest)
 		{
-			if (resti++ < size)
+			if (size > i++)
 			{
 				if (il) il = il->next;
 				continue;
 			}
 		}
-		else if (size == i)
+		else if (size == i++)
 		{
 			if (num > size)
-				sv[++i] = g_strdup(
+				g_string_append(ret,
 						"<h3><i>"
 						"<a href="APP":history/rest>Show Rest</a>"
 						"&nbsp|&nbsp;"
@@ -2994,7 +2919,7 @@ static gchar *histdata(bool rest, bool all)
 					"<img src="APP":histimg/%"G_GUINT64_FORMAT"></img>",
 					((Img *)il->data)->id);
 
-			sv[++i] = g_strdup_printf(
+			g_string_append_printf(ret,
 					"<p><a href=%s><em>%s</em>"
 					"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a>\n",
 					stra[1], itag ?: "-", escpd, stra[1], stra[0]);
@@ -3002,30 +2927,25 @@ static gchar *histdata(bool rest, bool all)
 			g_free(itag);
 			il = il->next;
 		} else
-			sv[++i] = g_strdup_printf(
+			g_string_append_printf(ret,
 					"<p><a href=%s><time>%.11s</time>"
 					"<span>%s<br><i>%s</i></span></a>\n",
 					stra[1], stra[0], escpd, stra[1]);
 
 		g_free(escpd);
 	}
-
 loopout:
-	sv[i + 1] = NULL;
 
 	for (GSList *ns = hist; ns; ns = ns->next)
 		g_slist_free_full(ns->data, (GDestroyNotify)g_strfreev);
 	g_slist_free(hist);
 
-	gchar *allhist = g_strjoinv("", sv);
-	for (int j = 0; sv[j]; j++)
-		g_free(sv[j]);
-
-	return allhist;
+	return g_string_free(ret, false);
 }
 static gchar *helpdata()
 {
-	gchar *data = g_strdup_printf(
+	GString *ret = g_string_new(NULL);
+	g_string_append_printf(ret,
 		"<body style=margin:0>\n"
 		"<p style=padding:.3em;background-color:#ccc>Last MSG: %s</p>\n"
 		"<pre style=margin:.3em;font-size:large>\n"
@@ -3070,18 +2990,13 @@ static gchar *helpdata()
 		, lastmsg, usage, GDK_CONTROL_MASK);
 
 	for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
-	{
-		gchar *tmp = g_strdup_printf("%d - %-11s: %-19s: %s\n",
+		g_string_append_printf(ret, "%d - %-11s: %-19s: %s\n",
 				dkeys[i].mask,
 				gdk_keyval_name(dkeys[i].key),
 				dkeys[i].name,
 				dkeys[i].desc ?: "");
-		gchar *last = data;
-		data = g_strconcat(data, tmp, NULL);
-		g_free(last);
-		g_free(tmp);
-	}
-	return data;
+
+	return g_string_free(ret, false);
 }
 static cairo_status_t faviconcairocb(void *p,
 		const unsigned char *data, unsigned int len)
@@ -3176,9 +3091,9 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 		if (g_str_has_prefix(path, "main"))
 		{
 			preparemd();
-			gchar *cmd = g_strdup_printf(confcstr("generator"), mdpath);
-			g_spawn_command_line_sync(cmd, &data, NULL, NULL, NULL);
-			g_free(cmd);
+			g_spawn_command_line_sync(
+					sfree(g_strdup_printf(confcstr("generator"), mdpath)),
+					&data, NULL, NULL, NULL);
 		}
 		else if (g_str_has_prefix(path, "history"))
 			data = histdata(
@@ -3915,10 +3830,8 @@ static void setspawn(Win *win, gchar *key)
 	gchar *fname = getset(win, key);
 	if (fname)
 	{
-		gchar *dir = path2conf("menu");
-		gchar *path = g_build_filename(dir, fname, NULL);
+		gchar *path = g_build_filename(sfree(path2conf("menu")), fname, NULL);
 		spawnwithenv(win, NULL, path, false, NULL, NULL, 0);
-		g_free(dir);
 		g_free(path);
 	}
 }
@@ -4343,10 +4256,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	case GDK_KEY_w:
 		for (int i = pos; i > 0; i--)
 		{
-			gchar *str = gtk_editable_get_chars(e, i - 1, i);
-			gchar c = *str;
-			g_free(str);
-
+			gchar c = *sfree(gtk_editable_get_chars(e, i - 1, i));
 			if (c != ' ' && c != '/')
 				wpos = i - 1;
 			else if (wpos)
@@ -4460,13 +4370,10 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 			webkit_website_data_manager_get_cookie_manager(mgr);
 
 		if (!ephemeral)
-		{
 			//we assume cookies are conf
-			gchar *cookiefile = path2conf("cookies");
 			webkit_cookie_manager_set_persistent_storage(cookiemgr,
-					cookiefile, WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
-			g_free(cookiefile);
-		}
+					sfree(path2conf("cookies")),
+					WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
 
 		webkit_cookie_manager_set_accept_policy(cookiemgr,
 				WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
@@ -4489,9 +4396,8 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 		g_free(udata);
 
 #if DEBUG
-		gchar *extdir = g_get_current_dir();
-		webkit_web_context_set_web_extensions_directory(ctx, extdir);
-		g_free(extdir);
+		webkit_web_context_set_web_extensions_directory(ctx,
+				sfree(g_get_current_dir()));
 #else
 		webkit_web_context_set_web_extensions_directory(ctx, EXTENSION_DIR);
 #endif
@@ -4505,12 +4411,9 @@ Win *newwin(const gchar *uri, Win *cbwin, Win *caller, int back)
 				ctx, APP, schemecb, NULL, NULL);
 
 		if (g_key_file_get_boolean(conf, "boot", "enablefavicon", NULL))
-		{
-			gchar *favdir =
-				g_build_filename(g_get_user_cache_dir(), fullname, "favicon", NULL);
-			webkit_web_context_set_favicon_database_directory(ctx, favdir);
-			g_free(favdir);
-		}
+			webkit_web_context_set_favicon_database_directory(ctx,
+				sfree(g_build_filename(
+						g_get_user_cache_dir(), fullname, "favicon", NULL)));
 
 		if (confbool("ignoretlserr"))
 			webkit_web_context_set_tls_errors_policy(ctx,
@@ -4733,7 +4636,6 @@ int main(int argc, char **argv)
 	flock(lock, LOCK_EX);
 
 	if (ipcsend("main", sendstr)) exit(0);
-	g_free(sendstr);
 
 	//start main
 	histdir = g_build_filename(
