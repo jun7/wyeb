@@ -85,10 +85,10 @@ static char *sfree(char *p)
 	return s = p;
 }
 
-static gchar *fullname = "";
+static char *fullname = "";
 static bool shared = true;
 static GKeyFile *conf = NULL;
-static gchar *confpath = NULL;
+static char *confpath = NULL;
 
 typedef struct _WP WP;
 
@@ -121,10 +121,10 @@ typedef enum {
 
 //@conf
 typedef struct {
-	gchar *group;
-	gchar *key;
-	gchar *val;
-	gchar *desc;
+	char *group;
+	char *key;
+	char *val;
+	char *desc;
 } Conf;
 Conf dconf[] = {
 	{"all"   , "editor"       , MIMEOPEN,
@@ -248,22 +248,22 @@ Conf dconf[] = {
 	//{DSET      , "enable-fullscreen", "false"},
 };
 #ifdef MAINC
-static bool confbool(gchar *key)
+static bool confbool(char *key)
 { return g_key_file_get_boolean(conf, "all", key, NULL); }
-static gint confint(gchar *key)
+static int confint(char *key)
 { return g_key_file_get_integer(conf, "all", key, NULL); }
-static gdouble confdouble(gchar *key)
+static double confdouble(char *key)
 { return g_key_file_get_double(conf, "all", key, NULL); }
 #endif
-static gchar *confcstr(gchar *key)
+static char *confcstr(char *key)
 {//return is static string
-	static gchar *str = NULL;
+	static char *str = NULL;
 	GFA(str, g_key_file_get_string(conf, "all", key, NULL))
 	return str;
 }
-static gchar *getset(WP *wp, gchar *key)
+static char *getset(WP *wp, char *key)
 {//return is static string
-	static gchar *ret = NULL;
+	static char *ret = NULL;
 	if (!wp)
 	{
 		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
@@ -271,33 +271,33 @@ static gchar *getset(WP *wp, gchar *key)
 	}
 	return g_object_get_data(wp->seto, key);
 }
-static bool getsetbool(WP *wp, gchar *key)
+static bool getsetbool(WP *wp, char *key)
 { return !g_strcmp0(getset(wp, key), "true"); }
-static int getsetint(WP *wp, gchar *key)
+static int getsetint(WP *wp, char *key)
 { return atoi(getset(wp, key) ?: "0"); }
 
 
-static gchar *path2conf(const gchar *name)
+static char *path2conf(const char *name)
 {
 	return g_build_filename(
 			g_get_user_config_dir(), fullname, name, NULL);
 }
 
-static bool setprop(WP *wp, GKeyFile *kf, gchar *group, gchar *key)
+static bool setprop(WP *wp, GKeyFile *kf, char *group, char *key)
 {
 	if (!g_key_file_has_key(kf, group, key, NULL)) return false;
-	gchar *val = g_key_file_get_string(kf, group, key, NULL);
+	char *val = g_key_file_get_string(kf, group, key, NULL);
 	g_object_set_data_full(wp->seto, key, *val ? val : NULL, g_free);
 	return true;
 }
-static void setprops(WP *wp, GKeyFile *kf, gchar *group)
+static void setprops(WP *wp, GKeyFile *kf, char *group)
 {
 	//sets
 	static int deps = 0;
 	if (deps > 99) return;
-	gchar **sets = g_key_file_get_string_list(kf, group, "sets", NULL, NULL);
-	for (gchar **set = sets; set && *set; set++) {
-		gchar *setstr = g_strdup_printf("set:%s", *set);
+	char **sets = g_key_file_get_string_list(kf, group, "sets", NULL, NULL);
+	for (char **set = sets; set && *set; set++) {
+		char *setstr = g_strdup_printf("set:%s", *set);
 		deps++;
 		setprops(wp, kf, setstr);
 		deps--;
@@ -334,14 +334,14 @@ static void makeuriregs() {
 	g_slist_free(regsrev);
 	regsrev = NULL;
 
-	gchar **groups = g_key_file_get_groups(conf, NULL);
-	for (gchar **next = groups; *next; next++)
+	char **groups = g_key_file_get_groups(conf, NULL);
+	for (char **next = groups; *next; next++)
 	{
-		gchar *gl = *next;
+		char *gl = *next;
 		if (!g_str_has_prefix(gl, "uri:")) continue;
 
-		gchar *g = gl;
-		gchar *tofree = NULL;
+		char *g = gl;
+		char *tofree = NULL;
 		if (g_key_file_has_key(conf, g, "reg", NULL))
 		{
 			g = tofree = g_key_file_get_string(conf, g, "reg", NULL);
@@ -367,15 +367,15 @@ static void makeuriregs() {
 	for (GSList *next = regsrev; next; next = next->next)
 		regs = g_slist_prepend(regs, next->data);
 }
-static bool eachuriconf(WP *wp, const gchar* uri, bool lastone,
-		bool (*func)(WP *, const gchar *uri, gchar *group))
+static bool eachuriconf(WP *wp, const char* uri, bool lastone,
+		bool (*func)(WP *, const char *uri, char *group))
 {
 	bool ret = false;
 	regmatch_t match[2];
 	for (GSList *reg = lastone ? regsrev : regs; reg; reg = reg->next)
 		if (regexec(*(void **)reg->data, uri, 2, match, 0) == 0)
 		{
-			gchar *m = match[1].rm_so == -1 ? NULL : g_strndup(
+			char *m = match[1].rm_so == -1 ? NULL : g_strndup(
 					uri + match[1].rm_so, match[1].rm_eo - match[1].rm_so);
 
 			ret = func(wp, m ?: uri, ((void **)reg->data)[1]) || ret;
@@ -385,13 +385,13 @@ static bool eachuriconf(WP *wp, const gchar* uri, bool lastone,
 
 	return ret;
 }
-static bool seturiprops(WP *wp, const gchar *uri, gchar *group)
+static bool seturiprops(WP *wp, const char *uri, char *group)
 {
 	setprops(wp, conf, group);
 	return true;
 }
 
-static void _resetconf(WP *wp, const gchar *uri, bool force)
+static void _resetconf(WP *wp, const char *uri, bool force)
 {
 	if (wp->lasturiconf || force)
 	{
@@ -404,10 +404,10 @@ static void _resetconf(WP *wp, const gchar *uri, bool force)
 	if (uri && eachuriconf(wp, uri, false, seturiprops))
 		GFA(wp->lasturiconf, g_strdup(uri))
 	if (wp->overset) {
-		gchar **sets = g_strsplit(wp->overset, "/", -1);
-		for (gchar **set = sets; *set; set++)
+		char **sets = g_strsplit(wp->overset, "/", -1);
+		for (char **set = sets; *set; set++)
 		{
-			gchar *setstr = g_strdup_printf("set:%s", *set);
+			char *setstr = g_strdup_printf("set:%s", *set);
 			setprops(wp, conf, setstr);
 			g_free(setstr);
 		}
@@ -420,7 +420,7 @@ static void initconf(GKeyFile *kf)
 	conf = kf ?: g_key_file_new();
 	makeuriregs();
 
-	gint len = sizeof(dconf) / sizeof(*dconf);
+	int len = sizeof(dconf) / sizeof(*dconf);
 	for (int i = 0; i < len; i++)
 	{
 		Conf c = dconf[i];
@@ -474,7 +474,7 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_comment(conf, DSET, "hardware-acceleration-policy",
 			"ON_DEMAND | ALWAYS | NEVER", NULL);
 
-	const gchar *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
+	const char *sample = "uri:^https?://(www\\.)?foo\\.bar/.*";
 
 	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
 	g_key_file_set_comment(conf, sample, NULL,
@@ -504,9 +504,9 @@ static void initconf(GKeyFile *kf)
 
 
 //@misc
-static void _mkdirif(gchar *path, bool isfile)
+static void _mkdirif(char *path, bool isfile)
 {
-	gchar *dir;
+	char *dir;
 	if (isfile)
 		dir = g_path_get_dirname(path);
 	else
@@ -520,31 +520,31 @@ static void _mkdirif(gchar *path, bool isfile)
 	if (isfile)
 		g_free(dir);
 }
-static void mkdirif(gchar *path)
+static void mkdirif(char *path)
 {
 	_mkdirif(path, true);
 }
 
-static gchar *_escape(const gchar *str, gchar *esc)
+static char *_escape(const char *str, char *esc)
 {
 	gulong len = 0;
-	for (const gchar *c = str; *c; c++)
+	for (const char *c = str; *c; c++)
 	{
 		len++;
-		for (gchar *e = esc; *e; e++)
+		for (char *e = esc; *e; e++)
 			if (*e == *c)
 			{
 				len++;
 				break;
 			}
 	}
-	gchar ret[len + 1];
+	char ret[len + 1];
 	ret[len] = '\0';
 
 	gulong i = 0;
-	for (const gchar *c = str; *c; c++)
+	for (const char *c = str; *c; c++)
 	{
-		for (gchar *e = esc; *e; e++)
+		for (char *e = esc; *e; e++)
 			if (*e == *c)
 			{
 				ret[i++] = '\\';
@@ -556,25 +556,25 @@ static gchar *_escape(const gchar *str, gchar *esc)
 
 	return g_strdup(ret);
 }
-static gchar *regesc(const gchar *str)
+static char *regesc(const char *str)
 {
 	return _escape(str, ".?+");
 }
 
 
 //@ipc
-static gchar *ipcpath(gchar *name)
+static char *ipcpath(char *name)
 {
-	static gchar *path = NULL;
+	static char *path = NULL;
 	GFA(path, g_build_filename(g_get_user_runtime_dir(), fullname, name, NULL));
 	mkdirif(path);
 	return path;
 }
 
-static void ipccb(const gchar *line);
+static void ipccb(const char *line);
 static gboolean ipcgencb(GIOChannel *ch, GIOCondition c, gpointer p)
 {
-	gchar *line;
+	char *line;
 //	GError *err = NULL;
 	g_io_channel_read_line(ch, &line, NULL, NULL, NULL);
 //	if (err)
@@ -586,15 +586,15 @@ static gboolean ipcgencb(GIOChannel *ch, GIOCondition c, gpointer p)
 	g_strchomp(line);
 
 	//D(receive %s, line)
-	gchar *unesc = g_strcompress(line);
+	char *unesc = g_strcompress(line);
 	ipccb(unesc);
 	g_free(unesc);
 	g_free(line);
 	return true;
 }
 
-static bool ipcsend(gchar *name, gchar *str) { //str is eaten
-	gchar *path = ipcpath(name);
+static bool ipcsend(char *name, char *str) { //str is eaten
+	char *path = ipcpath(name);
 	bool ret = false;
 	int cpipe = 0;
 	if (
@@ -603,7 +603,7 @@ static bool ipcsend(gchar *name, gchar *str) { //str is eaten
 	{
 		//D(send start %s %s, name, str)
 		char *esc = g_strescape(str, "");
-		gchar *send = g_strconcat(esc, "\n", NULL);
+		char *send = g_strconcat(esc, "\n", NULL);
 		int len = strlen(send);
 		if (len > PIPE_BUF)
 			fcntl(cpipe, F_SETFL, 0);
@@ -617,8 +617,8 @@ static bool ipcsend(gchar *name, gchar *str) { //str is eaten
 	g_free(str);
 	return ret;
 }
-static GSource *_ipcwatch(gchar *name, GMainContext *ctx) {
-	gchar *path = ipcpath(name);
+static GSource *_ipcwatch(char *name, GMainContext *ctx) {
+	char *path = ipcpath(name);
 
 	if (!g_file_test(path, G_FILE_TEST_EXISTS))
 		mkfifo(path, 0600);
@@ -631,7 +631,7 @@ static GSource *_ipcwatch(gchar *name, GMainContext *ctx) {
 
 	return watch;
 }
-static void ipcwatch(gchar *name)
+static void ipcwatch(char *name)
 {
 	_ipcwatch(name, g_main_context_default());
 }

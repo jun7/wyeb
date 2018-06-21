@@ -894,7 +894,7 @@ static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
 			if (!styleis(decp, "display", "inline"))
 			{
 				Elm rectp = getrect(le);
-				glong nr = MIN(right, rectp.x + rectp.w);
+				double nr = MIN(right, rectp.x + rectp.w);
 				ret.w += nr - right;
 				right = nr;
 				break;
@@ -1306,7 +1306,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 
 	bool rangein = false;
 	int  rangeleft = getsetint(page, "hintrangemax");
-	let rangeend = NULL;
+	let  rangeend = NULL;
 
 	//tab key
 	bool focused = false;
