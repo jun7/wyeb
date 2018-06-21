@@ -4287,9 +4287,23 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 
 		gchar *rm = gtk_editable_get_chars(e, pos - 1, pos);
 		          gtk_editable_delete_text(e, pos - 1, pos);
-		gtk_editable_insert_text(e, rm, -1, &pos);
+		gtk_editable_insert_text(e, rm, -1, &wpos);
 		gtk_editable_set_position(e, pos);
 		g_free(rm);
+		break;
+	}
+	case GDK_KEY_l:
+	{
+		int ss, se;
+		gtk_editable_get_selection_bounds(e, &ss, &se);
+		char *str = gtk_editable_get_chars(e, 0, -1);
+		for (char *c = str; *c; c++)
+			if (ss == se || (c - str >= ss && c - str < se))
+				*c = g_ascii_tolower(*c);
+
+		gtk_editable_delete_text(e, 0, -1);
+		gtk_editable_insert_text(e, str, -1, &pos);
+		gtk_editable_select_region(e, ss, se);
 		break;
 	}
 	default:
