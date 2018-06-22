@@ -656,6 +656,14 @@ static bool monitor(char *path, void (*func)(const char *))
 	if (g_hash_table_lookup(monitored, path)) return false;
 	g_hash_table_add(monitored, g_strdup(path));
 
+	if (g_file_test(path, G_FILE_TEST_IS_SYMLINK))
+	{ //this only works boot time though
+		char buf[PATH_MAX + 1];
+		char *rpath = realpath(path, buf);
+		if (rpath)
+			monitor(rpath, func);
+	}
+
 	GFile *gf = g_file_new_for_path(path);
 	GFileMonitor *gm = g_file_monitor_file(
 			gf, G_FILE_MONITOR_NONE, NULL, NULL);
