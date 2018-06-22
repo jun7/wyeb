@@ -242,15 +242,13 @@ static Win *winbyid(const char *pageid)
 			return wins->pdata[i];
 	return NULL;
 }
-static void quitif(bool force)
+static void quitif()
 {
-	if (!force && (wins->len > 0 || dlwins->len > 0)) return;
-
-	gtk_main_quit();
+	if (!wins->len && !dlwins->len)
+		gtk_main_quit();
 }
 static void reloadlast()
 {
-//	if (!confbool("configreload")) return;
 	if (!LASTWIN) return;
 	static gint64 last = 0;
 	gint64 now = g_get_monotonic_time();
@@ -270,19 +268,16 @@ static void alert(char *msg)
 	gtk_widget_destroy(dialog);
 }
 
-//history
 static void append(char *path, const char *str)
 {
 	FILE *f = fopen(path, "a");
-	if (!f)
+	if (f)
 	{
-		alert(sfree(g_strdup_printf("fopen %s failed", path)));
-		return;
+		fprintf(f, "%s\n", str ?: "");
+		fclose(f);
 	}
-	if (str)
-		fputs(str, f);
-	fputs("\n", f);
-	fclose(f);
+	else
+		alert(sfree(g_strdup_printf("fopen %s failed", path)));
 }
 static void freeimg(Img *img)
 {
@@ -390,25 +385,20 @@ static gboolean histcb(Win *win)
 
 	return false;
 }
-static bool checkhist(Win *win)
-{
-	const char *uri;
-	return !ephemeral &&
-		*(uri = URI(win)) &&
-		!g_str_has_prefix(uri, APP":") &&
-		!g_str_has_prefix(uri, "about:");
-}
 static bool updatehist(Win *win)
 {
-	if (!checkhist(win)) return false;
+	const char *uri;
+	if (ephemeral
+	|| !*(uri = URI(win))
+	|| g_str_has_prefix(uri, APP":")
+	|| g_str_has_prefix(uri, "about:")) return false;
 
 	char tstr[99];
 	time_t t = time(NULL);
 	strftime(tstr, sizeof(tstr), "%T/%d/%b/%y", localtime(&t));
 
-	g_free(win->histstr);
-	win->histstr = g_strdup_printf("%s %s %s", tstr, URI(win),
-			webkit_web_view_get_title(win->kit) ?: "");
+	GFA(win->histstr, g_strdup_printf("%s %s %s", tstr, uri,
+			webkit_web_view_get_title(win->kit) ?: ""))
 
 	return true;
 }
@@ -490,12 +480,11 @@ static gboolean senddelaycb(Send *s)
 {
 	if (isin(wins, s->win))
 		send(s->win, s->type, s->args);
-	else
-		g_free(s->args);
+	g_free(s->args);
 	g_free(s);
 	return false;
 }
-static void senddelay(Win *win, Coms type, char *args)
+static void senddelay(Win *win, Coms type, char *args) //args is eaten
 {
 	Send s = {win, type, args};
 	g_timeout_add(40, (GSourceFunc)senddelaycb, g_memdup(&s, sizeof(Send)));
@@ -612,15 +601,13 @@ static int threshold(Win *win)
 			"gtk-dnd-drag-threshold", &ret, NULL);
 	return ret;
 }
-static const char *dldir(Win *win)
-{//return is static string
-	static char *ret = NULL;
-	GFA(ret, g_build_filename(
-				g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
+static char *dldir(Win *win)
+{
+	return g_build_filename(
+			g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD) ?:
 				g_get_home_dir(),
-				getset(win, "dlsubdir"),
-				NULL))
-	return ret;
+			getset(win, "dlsubdir"),
+			NULL);
 }
 static void colorf(Win *win, cairo_t *cr, double alpha)
 {
@@ -817,12 +804,8 @@ static void prepareif(
 		char **path,
 		char *name, char *initstr, void (*monitorcb)(const char *))
 {
-	bool first = false;
-	if (!*path)
-	{
-		first = true;
-		*path = path2conf(name);
-	}
+	bool first = !*path;
+	if (first) *path = path2conf(name);
 
 	if (g_file_test(*path, G_FILE_TEST_EXISTS))
 		goto out;
@@ -1291,7 +1274,7 @@ static void spawnwithenv(Win *win, const char *shell, char* path,
 	envp = g_environ_setenv(envp, "CURRENTSET", win->overset ?: "", true);
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
 	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
-	envp = g_environ_setenv(envp, "DLDIR"  , dldir(win), true);
+	envp = g_environ_setenv(envp, "DLDIR"  , sfree(dldir(win)), true);
 	envp = g_environ_setenv(envp, "CONFDIR", sfree(path2conf(NULL)), true);
 	envp = g_environ_setenv(envp, "CANBACK",
 			webkit_web_view_can_go_back(   win->kit) ? "1" : "0", true);
@@ -2351,7 +2334,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 #undef H
 
 	Z("showdldir"   ,
-		command(win, confcstr("diropener"), dldir(win));
+		command(win, confcstr("diropener"), sfree(dldir(win)));
 	)
 
 	Z("yankuri"     ,
@@ -2368,7 +2351,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 	Z("bookmarkbreak", addlink(win, NULL, NULL))
 
 	Z("quit"        , gtk_widget_destroy(win->winw); return true)
-	Z("quitall"     , quitif(true))
+	Z("quitall"     , gtk_main_quit())
 
 	if (win->mode == Mpointer)
 	{
@@ -2622,7 +2605,7 @@ static void dldestroycb(DLWin *win)
 	g_free(win->dldir);
 	g_free(win);
 
-	quitif(false);
+	quitif();
 }
 static gboolean dlclosecb(DLWin *win)
 {
@@ -2702,11 +2685,10 @@ static void dldestcb(DLWin *win)
 }
 static gboolean dldecidecb(WebKitDownload *pdl, char *name, DLWin *win)
 {
-	const char *base = win->dldir ?: dldir(NULL);
-	char *path = g_build_filename(base, name, NULL);
+	char *path = g_build_filename(win->dldir, name, NULL);
 
-	if (strcmp(base, sfree(g_path_get_dirname(path))))
-		GFA(path, g_build_filename(base, name = "noname", NULL))
+	if (strcmp(win->dldir, sfree(g_path_get_dirname(path))))
+		GFA(path, g_build_filename(win->dldir, name = "noname", NULL))
 
 	mkdirif(path);
 
@@ -2761,7 +2743,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 	WebKitWebView *kit = webkit_download_get_web_view(pdl);
 	Win *mainwin = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
-	win->dldir   = kit ? g_strdup(dldir(mainwin)) : NULL;
+	win->dldir   = dldir(mainwin);
 
 	win->winw  = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(win->win, "DL : Waiting for a response.");
@@ -3222,7 +3204,7 @@ static void destroycb(Win *win)
 {
 	g_ptr_array_remove(wins, win);
 
-	quitif(false);
+	quitif();
 
 	g_free(win->pageid);
 	g_free(win->lasturiconf);
@@ -4068,13 +4050,13 @@ static void menudircb(
 }
 static void addscript(char* dir, char* name, char *script)
 {
-		char *ap = g_build_filename(dir, name, NULL);
-		mkdirif(ap);
-		FILE *f = fopen(ap, "w");
-		fputs(script, f);
-		fclose(f);
-		g_chmod(ap, 0700);
-		g_free(ap);
+	char *ap = g_build_filename(dir, name, NULL);
+	mkdirif(ap);
+	FILE *f = fopen(ap, "w");
+	fputs(script, f);
+	fclose(f);
+	g_chmod(ap, 0700);
+	g_free(ap);
 }
 void makemenu(WebKitContextMenu *menu)
 {
@@ -4175,14 +4157,11 @@ static gboolean contextcb(WebKitWebView *k,
 //@entry
 void enticon(Win *win, const char *name)
 {
-	if (!name)
-		switch (win->mode) {
-		case Mfind   : name = "edit-find"    ; break;
-		case Mopen   : name = "go-jump"      ; break;
-		case Mopennew: name = "window-new"   ; break;
-		default:
-			break;
-		}
+	if (!name) name =
+		win->mode == Mfind    ? "edit-find"  :
+		win->mode == Mopen    ? "go-jump"    :
+		win->mode == Mopennew ? "window-new" : NULL;
+
 	gtk_entry_set_icon_from_icon_name(win->ent, GTK_ENTRY_ICON_PRIMARY, name);
 }
 static gboolean focusincb(Win *win)
@@ -4198,29 +4177,28 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		if (!(ke->state & GDK_CONTROL_MASK)) return false;
 	case GDK_KEY_KP_Enter:
 	case GDK_KEY_Return:
-		{
-			const char *text = gtk_entry_get_text(win->ent);
-			char *action = NULL;
-			switch (win->mode) {
-			case Mfind:
-				if (!win->lastfind || strcmp(win->lastfind, text))
-					run(win, "find", text);
+	{
+		const char *text = gtk_entry_get_text(win->ent);
+		char *action = NULL;
+		switch (win->mode) {
+		case Mfind:
+			if (!win->lastfind || strcmp(win->lastfind, text))
+				run(win, "find", text);
 
-				senddelay(win, Cfocus, NULL);
-				break;
-			case Mopen:
-				action = "open";
-			case Mopennew:
-				if (!action) action = "opennew";
-				run(win, action, text);
-				break;
-			default:
-					g_assert_not_reached();
-			}
-			tonormal(win);
-			return true;
+			senddelay(win, Cfocus, NULL);
+			break;
+		case Mopen:
+			action = "open";
+		case Mopennew:
+			if (!action) action = "opennew";
+			run(win, action, text);
+			break;
+		default:
+				g_assert_not_reached();
 		}
-
+		tonormal(win);
+		return true;
+	}
 	case GDK_KEY_Escape:
 		if (win->mode == Mfind)
 			webkit_find_controller_search_finish(win->findct);
@@ -4257,8 +4235,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		gtk_editable_delete_text(e, pos - 1, pos); break;
 	case GDK_KEY_k:
 	{
-		GFA(buf, g_strdup(
-		  gtk_editable_get_chars(e, pos, -1)));
+		GFA(buf, g_strdup(gtk_editable_get_chars(e, pos, -1)));
 		gtk_editable_delete_text(e, pos, -1); break;
 	}
 	case GDK_KEY_w:
