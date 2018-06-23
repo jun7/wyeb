@@ -4048,52 +4048,47 @@ static void menudircb(
 		//For editors making temp files
 		menudirtime = g_timeout_add(100, menudirtimecb, NULL);
 }
-static void addscript(char* dir, char* name, char *script)
+static void addscript(char *dir, char *name, char *script)
 {
 	char *ap = g_build_filename(dir, name, NULL);
-	mkdirif(ap);
 	FILE *f = fopen(ap, "w");
 	fputs(script, f);
 	fclose(f);
 	g_chmod(ap, 0700);
 	g_free(ap);
 }
+static char *menuitems[][2] =
+ {{".openBackRange"   , APP" // tohintrange 'sh -c \""APP" // openback $MEDIA_IMAGE_LINK\"'"
+},{".openNewSrcURI"   , APP" // tohintcallback 'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'"
+},{".openWithRef"     , APP" // tohintcallback 'sh -c \""APP" // openwithref $MEDIA_IMAGE_LINK\"'"
+},{"0editMenu"        , APP" // openconfigdir menu"
+},{"1bookmark"        , APP" // bookmark \"$LINK_OR_URI $LABEL_OR_TITLE\""
+},{"1duplicate"       , APP" // opennew $URI"
+},{"1editLabelOrTitle", APP" // edituri \"$LABEL_OR_TITLE\""
+},{"1history"         , APP" // showhistory ''"
+},{"1windowList"      , APP" // winlist ''"
+},{"2main"            , APP" // open "APP":main"
+},{"3---"             , ""
+},{"3openClipboard"   , APP" // open \"$CLIPBOARD\""
+},{"3openClipboardNew", APP" // opennew \"$CLIPBOARD\""
+},{"3openSelection"   , APP" // open \"$PRIMARY\""
+},{"3openSelectionNew", APP" // opennew \"$PRIMARY\""
+},{"6searchDictionary", APP" // open \"u $PRIMARY\""
+},{"9---"             , ""
+},{"cviewSource"      , APP" // sourcecallback 'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" && tee > \\\"$d\\\" && mimeopen -n \\\"$d\\\"\"'"
+},{"v---"             , ""
+},{"vchromium"        , "chromium $LINK_OR_URI"
+},{"xnoSuffixProcess" , APP" / new $LINK_OR_URI"
+},{NULL}};
 void makemenu(WebKitContextMenu *menu)
 {
 	static GSList *actions = NULL;
 	static bool firsttime = true;
 
 	char *dir = path2conf("menu");
-	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
-	{
-		addscript(dir, ".openBackRange"    , APP" // tohintrange "
-				"'sh -c \""APP" // openback $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, ".openNewSrcURI"   , APP" // tohintcallback "
-				"'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, ".openWithRef"     , APP" // tohintcallback "
-				"'sh -c \""APP" // openwithref $MEDIA_IMAGE_LINK\"'");
-		addscript(dir, "0editMenu"        , APP" // openconfigdir menu");
-		addscript(dir, "1bookmark"        , APP" // bookmark "
-				"\"$LINK_OR_URI $LABEL_OR_TITLE\"");
-		addscript(dir, "1duplicate"       , APP" // opennew $URI");
-		addscript(dir, "1editLabelOrTitle", APP" // edituri \"$LABEL_OR_TITLE\"");
-		addscript(dir, "1history"         , APP" // showhistory \"\"");
-		addscript(dir, "1windowList"      , APP" // winlist \"\"");
-		addscript(dir, "2main"            , APP" // open "APP":main");
-		addscript(dir, "3---"             , "");
-		addscript(dir, "3openClipboard"   , APP" // open \"$CLIPBOARD\"");
-		addscript(dir, "3openClipboardNew", APP" // opennew \"$CLIPBOARD\"");
-		addscript(dir, "3openSelection"   , APP" // open \"$PRIMARY\"");
-		addscript(dir, "3openSelectionNew", APP" // opennew \"$PRIMARY\"");
-		addscript(dir, "6searchDictionary", APP" // open \"u $PRIMARY\"");
-		addscript(dir, "9---"             , "");
-		addscript(dir, "cviewSource"      , APP" // sourcecallback "
-				"'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" &&"
-					" tee > \\\"$d\\\" && mimeopen -n \\\"$d\\\"\"'");
-		addscript(dir, "v---"             , "");
-		addscript(dir, "vchromium"        , "chromium $LINK_OR_URI");
-		addscript(dir, "xnoSuffixProcess" , APP" / new $LINK_OR_URI");
-	}
+	if (_mkdirif(dir, false))
+		for (char *(*ss)[2] = menuitems; **ss; ss++)
+			addscript(dir, **ss, (*ss)[1]);
 
 	if (firsttime)
 	{
