@@ -47,7 +47,7 @@ typedef struct _WP {
 
 	char           lasttype;
 	char          *lasthintkeys;
-	let            rangestart; //not ref
+	char          *rangestart;
 	bool           script;
 	GSList        *black;
 	GSList        *white;
@@ -95,6 +95,7 @@ static void freepage(Page *page)
 {
 	g_free(page->apkeys);
 	g_free(page->lasthintkeys);
+	g_free(page->rangestart);
 
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
@@ -1325,10 +1326,10 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 	{
 		Elm *elm = (Elm *)next->data;
 		let te = elm->elm;
-
-		rangein |= te == page->rangestart;
-
 		i++;
+		char *key = sfree(makekey(hintkeys, keylen, tnum, i, digit));
+		rangein |= !g_strcmp0(key, page->rangestart);
+
 		if (page->rangestart && !rangein)
 			continue;
 
@@ -1339,7 +1340,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 			continue;
 		}
 
-		if (!strcmp(sfree(makekey(hintkeys, keylen, tnum, i, digit)), ipkeys))
+		if (!strcmp(key, ipkeys))
 		{
 			ipkeys = NULL;
 			iplen = 0;
@@ -1347,7 +1348,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 			page->apkeys = NULL;
 
 			if (!page->rangestart)
-				page->rangestart = te;
+				page->rangestart = g_strdup(key);
 			else
 				rangeend = te;
 
@@ -1363,11 +1364,9 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 	{
 		Elm *elm = (Elm *)next->data;
 		let te = elm->elm;
-
-		rangein |= te == page->rangestart;
-
 		i++;
 		char *key = makekey(hintkeys, keylen, tnum, i, digit);
+		rangein |= !g_strcmp0(key, page->rangestart);
 
 		if (dofocus)
 		{
@@ -1457,7 +1456,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		}
 		else if (rangeend && rangein)
 		{
-			rangeelms = g_slist_prepend(rangeelms, te);
+			rangeelms = g_slist_prepend(rangeelms, g_object_ref(te));
 		}
 		else if (!page->rangestart || (rangein && !rangeend))
 		{
@@ -1495,7 +1494,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		hintret(page, type, next->data, next->next);
 		g_usleep(getsetint(page, "rangeloopusec"));
 	}
-	g_slist_free(rangeelms);
+	g_slist_free_full(rangeelms, g_object_unref);
 
 	g_slist_free(elms);
 
@@ -1837,6 +1836,7 @@ void ipccb(const char *line)
 	case Crange:
 		if (arg)
 		{
+			g_free(page->rangestart);
 			page->rangestart = NULL;
 			page->script = *arg == 'y';
 		}
