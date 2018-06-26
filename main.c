@@ -4267,7 +4267,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 
 		char *rm = gtk_editable_get_chars(e, pos - 1, pos);
 		          gtk_editable_delete_text(e, pos - 1, pos);
-		gtk_editable_insert_text(e, rm, -1, &wpos);
+		gtk_editable_insert_text(e, rm, -1, &pos);
 		gtk_editable_set_position(e, pos);
 		g_free(rm);
 		break;
