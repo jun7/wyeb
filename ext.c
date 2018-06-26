@@ -241,7 +241,11 @@ static void __attribute__((unused)) proplist(JSCValue *v)
 #define getelms(doc, name) invoker(doc, "getElementsByTagName", aS(name))
 #define defaultview(doc) prop(doc, "defaultView")
 
+
+//JSC
 #else
+//DOM
+
 
 #define defaultview(doc) webkit_dom_document_get_default_view(doc)
 #define getelms(doc, name) \
@@ -309,6 +313,20 @@ static let activeelm(let doc)
 	return te;
 }
 
+static void recttovals(let rect, double *x, double *y, double *w, double *h)
+{
+#if JSC
+	*x = propd(rect, "left");
+	*y = propd(rect, "top");
+	*w = propd(rect, "width");
+	*h = propd(rect, "height");
+#else
+	*x = webkit_dom_client_rect_get_left(rect);
+	*y = webkit_dom_client_rect_get_top(rect);
+	*w = webkit_dom_client_rect_get_width(rect);
+	*h = webkit_dom_client_rect_get_height(rect);
+#endif
+}
 
 
 
@@ -601,20 +619,13 @@ static Elm getrect(let te)
 #if V18
 #if JSC
 	let rect = invoker(te, "getBoundingClientRect");
-	elm.x = propd(rect, "left");
-	elm.y = propd(rect, "top");
-	elm.w = propd(rect, "width");
-	elm.h = propd(rect, "height");
 #else
 	WebKitDOMClientRect *rect =
 		webkit_dom_element_get_bounding_client_rect(te);
-
-	elm.y = webkit_dom_client_rect_get_top(rect);
-	elm.x = webkit_dom_client_rect_get_left(rect);
-	elm.h = webkit_dom_client_rect_get_height(rect);
-	elm.w = webkit_dom_client_rect_get_width(rect);
 #endif
+	recttovals(rect, &elm.x, &elm.y, &elm.w, &elm.h);
 	g_object_unref(rect);
+
 #else
 	elm.h = webkit_dom_element_get_offset_height(te);
 	elm.w = webkit_dom_element_get_offset_width(te);
@@ -742,11 +753,6 @@ static char *makehintelm(Page *page, Elm *elm,
 	let rect;
 	for (int i = 0; (rect = idx(rects, i)); i++)
 	{
-		double x = propd(rect, "left");
-		double y = propd(rect, "top");
-		double w = propd(rect, "width");
-		double h = propd(rect, "height");
-		g_object_unref(rect);
 #else
 	WebKitDOMClientRectList *rects = webkit_dom_element_get_client_rects(elm->elm);
 	gulong l = webkit_dom_client_rect_list_get_length(rects);
@@ -754,13 +760,10 @@ static char *makehintelm(Page *page, Elm *elm,
 	{
 		WebKitDOMClientRect *rect =
 			webkit_dom_client_rect_list_item(rects, i);
-
-		double
-			y = webkit_dom_client_rect_get_top(rect),
-			x = webkit_dom_client_rect_get_left(rect),
-			h = webkit_dom_client_rect_get_height(rect),
-			w = webkit_dom_client_rect_get_width(rect);
 #endif
+		double x, y, w, h;
+		recttovals(rect, &x, &y, &w, &h);
+		jscunref(rect);
 
 		_trim(&x, &w, &elm->x, &elm->w);
 		_trim(&y, &h, &elm->y, &elm->h);
@@ -1391,24 +1394,16 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 #if JSC
 						let rects = invoker(elm->elm, "getClientRects");
 						let rect = idx(rects, 0);
-						double x = propd(rect, "left");
-						double y = propd(rect, "top");
-						double w = propd(rect, "width");
-						double h = propd(rect, "height");
-						g_object_unref(rect);
-						g_object_unref(rects);
 #else
 						WebKitDOMClientRectList *rects =
 							webkit_dom_element_get_client_rects(elm->elm);
 						WebKitDOMClientRect *rect =
 							webkit_dom_client_rect_list_item(rects, 0);
-						g_object_unref(rects);
-
-						double x = webkit_dom_client_rect_get_left(rect);
-						double y = webkit_dom_client_rect_get_top(rect);
-						double w = webkit_dom_client_rect_get_width(rect);
-						double h = webkit_dom_client_rect_get_height(rect);
 #endif
+						double x, y, w, h;
+						recttovals(rect, &x, &y, &w, &h);
+						jscunref(rect);
+						g_object_unref(rects);
 
 						char *arg = g_strdup_printf("%f:%f",
 							x + elm->fx + w / 2.0 + 1.0,
