@@ -668,7 +668,7 @@ static char *_makehintelm(Page *page,
 	//ret
 	GString *str = g_string_new(NULL);
 	g_string_printf(str,
-			"<div title=%s style="
+			"<div style="
 			"position:absolute;" //somehow if fixed web page crashes
 			"overflow:visible;"
 			"display:block;"
@@ -682,13 +682,13 @@ static char *_makehintelm(Page *page,
 			"width:%dpx;"
 			"text-align:center;"
 			">"
-			, uri ?: "-"
 			, y, x, h, w);
 
 	//area
-	g_string_append(str, "<div style="
+	g_string_append(str,
+			"<div style="
 			"position:absolute;"
-			"z-index:2147483647;"
+			"z-index:2147483646;" //max -1 for hint's title
 			"background-color:#a6f;"
 			"opacity:.1;"
 			"border-radius:.4em;"
@@ -703,7 +703,7 @@ static char *_makehintelm(Page *page,
 	const double offset = 6;
 
 	g_string_append_printf(str,
-			"<span style='"
+			"<span title=%s style='"
 			"position: relative;"
 			"z-index: 2147483647;"
 			"font-size: small !important;"
@@ -720,6 +720,7 @@ static char *_makehintelm(Page *page,
 			"%s;" //user setting
 			"%s" //center
 			"'>%s</span>"
+			, uri ?: "-"
 			, head ? "#649, #203" : "#203, #203"
 			, head ? "9" : "4"
 			, strlen(ht) == 1 ? "2" : "1"
