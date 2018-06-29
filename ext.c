@@ -546,6 +546,7 @@ static void textlinkset(Page *page, char *path)
 static void textlinkget(Page *page, char *path)
 {
 	let te = eachframes(page, activeelm);
+	if (!te) return;
 
 #if JSC
 	if (tlelm) g_object_unref(tlelm);
