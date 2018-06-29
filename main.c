@@ -206,7 +206,7 @@ static char *mainmdstr =
 "- **`M`** : Show **[history]("APP":history)**\n"
 "- **`b`** : Add title and URI of a page opened to this page\n"
 "\n"
-"If **e,E,c** don't work, edit values '`"MIMEOPEN"`' of ~/.config/"DIRNAME"/main.conf.\n"
+"If **e,E,c** don't work, edit values '`"MIMEOPEN"`' of ~/.config/"DIRNAME"/main.conf\n"
 "\n"
 "For other keys, see **[help]("APP":help)** assigned '**`:`**'.\n"
 "Since "APP" is inspired by **[dwb](https://wiki.archlinux.org/index.php/dwb)**\n"

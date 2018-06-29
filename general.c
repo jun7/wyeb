@@ -128,11 +128,11 @@ typedef struct {
 } Conf;
 Conf dconf[] = {
 	{"all"   , "editor"       , MIMEOPEN,
-		"editor=xterm -e nano %s\n"
+		"editor=xterm -e mimeopen %s\n"
 		"editor=gvim --servername "APP" --remote-silent \"%s\""
 	},
 	{"all"   , "mdeditor"     , ""},
-	{"all"   , "diropener"    , MIMEOPEN},
+	{"all"   , "diropener"    , MIMEOPEN, "diropener=xterm -e mimeopen %s"},
 	{"all"   , "generator"    , "markdown -f -style %s"},
 
 	{"all"   , "hintkeys"     , HINTKEYS},
