@@ -51,7 +51,7 @@ Also it moves pointer pos used by scroll and keeps pos last clicked for same lay
 - Range hinting. **ctrl-r**. Also see hidden files in the menu dir, it has callback interface.
 - Lower memory usage. Just wyeb's default is multiwebprocs(WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES)=false.
 - Misc. saved search word for find, related domain only loading,
-whiteblack.conf, new window with clipboard text, hinting for callback script.
+whiteblack.conf, new window with clipboard text, hinting for callback scripts.
 - [Adblock extension](https://github.com/jun7/wyebadblock).
 
 ### Installation
