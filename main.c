@@ -3041,22 +3041,10 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 		if (*(args + 1))
 		{
 			guint64 id = g_ascii_strtoull(args[1], NULL, 0);
-			static guint64 lasthead = 0;
-			static GList *clp = NULL;
-			GList *cr = g_queue_peek_head_link(histimgs);
-			guint64 chead = cr && cr->data ? ((Img *)cr->data)->id : 0;
-			if (!chead || lasthead != chead)
+			for (GList *next = g_queue_peek_head_link(histimgs);
+					next; next = next->next)
 			{
-				lasthead = chead;
-				clp = cr;
-			}
-			else if (!clp || !clp->data || ((Img *)clp->data)->id < id)
-				clp = cr;
-
-			for (; clp; clp = clp->next)
-			{
-				Img *img = clp->data;
-				clp = clp->next;
+				Img *img = next->data;
 				if (!img || img->id != id) continue;
 
 				type = "image/jpeg";
