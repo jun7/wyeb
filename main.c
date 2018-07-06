@@ -3166,7 +3166,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		double alpha = !gtk_widget_has_focus(win->kitw) ? .6 :
 			px > 0 && px < w ? MIN(1, .3 + ABS(h - py) / (h * .1)): 1.0;
 
-		double base = MAX(fsize/14.0, (fsize/7.0) * (1 - win->progd));
+		double base = fsize/14. + (fsize/7.) * pow(1 - win->progd, 4);
 		//* 2: for monitors hide bottom pixels when viewing top to bottom
 		double y = h - base * 2;
 
@@ -3233,7 +3233,7 @@ static gboolean drawprogcb(Win *win)
 	if (!isin(wins, win)) return false;
 	double shift = win->prog + .4 * (1 - win->prog);
 	if (shift - win->progd < 0) return true; //when reload prog is may mixed
-	win->progd = shift - (shift - win->progd) * .94;
+	win->progd = shift - (shift - win->progd) * .96;
 	drawprogif(win, false);
 	return true;
 }
@@ -3842,7 +3842,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		//we can't get if it is sub or not.
 		win->progd = 0;
 		if (!win->drawprogcb)
-			win->drawprogcb = g_timeout_add(60, (GSourceFunc)drawprogcb, win);
+			win->drawprogcb = g_timeout_add(30, (GSourceFunc)drawprogcb, win);
 		gtk_widget_queue_draw(win->kitw);
 
 		//loadcb is multi thread!? and send may block others by alert
