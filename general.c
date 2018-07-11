@@ -172,6 +172,7 @@ Conf dconf[] = {
 	{"template", "h"          , "http://%s"},
 
 	{"set:v"     , "enable-caret-browsing", "true"},
+	{"set:v"     , "hackedhint4js"        , "false"},
 	{"set:script", "enable-javascript"    , "true"},
 	{"set:image" , "auto-load-images"     , "true"},
 	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s](%s)"},
