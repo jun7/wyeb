@@ -51,7 +51,7 @@ typedef struct _WP {
 	bool           script;
 	GSList        *black;
 	GSList        *white;
-//	GSList        *emitters;
+	GSList        *emitters;
 
 	int            pagereq;
 	bool           redirected;
@@ -99,7 +99,7 @@ static void freepage(Page *page)
 
 	g_slist_free_full(page->black, g_free);
 	g_slist_free_full(page->white, g_free);
-//	g_slist_free_full(page->emitters, g_object_unref);
+	g_slist_free_full(page->emitters, g_object_unref);
 	g_strfreev(page->refreq);
 
 	g_object_unref(page->seto);
@@ -1072,7 +1072,6 @@ static GSList *_makelist(Page *page, let doc, let win,
 					focuselm(elm.elm);
 					clearelm(&elm);
 
-					g_object_unref(win);
 					g_object_unref(cl);
 					return NULL;
 				}
@@ -1595,7 +1594,7 @@ static void *frameon(let doc, Page *page)
 		defaultview(doc);
 #endif
 
-//	page->emitters = g_slist_prepend(page->emitters, emt);
+	page->emitters = g_slist_prepend(page->emitters, emt);
 
 	if (getsetbool(page, "rmnoscripttag"))
 	{
@@ -1621,9 +1620,8 @@ static void *frameon(let doc, Page *page)
 
 static void pageon(Page *page, bool finished)
 {
-//sometimes emitters are unrefed autometically (not tested with JSC==1
-//	g_slist_free_full(page->emitters, g_object_unref);
-//	page->emitters = NULL;
+	g_slist_free_full(page->emitters, g_object_unref);
+	page->emitters = NULL;
 
 	eachframes(page, frameon);
 
