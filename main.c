@@ -2959,7 +2959,7 @@ static char *helpdata()
 		"    press and scroll down: winlist\n"
 		"\n"
 		"context-menu:\n"
-		"  You can add your own script to context-menu. See 'menu' dir in\n"
+		"  You can add your own script to the context-menu. See 'menu' dir in\n"
 		"  the config dir, or click 'editMenu' in the context-menu.\n"
 		"  ISCALLBACK, SUFFIX, WINID, WINSLEN, CURRENTSET, URI, TITLE, FOCUSURI,\n"
 		"  LINK, LINK_OR_URI, LINKLABEL, LABEL_OR_TITLE,\n"
