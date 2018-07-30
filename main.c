@@ -2107,7 +2107,7 @@ static Keybind dkeys[]= {
 	{"click"         , 0, 0, "x:y"},
 	{"openeditor"    , 0, 0},
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
-	{"jscallback"    , 0, 0, "Runs script of arg1 and arg2 is called with $RESULT"},
+	{"jscallback"    , 0, 0, "Runs script of arg1 then arg2 is called with $RESULT"},
 	{"tohintcallback", 0, 0,
 		"arg is called with env selected by hint"},
 	{"tohintrange"   , 0, 0, "Same as tohintcallback but range"},
