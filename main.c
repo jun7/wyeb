@@ -4300,7 +4300,7 @@ static gboolean textcb(Win *win)
 static void findfailedcb(Win *win)
 {
 	enticon(win, "dialog-warning");
-	showmsg(win, "Not found");
+	_showmsg(win, g_strdup_printf("Not found: '%s'", win->lastfind), false);
 }
 static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 {
