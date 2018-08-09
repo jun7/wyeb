@@ -1057,6 +1057,7 @@ static void _modechanged(Win *win)
 
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
+		undo(win, &win->undo, &win->undo);
 		break;
 
 	case Mlist:
