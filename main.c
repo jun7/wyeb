@@ -110,6 +110,7 @@ typedef struct _WP {
 	GSList *undo;
 	GSList *redo;
 	char   *lastfind;
+	char   *lastsearch;
 
 	//winlist
 	int     cursorx;
@@ -1007,11 +1008,11 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mfind:
-		GFA(win->lastfind, g_strdup(gtk_entry_get_text(win->ent)))
 	case Mopen:
 	case Mopennew:
 		gtk_widget_hide(win->entw);
 		gtk_widget_grab_focus(win->kitw);
+		undo(win, &win->undo, &win->undo);
 		break;
 
 	case Mlist:
@@ -1046,8 +1047,6 @@ static void _modechanged(Win *win)
 			win->mode = Mnormal;
 			break;
 		}
-		gtk_entry_set_text(win->ent, win->lastfind ?: "");
-		GFA(win->lastfind, NULL)
 
 	case Mopen:
 	case Mopennew:
@@ -1058,7 +1057,6 @@ static void _modechanged(Win *win)
 
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
-		undo(win, &win->undo, &win->undo);
 		break;
 
 	case Mlist:
@@ -1190,7 +1188,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 	if (*stra && stra[1] &&
 			(checklen = formaturi(&uri, stra[0], stra[1], NULL)))
 	{
-		GFA(win->lastfind, g_strdup(stra[1]))
+		GFA(win->lastsearch, g_strdup(stra[1]))
 		goto out;
 	}
 
@@ -1209,7 +1207,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 	else if ((dsearch = getset(caller ?: win, "search")))
 	{
 		checklen = formaturi(&uri, dsearch, str, dsearch);
-		GFA(win->lastfind, g_strdup(str))
+		GFA(win->lastsearch, g_strdup(str))
 	}
 
 	if (!uri) uri = g_strdup(str);
@@ -2222,7 +2220,8 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 				const char *u = arg;
 				do if (g_ascii_isupper(*u)) break; while (*++u);
 				GFA(win->lastfind, g_strdup(arg))
-				webkit_find_controller_search(win->findct, arg,
+				GFA(win->lastsearch, NULL)
+				webkit_find_controller_search(win->findct, win->lastfind,
 					(*u ? 0 : WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE) |
 					WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT))
 
@@ -2418,10 +2417,12 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 
 	Z("find"        , win->mode = Mfind)
 	Z("findnext"    ,
+			if (!win->lastfind) return run(win, "find", win->lastsearch);
 			webkit_find_controller_search_next(win->findct);
 			senddelay(win, Cfocus, NULL);
 			)
 	Z("findprev"    ,
+			if (!win->lastfind) return run(win, "find", win->lastsearch);
 			webkit_find_controller_search_previous(win->findct);
 			senddelay(win, Cfocus, NULL);
 			)
@@ -3208,6 +3209,7 @@ static void destroycb(Win *win)
 	g_slist_free_full(win->undo, g_free);
 	g_slist_free_full(win->redo, g_free);
 	g_free(win->lastfind);
+	g_free(win->lastsearch);
 
 	g_free(win->histstr);
 
