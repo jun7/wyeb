@@ -585,14 +585,25 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 		*redo = g_slist_prepend(*redo, g_strdup(gtk_entry_get_text(win->ent)));
 
 	if (redo == undo) return;
+
 	if (!strcmp((*undo)->data, gtk_entry_get_text(win->ent)))
 	{
 		g_free((*undo)->data);
 		*undo = g_slist_delete_link(*undo, *undo);
 		if (!*undo) return;
 	}
+
 	gtk_entry_set_text(win->ent, (*undo)->data);
 	gtk_editable_set_position((void *)win->ent, -1);
+
+	if (*undo == win->redo) //redo
+	{
+		if (!strcmp((*undo)->data, (*redo)->data))
+			g_free((*undo)->data);
+		else
+			*redo = g_slist_prepend(*redo, (*undo)->data);
+		*undo = g_slist_delete_link(*undo, *undo);
+	}
 }
 
 
