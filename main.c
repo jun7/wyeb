@@ -1902,13 +1902,15 @@ static void findnext(Win *win, bool next)
 			webkit_find_controller_search_next(win->findct);
 		else
 			webkit_find_controller_search_previous(win->findct);
-
-		senddelay(win, Cfocus, NULL);
 	}
 	else if (win->lastsearch)
 		find(win, win->lastsearch, next, true);
 	else
+	{
 		showmsg(win, "No search words");
+		return;
+	}
+	senddelay(win, Cfocus, NULL);
 }
 
 static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
