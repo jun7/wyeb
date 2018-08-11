@@ -109,8 +109,8 @@ typedef struct _WP {
 	//entry
 	GSList *undo;
 	GSList *redo;
-	char   *lastfind;
 	char   *lastsearch;
+	bool    infind;
 
 	//winlist
 	int     cursorx;
@@ -271,6 +271,7 @@ static void alert(char *msg)
 	gtk_widget_destroy(dialog);
 }
 
+//history
 static void append(char *path, const char *str)
 {
 	FILE *f = fopen(path, "a");
@@ -1053,6 +1054,7 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mfind:
+		win->infind = false;
 		if (win->crashed)
 		{
 			win->mode = Mnormal;
@@ -1879,6 +1881,36 @@ static void addlink(Win *win, const char *title, const char *uri)
 	showmsg(win, "Added");
 }
 
+#define findtxt(win) webkit_find_controller_get_search_text(win->findct)
+static void find(Win *win, const char *arg, bool next, bool insensitive)
+{
+	const char *u = insensitive ? "" : arg;
+	do if (g_ascii_isupper(*u)) break; while (*++u);
+	webkit_find_controller_search(win->findct, arg
+		, (*u   ? 0 : WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE)
+		| (next ? 0 : WEBKIT_FIND_OPTIONS_BACKWARDS)
+		| WEBKIT_FIND_OPTIONS_WRAP_AROUND
+		, G_MAXUINT);
+	win->infind = true;
+	GFA(win->lastsearch, NULL)
+}
+static void findnext(Win *win, bool next)
+{
+	if (findtxt(win))
+	{
+		if (next)
+			webkit_find_controller_search_next(win->findct);
+		else
+			webkit_find_controller_search_previous(win->findct);
+
+		senddelay(win, Cfocus, NULL);
+	}
+	else if (win->lastsearch)
+		find(win, win->lastsearch, next, true);
+	else
+		showmsg(win, "No search words");
+}
+
 static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 {
 	if (!p) return;
@@ -2228,15 +2260,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 	}
 
 	if (arg != NULL) {
-		Z("find"  ,
-				const char *u = arg;
-				do if (g_ascii_isupper(*u)) break; while (*++u);
-				GFA(win->lastfind, g_strdup(arg))
-				GFA(win->lastsearch, NULL)
-				webkit_find_controller_search(win->findct, win->lastfind,
-					(*u ? 0 : WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE) |
-					WEBKIT_FIND_OPTIONS_WRAP_AROUND, G_MAXUINT))
-
+		Z("find"   , find(win, arg, true, false))
 		Z("open"   , openuri(win, arg))
 		Z("opennew", newwin(arg, NULL, win, 0))
 
@@ -2428,16 +2452,9 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 	Z("reloadbypass", webkit_web_view_reload_bypass_cache(win->kit))
 
 	Z("find"        , win->mode = Mfind)
-	Z("findnext"    ,
-			if (!win->lastfind) return run(win, "find", win->lastsearch);
-			webkit_find_controller_search_next(win->findct);
-			senddelay(win, Cfocus, NULL);
-			)
-	Z("findprev"    ,
-			if (!win->lastfind) return run(win, "find", win->lastsearch);
-			webkit_find_controller_search_previous(win->findct);
-			senddelay(win, Cfocus, NULL);
-			)
+	Z("findnext"    , findnext(win, true))
+	Z("findprev"    , findnext(win, false))
+
 #define CLIP(clip) \
 	char *val = gtk_clipboard_wait_for_text(gtk_clipboard_get(clip)); \
 	if (val) gtk_entry_set_text(win->ent, val); \
@@ -3220,7 +3237,6 @@ static void destroycb(Win *win)
 
 	g_slist_free_full(win->undo, g_free);
 	g_slist_free_full(win->redo, g_free);
-	g_free(win->lastfind);
 	g_free(win->lastsearch);
 
 	g_free(win->histstr);
@@ -4181,7 +4197,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		char *action = NULL;
 		switch (win->mode) {
 		case Mfind:
-			if (!win->lastfind || strcmp(win->lastfind, text))
+			if (!win->infind || !findtxt(win) || strcmp(findtxt(win), text))
 				run(win, "find", text);
 
 			senddelay(win, Cfocus, NULL);
@@ -4314,7 +4330,7 @@ static gboolean textcb(Win *win)
 static void findfailedcb(Win *win)
 {
 	enticon(win, "dialog-warning");
-	_showmsg(win, g_strdup_printf("Not found: '%s'", win->lastfind), false);
+	_showmsg(win, g_strdup_printf("Not found: '%s'", findtxt(win)), false);
 }
 static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 {
