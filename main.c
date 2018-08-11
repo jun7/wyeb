@@ -82,7 +82,6 @@ typedef struct _WP {
 	double  lastx;
 	double  lasty;
 	char   *msg;
-	bool    smallmsg;
 	double  prog;
 	double  progd;
 	GdkRectangle progrect;
@@ -449,17 +448,16 @@ static gboolean clearmsgcb(Win *win)
 	win->msgfunc = 0;
 	return false;
 }
-static void _showmsg(Win *win, char *msg, bool small)
+static void _showmsg(Win *win, char *msg)
 {
 	if (win->msgfunc) g_source_remove(win->msgfunc);
 	GFA(win->msg, msg)
-	win->smallmsg = small;
 	win->msgfunc = !msg ? 0 :
 		g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->kitw);
 }
 static void showmsg(Win *win, const char *msg)
-{ _showmsg(win, g_strdup(msg), false); }
+{ _showmsg(win, g_strdup(msg)); }
 
 //com
 static void send(Win *win, Coms type, char *args)
@@ -1231,7 +1229,7 @@ out:
 	int max;
 	if (checklen > 1 && (max = confint("searchstrmax")) && checklen > max)
 		_showmsg(win, g_strdup_printf("Input Len(%d) > searchstrmax=%d",
-					checklen, max), false);
+					checklen, max));
 	else
 	{
 		webkit_web_view_load_uri(win->kit, uri);
@@ -1240,7 +1238,7 @@ out:
 		if (suri)
 			soup_uri_free(suri);
 		else
-			_showmsg(win, g_strdup_printf("Invalid URI: %s", uri), false);
+			_showmsg(win, g_strdup_printf("Invalid URI: %s", uri));
 	}
 
 	g_free(uri);
@@ -1268,7 +1266,7 @@ static void spawnwithenv(Win *win, const char *shell, char* path,
 	}
 
 	if (getsetbool(win, "spawnmsg"))
-		_showmsg(win, g_strdup_printf("spawn: %s", shell ?: path), false);
+		_showmsg(win, g_strdup_printf("spawn: %s", shell ?: path));
 
 	char *dir = shell ?
 		(path ? g_strdup(path) : path2conf("menu")) : g_path_get_dirname(path);
@@ -1482,7 +1480,7 @@ static void putkey(Win *win, guint key)
 
 static void command(Win *win, const char *cmd, const char *arg)
 {
-	_showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg), false);
+	_showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg));
 
 	GError *err = NULL;
 	if (!g_spawn_command_line_async(sfree(g_strdup_printf(cmd, arg)), &err))
@@ -2233,7 +2231,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 	Z("_setreq"    , send(win, Coverset, win->overset))
 	Z("_textlinkon", textlinkon(win))
 	Z("_blocked"   ,
-			_showmsg(win, g_strdup_printf("Blocked %s", arg), true);
+			_showmsg(win, g_strdup_printf("Blocked %s", arg));
 			return true;)
 	Z("_reloadlast", reloadlast())
 	Z("_focusuri"  , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
@@ -3161,29 +3159,30 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	}
 	if (win->msg)
 	{
-		guint32 fsize = MAX(10,
-				webkit_settings_get_default_font_size(win->set));
+		PangoLayout *layout =
+			gtk_widget_create_pango_layout(win->winw, win->msg);
 
-		int x = fsize, y = gtk_widget_get_allocated_height(win->kitw) - x*1.4;
+		PangoFontDescription *desc = pango_font_description_from_string("bold");
+		pango_layout_set_font_description(layout, desc);
+		pango_font_description_free(desc);
+
+		int w, h;
+		pango_layout_get_pixel_size(layout, &w, &h);
+
+		int y = gtk_widget_get_allocated_height(win->kitw) - h*1.7;
 		y -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
-		if (win->smallmsg)
-			cairo_set_font_size(cr, fsize);
-		else
-			cairo_set_font_size(cr, fsize * 1.4);
-
-		colorb(win, cr, .6);
-		cairo_text_extents_t ex;
-		cairo_text_extents(cr, win->msg, &ex);
-		double m = fsize/3.0;
-		cairo_rectangle(cr, 0,                y + ex.y_bearing - m,
-				ex.x_bearing + ex.width + x + m, -ex.y_bearing + m*2.2);
+		colorb(win, cr, .8);
+		double m = h/6.0;
+		cairo_rectangle(cr, 0, y - m, w + h + m + m, h + m + m);
 		cairo_fill(cr);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, x, y);
-		cairo_show_text(cr, win->msg);
+		cairo_move_to(cr, h, y);
+		pango_cairo_show_layout(cr, layout);
+
+		g_object_unref(layout);
 	}
 	if (win->progd != 1)
 	{
@@ -3758,7 +3757,7 @@ static bool urihandler(Win *win, const char *uri, char *group)
 	g_free(buf);
 
 	run(win, "spawn", command);
-	_showmsg(win, g_strdup_printf("Handled: %s", command), false);
+	_showmsg(win, g_strdup_printf("Handled: %s", command));
 
 	g_free(command);
 	return true;
@@ -4336,12 +4335,12 @@ static gboolean textcb(Win *win)
 static void findfailedcb(Win *win)
 {
 	enticon(win, "dialog-warning");
-	_showmsg(win, g_strdup_printf("Not found: '%s'", findtxt(win)), false);
+	_showmsg(win, g_strdup_printf("Not found: '%s'", findtxt(win)));
 }
 static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 {
 	enticon(win, NULL);
-	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL, false);
+	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL);
 }
 
 
