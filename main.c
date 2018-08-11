@@ -1904,7 +1904,11 @@ static void findnext(Win *win, bool next)
 			webkit_find_controller_search_previous(win->findct);
 	}
 	else if (win->lastsearch)
+	{
+		undo(win, &win->undo, &win->undo);
+		gtk_entry_set_text(win->ent, win->lastsearch);
 		find(win, win->lastsearch, next, true);
+	}
 	else
 	{
 		showmsg(win, "No search words");
