@@ -28,9 +28,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define DIRNAME  "wyeb."
 #define APP      "wyeb"
 
-#define DSET "set;"
+#define DSET     "set;"
 #define MIMEOPEN "mimeopen -n %s"
 #define HINTKEYS "fsedagwrvxqcz"
+#define DSEARCH  "https://www.google.com/search?q=%s"
+#define DSEARCHKEY "g"
 //bt324"
 
 #if ! DEBUG + 0
@@ -164,7 +166,7 @@ Conf dconf[] = {
 	{"boot"  , "ephemeral"    , "false"},
 	{"boot"  , "unsetGTK_OVERLAY_SCROLLING", "true", "workaround"},
 
-	{"search", "g"            , "https://www.google.com/search?q=%s"},
+	{"search", DSEARCHKEY     , DSEARCH},
 	{"search", "f"            , "https://www.google.com/search?q=%s&btnI=I"},
 	{"search", "u"            , "https://www.urbandictionary.com/define.php?term=%s"},
 
@@ -180,7 +182,7 @@ Conf dconf[] = {
 	{"set:image" , "hintstyle"    ,
 		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
 
-	{DSET    , "search"           , "https://www.google.com/search?q=%s", "search=g"},
+	{DSET    , "search"           , DSEARCHKEY, "search="DSEARCH},
 	{DSET    , "usercss"          , "user.css", "usercss=user.css;user2.css"},
 	{DSET    , "addressbar"       , "false"},
 	{DSET    , "msgcolor"         , "#c07"},

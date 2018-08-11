@@ -176,14 +176,14 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group);
 static char *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"\n"
-	"  "APP" google.com\n"
-	"  "APP" new google.com\n"
-	"  "APP" / new google.com\n"
+	"  "APP" www.gnu.org\n"
+	"  "APP" new www.gnu.org\n"
+	"  "APP" / new www.gnu.org\n"
 	"\n"
 	"  suffix: Process ID.\n"
 	"    It is added to all directories conf, cache and etc.\n"
 	"    '/' is default. '//' means $SUFFIX.\n"
-	"  action: Such as new(default), open, opennew ...\n"
+	"  action: Such as new(default), open, pagedown ...\n"
 	"    Except 'new' and some, without a set of $SUFFIX and $WINID,\n"
 	"    actions are sent to the window last focused\n"
 	;
