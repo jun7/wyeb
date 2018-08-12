@@ -3161,8 +3161,12 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 	{
 		PangoLayout *layout =
 			gtk_widget_create_pango_layout(win->winw, win->msg);
+		PangoFontDescription *desc = pango_font_description_copy(
+				pango_context_get_font_description(
+					gtk_widget_get_pango_context(win->winw)));
+		pango_font_description_set_size(desc,
+				pango_font_description_get_size(desc) * 1.6);
 
-		PangoFontDescription *desc = pango_font_description_from_string("bold");
 		pango_layout_set_font_description(layout, desc);
 		pango_font_description_free(desc);
 
@@ -3174,8 +3178,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
 		colorb(win, cr, .8);
-		double m = h/6.0;
-		cairo_rectangle(cr, 0, y - m, w + h + m + m, h + m + m);
+		cairo_rectangle(cr, 0, y, w + h*1.2, h);
 		cairo_fill(cr);
 
 		colorf(win, cr, .9);
@@ -4340,7 +4343,7 @@ static void findfailedcb(Win *win)
 static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 {
 	enticon(win, NULL);
-	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL);
+	_showmsg(win, cnt > 0 ? g_strdup_printf("found: %d", cnt) : NULL);
 }
 
 
