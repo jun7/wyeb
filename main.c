@@ -4343,7 +4343,7 @@ static void findfailedcb(Win *win)
 static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 {
 	enticon(win, NULL);
-	_showmsg(win, cnt > 0 ? g_strdup_printf("found: %d", cnt) : NULL);
+	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL);
 }
 
 
