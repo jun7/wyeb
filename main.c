@@ -580,12 +580,14 @@ static void setresult(Win *win, WebKitHitTestResult *htr)
 static void undo(Win *win, GSList **undo, GSList **redo)
 {
 	if (!*undo && redo != undo) return;
-	if (!*redo || strcmp((*redo)->data, gtk_entry_get_text(win->ent)))
-		*redo = g_slist_prepend(*redo, g_strdup(gtk_entry_get_text(win->ent)));
+	const char *text = gtk_entry_get_text(win->ent);
+
+	if (*text && (!*redo || strcmp((*redo)->data, text)))
+		*redo = g_slist_prepend(*redo, g_strdup(text));
 
 	if (redo == undo) return;
 
-	if (!strcmp((*undo)->data, gtk_entry_get_text(win->ent)))
+	if (!strcmp((*undo)->data, text))
 	{
 		g_free((*undo)->data);
 		*undo = g_slist_delete_link(*undo, *undo);
@@ -604,7 +606,11 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 		*undo = g_slist_delete_link(*undo, *undo);
 	}
 }
-
+static void setent(Win *win, const char *str)
+{
+	undo(win, &win->undo, &win->undo);
+	gtk_entry_set_text(win->ent, str);
+}
 
 //@@conf
 static int threshold(Win *win)
@@ -1022,7 +1028,6 @@ static void _modechanged(Win *win)
 	case Mopennew:
 		gtk_widget_hide(win->entw);
 		gtk_widget_grab_focus(win->kitw);
-		undo(win, &win->undo, &win->undo);
 		break;
 
 	case Mlist:
@@ -1186,7 +1191,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 	}
 
 	if (str != gtk_entry_get_text(win->ent))
-		gtk_entry_set_text(win->ent, str ?: "");
+		setent(win, str ?: "");
 
 	if (g_str_has_prefix(str, "javascript:")) {
 		webkit_web_view_run_javascript(win->kit, str + 11, NULL, NULL, NULL);
@@ -1903,8 +1908,7 @@ static void findnext(Win *win, bool next)
 	}
 	else if (win->lastsearch)
 	{
-		undo(win, &win->undo, &win->undo);
-		gtk_entry_set_text(win->ent, win->lastsearch);
+		setent(win, win->lastsearch);
 		find(win, win->lastsearch, next, true);
 	}
 	else
@@ -2461,7 +2465,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 
 #define CLIP(clip) \
 	char *val = gtk_clipboard_wait_for_text(gtk_clipboard_get(clip)); \
-	if (val) gtk_entry_set_text(win->ent, val); \
+	if (val) setent(win, val); \
 	run(win, "find", val); \
 	senddelay(win, Cfocus, NULL);
 
@@ -2473,11 +2477,11 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 	Z("open"        , win->mode = Mopen)
 	Z("edituri"     ,
 			win->mode = Mopen;
-			gtk_entry_set_text(win->ent, arg ?: win->focusuri ?: URI(win)))
+			setent(win, arg ?: win->focusuri ?: URI(win)))
 	Z("opennew"     , win->mode = Mopennew)
 	Z("editurinew"  ,
 			win->mode = Mopennew;
-			gtk_entry_set_text(win->ent, arg ?: win->focusuri ?: URI(win)))
+			setent(win, arg ?: win->focusuri ?: URI(win)))
 
 //	Z("showsource"  , )
 	Z("showhelp"    , openuri(win, APP":help"))
@@ -4547,8 +4551,13 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		return win;
 
 	if (caller)
+	{
 		webkit_web_view_set_zoom_level(win->kit,
 				webkit_web_view_get_zoom_level(caller->kit));
+		win->undo = g_slist_copy_deep(caller->undo, (GCopyFunc)g_strdup, NULL);
+		win->redo = g_slist_copy_deep(caller->redo, (GCopyFunc)g_strdup, NULL);
+		win->lastsearch = g_strdup(findtxt(caller) ?: caller->lastsearch);
+	}
 
 	if (getsetbool(win, "addressbar"))
 		gtk_widget_show(win->lblw);
