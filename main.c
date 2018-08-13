@@ -606,6 +606,7 @@ static void undo(Win *win, GSList **undo, GSList **redo)
 		*undo = g_slist_delete_link(*undo, *undo);
 	}
 }
+#define getent(win) gtk_entry_get_text(win->ent)
 static void setent(Win *win, const char *str)
 {
 	undo(win, &win->undo, &win->undo);
@@ -1190,7 +1191,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 		return;
 	}
 
-	if (str != gtk_entry_get_text(win->ent))
+	if (str != getent(win))
 		setent(win, str ?: "");
 
 	if (g_str_has_prefix(str, "javascript:")) {
@@ -4205,21 +4206,17 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	case GDK_KEY_KP_Enter:
 	case GDK_KEY_Return:
 	{
-		const char *text = gtk_entry_get_text(win->ent);
-		char *action = NULL;
 		switch (win->mode) {
 		case Mfind:
-			if (!win->infind || !findtxt(win) || strcmp(findtxt(win), text))
-				run(win, "find", text);
+			if (!win->infind || !findtxt(win) || strcmp(findtxt(win), getent(win)))
+				run(win, "find", getent(win));
 
 			senddelay(win, Cfocus, NULL);
 			break;
 		case Mopen:
-			action = "open";
+			run(win, "open", getent(win)); break;
 		case Mopennew:
-			if (!action) action = "opennew";
-			run(win, action, text);
-			break;
+			run(win, "opennew", getent(win)); break;
 		default:
 				g_assert_not_reached();
 		}
@@ -4328,9 +4325,8 @@ static gboolean textcb(Win *win)
 {
 	if (win->mode == Mfind && gtk_widget_get_visible(win->entw))
 	{
-		const char *text = gtk_entry_get_text(win->ent);
-		if (strlen(text) > 2)
-			run(win, "find", text);
+		if (strlen(getent(win)) > 2)
+			run(win, "find", getent(win));
 		else
 		{
 			enticon(win, NULL);
@@ -4557,6 +4553,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		win->undo = g_slist_copy_deep(caller->undo, (GCopyFunc)g_strdup, NULL);
 		win->redo = g_slist_copy_deep(caller->redo, (GCopyFunc)g_strdup, NULL);
 		win->lastsearch = g_strdup(findtxt(caller) ?: caller->lastsearch);
+		gtk_entry_set_text(win->ent, getent(caller));
 	}
 
 	if (getsetbool(win, "addressbar"))
