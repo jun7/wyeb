@@ -1070,9 +1070,14 @@ static void _modechanged(Win *win)
 	case Mopen:
 	case Mopennew:
 		enticon(win, NULL);
+
 		if (win->mode != Mfind)
+		{
 			if (g_strcmp0(getset(NULL, "search"), getset(win, "search")))
 				enticon(win, "system-search");
+			else if (!getset(NULL, "search"))
+				showmsg(win, "No search settings");
+		}
 
 		gtk_widget_show(win->entw);
 		gtk_widget_grab_focus(win->entw);
@@ -2439,7 +2444,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			if (inwins(win, NULL, true) > 0)
 				win->mode = Mlist;
 			else
-				showmsg(win, "No other window");
+				showmsg(win, "No other windows");
 	)
 
 	Z("quitnext"    , return quitnext(win, true))

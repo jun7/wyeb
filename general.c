@@ -269,7 +269,7 @@ static char *getset(WP *wp, char *key)
 	{
 		static char *ret = NULL;
 		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
-		return ret;
+		return ret ? *ret ? ret : NULL : NULL;
 	}
 	return g_object_get_data(wp->seto, key) ?: confcstr(key)/*backward*/;
 }
