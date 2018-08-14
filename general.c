@@ -271,7 +271,7 @@ static char *getset(WP *wp, char *key)
 		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
 		return ret ? *ret ? ret : NULL : NULL;
 	}
-	return g_object_get_data(wp->seto, key) ?: confcstr(key)/*backward*/;
+	return confcstr(key)/*backward*/ ?: g_object_get_data(wp->seto, key);
 }
 static bool getsetbool(WP *wp, char *key)
 { return !g_strcmp0(getset(wp, key), "true"); }
