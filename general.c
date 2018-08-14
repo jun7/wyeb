@@ -221,7 +221,7 @@ Conf dconf[] = {
 	{DSET    , "spawnmsg"         , "false", "\nscript\n"},
 
 	{DSET    , "onstartmenu"      , "",
-		"onstartmenu spawns a file in the menu dir when load started before redirect"},
+		"onstartmenu exec a file in the menu dir when load started before redirect"},
 	{DSET    , "onloadmenu"       , "", "when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
 
