@@ -455,7 +455,7 @@ static void _showmsg(Win *win, char *msg)
 	if (win->msgfunc) g_source_remove(win->msgfunc);
 	GFA(win->msg, msg)
 	win->msgfunc = !msg ? 0 :
-		g_timeout_add(confint("msgmsec"), (GSourceFunc)clearmsgcb, win);
+		g_timeout_add(getsetint(win, "msgmsec"), (GSourceFunc)clearmsgcb, win);
 	gtk_widget_queue_draw(win->kitw);
 }
 static void showmsg(Win *win, const char *msg)
@@ -1235,7 +1235,7 @@ out:
 	g_strfreev(stra);
 
 	int max;
-	if (checklen > 1 && (max = confint("searchstrmax")) && checklen > max)
+	if (checklen > 1 && (max = getsetint(win, "searchstrmax")) && checklen > max)
 		_showmsg(win, g_strdup_printf("Input Len(%d) > searchstrmax=%d",
 					checklen, max));
 	else
@@ -1521,12 +1521,7 @@ static void command(Win *win, const char *cmd, const char *arg)
 
 static void openeditor(Win *win, const char *path, char *editor)
 {
-	if (!editor || !*editor)
-		editor = confcstr("editor");
-	if (!*editor)
-		editor = MIMEOPEN;
-
-	command(win, editor, path);
+	command(win, editor ?: getset(win, "editor") ?: MIMEOPEN, path);
 }
 static void openconf(Win *win, bool shift)
 {
@@ -1540,7 +1535,7 @@ static void openconf(Win *win, bool shift)
 			path = confpath;
 		else {
 			path = mdpath;
-			editor = confcstr("mdeditor");
+			editor = getset(win, "mdeditor");
 		}
 	}
 	else if (!shift && g_str_has_prefix(uri, APP":"))
@@ -2180,25 +2175,27 @@ static Keybind dkeys[]= {
 //	{"windowimage"   , 0, 0}, //pageid
 //	{"windowlist"    , 0, 0}, //=>pageid uri title
 };
-static char *ke2name(GdkEventKey *ke)
+static char *ke2name(Win *win, GdkEventKey *ke)
 {
 	guint key = ke->keyval;
 
-	char **swaps = g_key_file_get_string_list(
-			conf, "all", "keybindswaps", NULL, NULL);
-
-	for (char **swap = swaps; *swap; swap++) {
-		if (!**swap || !*(*swap + 1)) continue;
-		if (key == **swap)
-			key =  *(*swap + 1);
-		else
-		if (key == *(*swap + 1))
-			key =  **swap;
-		else
-			continue;
-		break;
+	char **swaps = getsetsplit(win, "keybindswaps");
+	if (swaps)
+	{
+		for (char **swap = swaps; *swap; swap++)
+		{
+			if (!**swap || !*(*swap + 1)) continue;
+			if (key == **swap)
+				key =  *(*swap + 1);
+			else
+			if (key == *(*swap + 1))
+				key =  **swap;
+			else
+				continue;
+			break;
+		}
+		g_strfreev(swaps);
 	}
-	g_strfreev(swaps);
 
 	guint mask = ke->state & (~GDK_SHIFT_MASK &
 			gdk_keymap_get_modifier_mask(
@@ -2384,7 +2381,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 #undef H
 
 	Z("showdldir"   ,
-		command(win, confcstr("diropener"), sfree(dldir(win)));
+		command(win, getset(win, "diropener") ?: MIMEOPEN, sfree(dldir(win)));
 	)
 
 	Z("yankuri"     ,
@@ -2501,7 +2498,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 				WEBKIT_WEBSITE_DATA_ALL, 0, NULL, NULL, NULL);
 
 			removehistory();
-			if (!confbool("keepfavicondb"))
+			if (!getsetbool(win, "keepfavicondb"))
 				webkit_favicon_database_clear(
 					webkit_web_context_get_favicon_database(ctx));
 
@@ -2510,7 +2507,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	Z("edit"        , openconf(win, false))
 	Z("editconf"    , openconf(win, true))
 	Z("openconfigdir",
-			command(win, confcstr("diropener"), sfree(path2conf(arg))))
+			command(win, getset(win, "diropener") ?: MIMEOPEN, sfree(path2conf(arg))))
 
 	Z("setv"        , return run(win, "set", "v"))
 	Z("setscript"   , return run(win, "set", "script"))
@@ -2631,6 +2628,7 @@ typedef struct {
 	guint64 len;
 	bool    res;
 	bool    finished;
+	int     closemsec;
 } DLWin;
 static void addlabel(DLWin *win, const char *str)
 {
@@ -2691,7 +2689,7 @@ static void dlfincb(DLWin *win)
 		addlabel(win, sfree(g_strdup_printf("=>  %s", nfn)));
 		g_free(fn);
 
-		g_timeout_add(confint("dlwinclosemsec"), (GSourceFunc)dlclosecb, win);
+		g_timeout_add(win->closemsec, (GSourceFunc)dlclosecb, win);
 	}
 	else
 		title = g_strdup_printf("DL: Failed: %s", win->dispname);
@@ -2790,6 +2788,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	WebKitWebView *kit = webkit_download_get_web_view(pdl);
 	Win *mainwin = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
 	win->dldir   = dldir(mainwin);
+	win->closemsec = getsetint(mainwin, "dlwinclosemsec");
 
 	win->winw  = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(win->win, "DL : Waiting for a response.");
@@ -2820,7 +2819,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 		gtk_window_move(win->win, MAX(0, x - 400), y + gy);
 	}
 
-	if (confbool("dlwinback") && LASTWIN &&
+	if (getsetbool(mainwin, "dlwinback") && LASTWIN &&
 			gtk_window_is_active(LASTWIN->win))
 	{
 		gtk_window_set_accept_focus(win->win, false);
@@ -3116,7 +3115,8 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 		{
 			preparemd();
 			g_spawn_command_line_sync(
-					sfree(g_strdup_printf(confcstr("generator"), mdpath)),
+					sfree(g_strdup_printf(
+							getset(win, "generator") ?: "cat %s", mdpath)),
 					&data, NULL, NULL, NULL);
 		}
 		else if (g_str_has_prefix(path, "history"))
@@ -3333,7 +3333,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	}
 
 	keyr = true;
-	char *action = ke2name(ek);
+	char *action = ke2name(win, ek);
 
 	if (action && !strcmp(action, "tonormal"))
 	{
@@ -3372,8 +3372,9 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	}
 
 	if (win->mode & Mhint && !(ek->state & GDK_CONTROL_MASK) &&
-			(ek->keyval == GDK_KEY_Tab || ek->keyval == GDK_KEY_Return ||
-			 (ek->keyval < 128 && strchr(confcstr("hintkeys"), ek->keyval)))
+			(ek->keyval == GDK_KEY_Tab || ek->keyval == GDK_KEY_Return
+			 || (ek->keyval < 128
+				 && strchr(getset(win, "hintkeys") ?: "", ek->keyval)))
 	) {
 		char key[2] = {0};
 		*key = ek->keyval;

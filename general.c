@@ -129,31 +129,13 @@ typedef struct {
 	char *desc;
 } Conf;
 Conf dconf[] = {
-	{"all"   , "editor"       , MIMEOPEN,
-		"editor=xterm -e mimeopen %s\n"
-		"editor=gvim --servername "APP" --remote-silent \"%s\""
-	},
-	{"all"   , "mdeditor"     , ""},
-	{"all"   , "diropener"    , MIMEOPEN, "diropener=xterm -e mimeopen %s"},
-	{"all"   , "generator"    , "markdown -f -style %s"},
-
-	{"all"   , "hintkeys"     , HINTKEYS},
-	{"all"   , "keybindswaps" , "",
-		"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
-
 	{"all"   , "winwidth"     , "1000"},
 	{"all"   , "winheight"    , "1000"},
 	{"all"   , "zoom"         , "1.000"},
-
-	{"all"   , "keepfavicondb", "false"},
-	{"all"   , "dlwinback"    , "true"},
-	{"all"   , "dlwinclosemsec","3000"},
-	{"all"   , "msgmsec"      , "600"},
 	{"all"   , "ignoretlserr" , "false"},
 	{"all"   , "histviewsize" , "99"},
 	{"all"   , "histimgs"     , "99"},
 	{"all"   , "histimgsize"  , "222"},
-	{"all"   , "searchstrmax" , "99"},
 	//compatibility
 	{"all"   , "pointerwarp"  , "false"},
 
@@ -182,14 +164,30 @@ Conf dconf[] = {
 	{"set:image" , "hintstyle"    ,
 		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
 
+	//core
+	{DSET    , "editor"           , MIMEOPEN,
+		"\ncore\n\n"
+		"editor=xterm -e mimeopen %s\n"
+		"editor=gvim --servername "APP" --remote-silent \"%s\""
+	},
+	{DSET    , "mdeditor"         , ""},
+	{DSET    , "diropener"        , MIMEOPEN, "diropener=xterm -e mimeopen %s"},
+	{DSET    , "generator"        , "markdown -f -style %s"},
+
+	//misc
+	{DSET    , "usercss"          , "user.css", "\nmisc\n\nusercss=user.css;user2.css"},
 	{DSET    , "search"           , DSEARCHKEY, "search="DSEARCH},
-	{DSET    , "usercss"          , "user.css", "usercss=user.css;user2.css"},
+	{DSET    , "searchstrmax"     , "99"},
 	{DSET    , "addressbar"       , "false"},
 	{DSET    , "msgcolor"         , "#c07"},
+	{DSET    , "msgmsec"          , "600"},
+	{DSET    , "keepfavicondb"    , "false"},
+	{DSET    , "newwinhandle"     , "normal", "notnew | ignore | back | normal"},
+	{DSET    , "scriptdialog"     , "true"},
 
 	//loading
 	{DSET    , "adblock"          , "true",
-		"This has a point only while "APP"adblock is working."
+		"\nloading\n\nThis has a point only while "APP"adblock is working."
 	},
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
@@ -199,39 +197,40 @@ Conf dconf[] = {
 		"removeheaders=Upgrade-Insecure-Requests;Referer;"},
 	{DSET    , "rmnoscripttag"    , "false"},
 
-	//event
-	{DSET    , "multiplescroll"   , "2"},
-	{DSET    , "newwinhandle"     , "normal",
-		"newwinhandle=notnew | ignore | back | normal"},
-	{DSET    , "scriptdialog"     , "true"},
-	{DSET    , "hjkl2arrowkeys"   , "false",
-		"hjkl's default are scrolls, not arrow keys"},
-
-	//link
-	{DSET    , "linkformat"       , "[%.40s](%s)"},
+	//bookmark
+	{DSET    , "linkformat"       , "[%.40s](%s)", "\nbookmark\n"},
 	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
 
 	//hint
-	{DSET    , "hintstyle"        , ""},
+	{DSET    , "hintstyle"        , "", "\nhint\n"},
+	{DSET    , "hintkeys"        , HINTKEYS},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "hintrangemax"     , "9"},
 	{DSET    , "rangeloopusec"    , "90000"},
 
 	//dl
-	{DSET    , "dlwithheaders"    , "false"},
+	{DSET    , "dlwithheaders"    , "false", "\ndownload\n"},
 	{DSET    , "dlmimetypes"      , "",
 		"dlmimetypes=text/plain;video/;audio/;application/\n"
 		"dlmimetypes=*"},
 	{DSET    , "dlsubdir"         , ""},
+	{DSET    , "dlwinback"        , "true"},
+	{DSET    , "dlwinclosemsec"   , "3000"},
 
 	//script
-	{DSET    , "spawnmsg"         , "false"},
+	{DSET    , "spawnmsg"         , "false", "\nscript\n"},
 
 	{DSET    , "onstartmenu"      , "",
 		"onstartmenu spawns a file in the menu dir when load started before redirect"},
 	{DSET    , "onloadmenu"       , "", "when load commited"},
 	{DSET    , "onloadedmenu"     , "", "when load finished"},
 
+	//input
+	{DSET    , "multiplescroll"   , "2", "\ninput\n"},
+	{DSET    , "keybindswaps"     , "",
+		"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
+	{DSET    , "hjkl2arrowkeys"   , "false",
+		"hjkl's default are scrolls, not arrow keys"},
 	{DSET    , "mdlbtnlinkaction" , "openback"},
 	{DSET    , "mdlbtnleft"       , "prevwin", "mdlbtnleft=winlist"},
 	{DSET    , "mdlbtnright"      , "nextwin"},
@@ -262,22 +261,29 @@ static char *confcstr(char *key)
 {//return is static string
 	static char *str = NULL;
 	GFA(str, g_key_file_get_string(conf, "all", key, NULL))
-	return str;
+	return str ? *str ? str : NULL : NULL;
 }
 static char *getset(WP *wp, char *key)
 {//return is static string
-	static char *ret = NULL;
 	if (!wp)
 	{
+		static char *ret = NULL;
 		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
 		return ret;
 	}
-	return g_object_get_data(wp->seto, key);
+	return g_object_get_data(wp->seto, key) ?: confcstr(key)/*backward*/;
 }
 static bool getsetbool(WP *wp, char *key)
 { return !g_strcmp0(getset(wp, key), "true"); }
 static int getsetint(WP *wp, char *key)
 { return atoi(getset(wp, key) ?: "0"); }
+#ifdef MAINC
+static char **getsetsplit(WP *wp, char *key)
+{
+	char *tmp = getset(wp, key);
+	return tmp ? g_strsplit(tmp, ";", -1) : NULL;
+}
+#endif
 
 
 static char *path2conf(const char *name)
@@ -445,7 +451,7 @@ static void initconf(GKeyFile *kf)
 	if (!kf)
 	{
 		g_key_file_set_value(  conf, DSET, "dummy", "endof"APP);
-		g_key_file_set_comment(conf, DSET, "dummy", "\nWebkit's settings", NULL);
+		g_key_file_set_comment(conf, DSET, "dummy", "\nWebkit's settings\n", NULL);
 		g_key_file_remove_key( conf, DSET, "dummy", NULL);
 	}
 
@@ -463,7 +469,7 @@ static void initconf(GKeyFile *kf)
 	//sample and comment
 	g_key_file_set_comment(conf, "all", NULL,
 			"Basically "APP" doesn't cut spaces."
-			" Also true is only 'true' not 'True'\n", NULL);
+			" Also true is only 'true' not 'True'", NULL);
 	g_key_file_set_comment(conf, "template", NULL,
 			"Unlike the search group, the arg is not escaped\n"
 			"but can be called the same as the search", NULL);
@@ -472,8 +478,8 @@ static void initconf(GKeyFile *kf)
 			"It is enabled by actions(set/set2/setstack) or included by others"
 			, NULL);
 	g_key_file_set_comment(conf, DSET, NULL,
-			"Default of 'set's\n"
-			"You can use set;'s keys in set:* and uri:*", NULL);
+			"\n\nDefault of 'set's\n"
+			"You can use set;'s keys in set:* and uri:*\n\n", NULL);
 	g_key_file_set_comment(conf, DSET, "hardware-acceleration-policy",
 			"ON_DEMAND | ALWAYS | NEVER", NULL);
 

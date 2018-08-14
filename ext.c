@@ -1280,7 +1280,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 	}
 	else
 		hintkeys = page->lasthintkeys;
-	if (strlen(hintkeys) < 3) hintkeys = HINTKEYS;
+	if (strlen(hintkeys ?: "") < 3) hintkeys = HINTKEYS;
 
 	rmhint(page);
 	page->apkeys = ipkeys;
@@ -1841,13 +1841,13 @@ void ipccb(const char *line)
 			page->rangestart = NULL;
 			page->script = *arg == 'y';
 		}
-gint64 start = g_get_monotonic_time();
-		if (!makehint(page, type, confcstr("hintkeys"), ipkeys))
+//gint64 start = g_get_monotonic_time();
+		if (!makehint(page, type, getset(page, "hintkeys"), ipkeys))
 		{
 			send(page, "showmsg", "No hint");
 			send(page, "tonormal", NULL);
 		}
-D(time %f, (g_get_monotonic_time() - start) / 1000000.0)
+//D(time %f, (g_get_monotonic_time() - start) / 1000000.0)
 		break;
 	case Ctext:
 	{
