@@ -1276,7 +1276,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 	if (hintkeys)
 	{
 		g_free(page->lasthintkeys);
-		page->lasthintkeys = g_strdup(hintkeys);
+		hintkeys = page->lasthintkeys = g_strdup(hintkeys);
 	}
 	else
 		hintkeys = page->lasthintkeys;
