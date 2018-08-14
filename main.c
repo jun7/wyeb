@@ -1511,16 +1511,11 @@ static void putkey(Win *win, guint key)
 
 static void command(Win *win, const char *cmd, const char *arg)
 {
-	cmd = g_strdup(cmd);
-	_showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg));
-
+	cmd = sfree(g_strdup_printf(cmd, arg));
+	_showmsg(win, g_strdup_printf("Run '%s'", cmd));
 	GError *err = NULL;
-	if (!g_spawn_command_line_async(sfree(g_strdup_printf(cmd, arg)), &err))
-	{
-		alert(err->message);
-		g_error_free(err);
-	}
-	g_free(cmd);
+	if (!g_spawn_command_line_async(cmd, &err))
+		alert(err->message), g_error_free(err);
 }
 
 static void openeditor(Win *win, const char *path, char *editor)
