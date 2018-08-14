@@ -1511,6 +1511,7 @@ static void putkey(Win *win, guint key)
 
 static void command(Win *win, const char *cmd, const char *arg)
 {
+	cmd = g_strdup(cmd);
 	_showmsg(win, g_strdup_printf("Run '%s' with '%s'", cmd, arg));
 
 	GError *err = NULL;
@@ -1519,6 +1520,7 @@ static void command(Win *win, const char *cmd, const char *arg)
 		alert(err->message);
 		g_error_free(err);
 	}
+	g_free(cmd);
 }
 
 static void openeditor(Win *win, const char *path, char *editor)

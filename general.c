@@ -271,7 +271,7 @@ static char *getset(WP *wp, char *key)
 		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
 		return ret ? *ret ? ret : NULL : NULL;
 	}
-	return confcstr(key)/*backward*/ ?: g_object_get_data(wp->seto, key);
+	return confcstr(key) ?: g_object_get_data(wp->seto, key);
 }
 static bool getsetbool(WP *wp, char *key)
 { return !g_strcmp0(getset(wp, key), "true"); }
@@ -469,7 +469,8 @@ static void initconf(GKeyFile *kf)
 	//sample and comment
 	g_key_file_set_comment(conf, "all", NULL,
 			"Basically "APP" doesn't cut spaces."
-			" Also true is only 'true' not 'True'", NULL);
+			" Also true is only 'true' not 'True'"
+			"\n\n'all' overwrites the 'set's", NULL);
 	g_key_file_set_comment(conf, "template", NULL,
 			"Unlike the search group, the arg is not escaped\n"
 			"but can be called the same as the search", NULL);
