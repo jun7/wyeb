@@ -1289,7 +1289,7 @@ static void envspawn(Win *win,
 		{
 			showmsg(win, err->message);
 			g_error_free(err);
-			goto out;
+			return;
 		}
 	} else {
 		argv = g_new0(char*, 2);
@@ -1416,9 +1416,6 @@ static void envspawn(Win *win,
 	g_strfreev(envp);
 	g_strfreev(argv);
 	g_free(dir);
-
-out:
-	nextspawn(win, "", NULL, NULL);
 }
 
 static void scroll(Win *win, int x, int y)
