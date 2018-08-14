@@ -125,9 +125,11 @@ typedef struct _WP {
 
 	//hint
 	char    com; //Coms
-	char   *action; //const. do not free
-	char   *spawn;
-	char   *spawndir;
+	//hint and spawn
+	const char *action;
+	//spawn
+	char   *command;
+	char   *current;
 
 	//misc
 	bool    scheme;
@@ -1252,19 +1254,37 @@ out:
 static void openuri(Win *win, const char *str)
 { _openuri(win, str, NULL); }
 
-static void spawnwithenv(Win *win, const char *shell, char* path,
-		bool iscallback, char *result,
-		char *piped, gsize plen)
+static void nextspawn(Win *win,
+		const char *action, const char *shell, const char *path)
 {
+	win->action = action;
+	GFA(win->command, g_strdup(shell));
+	GFA(win->current, g_strdup(path));
+}
+static void envspawn(Win *win,
+		bool iscallback, char *result, char *piped, gsize plen)
+{
+	if (!isin(wins, win)) return;
+
+	char *shell = win->command;
+	char *path  = win->current;
+
 	char **argv;
 	if (shell)
 	{
 		GError *err = NULL;
-		if (!g_shell_parse_argv(shell, NULL, &argv, &err))
+		if (*win->action == 's' && 'h' == win->action[1])
+		{
+			argv = g_new0(char*, 4);
+			argv[0] = g_strdup("sh");
+			argv[1] = g_strdup("-c");
+			argv[2] = g_strdup(shell);
+		}
+		else if (!g_shell_parse_argv(shell, NULL, &argv, &err))
 		{
 			showmsg(win, err->message);
 			g_error_free(err);
-			return;
+			goto out;
 		}
 	} else {
 		argv = g_new0(char*, 2);
@@ -1391,6 +1411,9 @@ static void spawnwithenv(Win *win, const char *shell, char* path,
 	g_strfreev(envp);
 	g_strfreev(argv);
 	g_free(dir);
+
+out:
+	nextspawn(win, "", NULL, NULL);
 }
 
 static void scroll(Win *win, int x, int y)
@@ -1922,10 +1945,6 @@ static void findnext(Win *win, bool next)
 
 static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 {
-	if (!p) return;
-	GSList *sp = p;
-	if (!sp->data) goto out;
-
 	GError *err = NULL;
 	WebKitJavascriptResult *res =
 		webkit_web_view_run_javascript_finish(WEBKIT_WEB_VIEW(po), pres, &err);
@@ -1960,13 +1979,8 @@ static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 		g_error_free(err);
 	}
 
-	Win *win = g_object_get_data(po, "win");
-	if (isin(wins, win))
-		spawnwithenv(win, sp->data, sp->next->data, true, resstr, NULL, 0);
-
+	envspawn(p, true, resstr, NULL, 0);
 	g_free(resstr);
-out:
-	g_slist_free_full(sp, g_free);
 }
 static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 {
@@ -1974,12 +1988,7 @@ static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 	guchar *data = webkit_web_resource_get_data_finish(
 			(WebKitWebResource *)srco, res, &len, NULL);
 
-	void **args = p;
-	if (isin(wins, args[0]))
-		spawnwithenv(args[0], args[1], args[2], true, NULL, (char *)data, len);
-	g_free(args[1]);
-	g_free(args[2]);
-	g_free(args);
+	envspawn(p, true, NULL, (char *)data, len);
 	g_free(data);
 }
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
@@ -1994,12 +2003,7 @@ static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 		g_list_free_full(gl, (GDestroyNotify)soup_cookie_free);
 	}
 
-	void **args = p;
-	if (isin(wins, args[0]))
-		spawnwithenv(args[0], args[1], args[2], true, header ?: "", NULL, 0);
-	g_free(args[1]);
-	g_free(args[2]);
-	g_free(args);
+	envspawn(p, true, header ?: "", NULL, 0);
 	g_free(header);
 }
 #endif
@@ -2157,16 +2161,17 @@ static Keybind dkeys[]= {
 	{"winsize"       , 0, 0, "w:h"},
 	{"click"         , 0, 0, "x:y"},
 	{"openeditor"    , 0, 0},
+
 	{"spawn"         , 0, 0, "arg is called with environment variables"},
-	{"jscallback"    , 0, 0, "Runs script of arg1 then arg2 is called with $RESULT"},
-	{"tohintcallback", 0, 0,
-		"arg is called with env selected by hint"},
-	{"tohintrange"   , 0, 0, "Same as tohintcallback but range"},
-//for backward, naming resource is good
-	{"sourcecallback", 0, 0, "The web resource is sent via pipe"},
+
+	{"sh"            , 0, 0, "sh -c arg with env vars"},
+	{"shjs"          , 0, 0, "sh(arg2) with javascript(arg)'s $RESULT"},
+	{"shhint"        , 0, 0, "sh with envs selected by a hint"},
+	{"shrange"       , 0, 0, "sh with envs selected by ranged hints"},
+	{"shsrc"         , 0, 0, "sh with src of current page via pipe"},
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
-	{"cookies"       , 0, 0,
-		"` "APP" // cookies $URI 'sh -c \"echo $RESULT\"' ` prints headers."
+	{"shcookie"      , 0, 0,
+		"` "APP" // cookies $URI 'echo $RESULT' ` prints headers."
 			"\n  Make sure, the callbacks of "APP" are async."
 			"\n  The stdout is not caller's but first process's stdout."},
 #endif
@@ -2209,9 +2214,11 @@ static char *ke2name(GdkEventKey *ke)
 }
 //declaration
 static Win *newwin(const char *uri, Win *cbwin, Win *caller, int back);
-static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exarg)
+static bool _run(Win *win, const char* action, const char *arg, char *cdir, char *exarg)
 {
+	const char *zz = NULL;
 #define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
+#define ZZ(t1, t2, f) Z((zz = t1), f) Z((zz = t2), f)
 	//D(action %s, action)
 	if (action == NULL) return false;
 	char **agv = NULL;
@@ -2250,7 +2257,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 		action = win->action;
 		if (!strcmp(action, "bookmark"))
 			arg = strchr(orgarg, ' ') + 1;
-		else if (!strcmp(action, "spawn"))
+		else if (!strcmp(action, "spawn") || !strcmp(action, "sh"))
 		{
 			setresult(win, NULL);
 			win->linklabel = g_strdup(agv[2]);
@@ -2263,8 +2270,9 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 			case 'm':
 				win->media = g_strdup(arg); break;
 			}
-			arg = win->spawn;
-			cdir = win->spawndir;
+
+			envspawn(win, true, exarg, NULL, 0);
+			goto out;
 		}
 	}
 
@@ -2315,24 +2323,23 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 			makeclick(win, win->pbtn ?: 1);
 		)
 		Z("openeditor", openeditor(win, arg, NULL))
-		Z("spawn"   , spawnwithenv(win, arg, cdir, true, exarg, NULL, 0))
-		Z("jscallback"    ,
-			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb,
-				g_slist_prepend(g_slist_prepend(NULL,
-						g_strdup(cdir)), g_strdup(exarg))))
-		Z("sourcecallback",
+		ZZ("sh", "spawn",
+				nextspawn(win, zz, arg, cdir);
+				envspawn(win, true, exarg, NULL, 0))
+		ZZ("shjs", "jscallback"/*backward*/,
+			nextspawn(win, zz, exarg, cdir);
+			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb, win))
+		ZZ("shsrc", "sourcecallback"/*backward*/,
 			WebKitWebResource *res =
 				webkit_web_view_get_main_resource(win->kit);
-			webkit_web_resource_get_data(res, NULL, resourcecb,
-				g_memdup((void *[]){win, g_strdup(arg), g_strdup(cdir)},
-					sizeof(void *) * 3)))
+			nextspawn(win, zz, arg, cdir);
+			webkit_web_resource_get_data(res, NULL, resourcecb, win))
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
-		Z("cookies"  ,
+		ZZ("shcookie", "cookies"/*backward*/,
 			WebKitCookieManager *cm =
 				webkit_web_context_get_cookie_manager(ctx);
-			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb,
-				g_memdup((void *[]){win, g_strdup(exarg), g_strdup(cdir)},
-					sizeof(void *) * 3)))
+			nextspawn(win, zz, exarg, cdir);
+			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb, win))
 #endif
 	}
 
@@ -2356,26 +2363,23 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 		goto out;
 	}
 
-#define H(str, pcom, paction, func) \
-	Z(str, win->com = pcom; win->action = paction; win->mode = Mhint; func)
-	H("tohint"        , Cclick, ""        , ) //click
-	H("tohintopen"    , Clink , "open"    , )
-	H("tohintnew"     , Clink , "opennew" , )
-	H("tohintback"    , Clink , "openback", )
-	H("tohintdl"      , Curi  ,
-		getsetbool(win, "dlwithheaders") ? "dlwithheaders" :"download", )
-	H("tohintbookmark", Curi  , "bookmark", )
-	H("tohintrangenew", Crange, "spawn"   , win->mode = Mhintrange;
-		GFA(win->spawn, g_strdup("sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\""))
-		GFA(win->spawndir, NULL))
+#define H(str, pcom, paction, arg, dir, pmode) Z(str, win->com = pcom; \
+		nextspawn(win, paction, arg, dir); win->mode = pmode)
+	H("tohint"        , Cclick, ""        , NULL, NULL, Mhint) //click
+	H("tohintopen"    , Clink , "open"    , NULL, NULL, Mhint)
+	H("tohintnew"     , Clink , "opennew" , NULL, NULL, Mhint)
+	H("tohintback"    , Clink , "openback", NULL, NULL, Mhint)
+	H("tohintdl"      , Curi  , getsetbool(win, "dlwithheaders") ?
+			"dlwithheaders" : "download"  , NULL, NULL, Mhint)
+	H("tohintbookmark", Curi  , "bookmark", NULL, NULL, Mhint)
+	H("tohintrangenew", Crange, "sh"      ,
+			APP" // opennew $MEDIA_IMAGE_LINK"  , NULL, Mhintrange)
 
 	if (arg != NULL) {
-	H("tohintrange"   , Crange, "spawn"   , win->mode = Mhintrange;
-		GFA(win->spawn, g_strdup(arg))
-		GFA(win->spawndir, g_strdup(cdir)))
-	H("tohintcallback", Cspawn, "spawn"   ,
-		GFA(win->spawn, g_strdup(arg))
-		GFA(win->spawndir, g_strdup(cdir)))
+	H("shhint"        , Cspawn, "sh"      , arg , cdir, Mhint)
+	H("tohintcallback", Cspawn, "spawn"   , arg , cdir, Mhint) //backward
+	H("shrange"       , Crange, "sh"      , arg , cdir, Mhintrange)
+	H("tohintrange"   , Crange, "spawn"   , arg , cdir, Mhintrange) //backward
 	}
 #undef H
 
@@ -2563,6 +2567,7 @@ static bool _run(Win *win, char* action, const char *arg, char *cdir, char *exar
 	g_free(msg);
 	return false;
 
+#undef ZZ
 #undef Z
 out:
 	update(win);
@@ -3254,9 +3259,9 @@ static void destroycb(Win *win)
 
 	g_free(win->histstr);
 
-	//hint
-	g_free(win->spawn);
-	g_free(win->spawndir);
+	//spawn
+	g_free(win->command);
+	g_free(win->current);
 
 	g_free(win);
 }
@@ -3853,9 +3858,9 @@ static void setspawn(Win *win, char *key)
 	char *fname = getset(win, key);
 	if (fname)
 	{
-		char *path = g_build_filename(sfree(path2conf("menu")), fname, NULL);
-		spawnwithenv(win, NULL, path, false, NULL, NULL, 0);
-		g_free(path);
+		nextspawn(win, "", NULL, sfree(
+					g_build_filename(sfree(path2conf("menu")), fname, NULL)));
+		envspawn(win, false, NULL, NULL, 0);
 	}
 }
 static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
@@ -3981,7 +3986,8 @@ static void clearai(gpointer p)
 }
 static gboolean actioncb(char *path)
 {
-	spawnwithenv(LASTWIN, NULL, path, false, NULL, NULL, 0);
+	nextspawn(LASTWIN, "", NULL, path);
+	envspawn(LASTWIN, false, NULL, NULL, 0);
 	return true;
 }
 static guint menuhash = 0;
@@ -4091,9 +4097,9 @@ static void addscript(char *dir, char *name, char *script)
 	g_free(ap);
 }
 static char *menuitems[][2] =
- {{".openBackRange"   , APP" // tohintrange 'sh -c \""APP" // openback $MEDIA_IMAGE_LINK\"'"
-},{".openNewSrcURI"   , APP" // tohintcallback 'sh -c \""APP" // opennew $MEDIA_IMAGE_LINK\"'"
-},{".openWithRef"     , APP" // tohintcallback 'sh -c \""APP" // openwithref $MEDIA_IMAGE_LINK\"'"
+ {{".openBackRange"   , APP" // shrange '"APP" // openback $MEDIA_IMAGE_LINK'"
+},{".openNewSrcURI"   , APP" // shhint '"APP" // opennew $MEDIA_IMAGE_LINK'"
+},{".openWithRef"     , APP" // shhint '"APP" // openwithref $MEDIA_IMAGE_LINK'"
 },{"0editMenu"        , APP" // openconfigdir menu"
 },{"1bookmark"        , APP" // bookmark \"$LINK_OR_URI $LABEL_OR_TITLE\""
 },{"1duplicate"       , APP" // opennew $URI"
@@ -4108,7 +4114,7 @@ static char *menuitems[][2] =
 },{"3openSelectionNew", APP" // opennew \"$PRIMARY\""
 },{"6searchDictionary", APP" // open \"u $PRIMARY\""
 },{"9---"             , ""
-},{"cviewSource"      , APP" // sourcecallback 'sh -c \"d=\\\"$DLDIR/"APP"-source\\\" && tee > \\\"$d\\\" && mimeopen -n \\\"$d\\\"\"'"
+},{"cviewSource"      , APP" // shsrc 'd=\"$DLDIR/"APP"-source\" && tee > \"$d\" && mimeopen -n \"$d\"'"
 },{"v---"             , ""
 },{"vchromium"        , "chromium $LINK_OR_URI"
 },{"xnoSuffixProcess" , APP" / new $LINK_OR_URI"
