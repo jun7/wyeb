@@ -2553,13 +2553,10 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 
 	Z("textlink", textlinktry(win));
 	Z("raise"   , present(arg ? winbyid(arg) ?: win : win))
-	if (!strcmp(action, "winpos") || !strcmp(action, "winsize"))
-	{
+	ZZ("winpos", "winsize",
 		agv = g_strsplit(arg ?: "100:100", ":", 2);
 		(!strcmp(action, "winpos") ? gtk_window_move : gtk_window_resize)
-			(win->win, atoi(*agv), atoi(agv[1] ?: exarg));
-		goto out;
-	}
+			(win->win, atoi(*agv), atoi(agv[1] ?: exarg)))
 
 	char *msg = g_strdup_printf("Invalid action! %s arg: %s", action, arg);
 	showmsg(win, msg);
