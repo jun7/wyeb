@@ -40,6 +40,8 @@ typedef enum {
 	Mpointer   = 8192,
 } Modes;
 
+typedef struct _Spawn Spawn;
+
 typedef struct _WP {
 	union {
 		GtkWindow *win;
@@ -126,10 +128,7 @@ typedef struct _WP {
 	//hint
 	char    com; //Coms
 	//hint and spawn
-	const char *action;
-	//spawn
-	char   *command;
-	char   *current;
+	Spawn  *spawn;
 
 	//misc
 	bool    scheme;
@@ -141,6 +140,14 @@ typedef struct _WP {
 	bool cancelbtn1r;
 	bool cancelmdlr;
 } Win;
+
+struct _Spawn {
+	Win  *win;
+	const char *action;
+	char *cmd;
+	char *path;
+	bool once;
+};
 
 //@global
 static char      *suffix = "";
@@ -1263,48 +1270,53 @@ out:
 static void openuri(Win *win, const char *str)
 { _openuri(win, str, NULL); }
 
-static void nextspawn(Win *win,
-		const char *action, const char *shell, const char *path)
+static Spawn *spawnp(Win *win,
+		const char *action, const char *cmd, const char *path, bool once)
 {
-	win->action = action;
-	GFA(win->command, g_strdup(shell));
-	GFA(win->current, g_strdup(path));
+	Spawn ret = {win, action, g_strdup(cmd), g_strdup(path), once};
+	return g_memdup(&ret, sizeof(Spawn));
 }
-static void envspawn(Win *win,
+static void spawnfree(Spawn* s, bool force)
+{
+	if (!s || (!s->once && !force)) return;
+	g_free(s->cmd);
+	g_free(s->path);
+	g_free(s);
+}
+static void envspawn(Spawn *p,
 		bool iscallback, char *result, char *piped, gsize plen)
 {
-	if (!isin(wins, win)) return;
-
-	char *shell = win->command;
-	char *path  = win->current;
+	Win *win = p->win;
+	if (!isin(wins, win)) goto out;
 
 	char **argv;
-	if (shell)
+	if (p->cmd)
 	{
 		GError *err = NULL;
-		if (*win->action == 's' && 'h' == win->action[1])
+		if (*p->action == 's' && 'h' == p->action[1])
 		{
 			argv = g_new0(char*, 4);
 			argv[0] = g_strdup("sh");
 			argv[1] = g_strdup("-c");
-			argv[2] = g_strdup(shell);
+			argv[2] = g_strdup(p->cmd);
 		}
-		else if (!g_shell_parse_argv(shell, NULL, &argv, &err))
+		else if (!g_shell_parse_argv(p->cmd, NULL, &argv, &err))
 		{
 			showmsg(win, err->message);
 			g_error_free(err);
-			return;
+			goto out;
 		}
 	} else {
 		argv = g_new0(char*, 2);
-		argv[0] = g_strdup(path);
+		argv[0] = g_strdup(p->path);
 	}
 
 	if (getsetbool(win, "spawnmsg"))
-		_showmsg(win, g_strdup_printf("spawn: %s", shell ?: path));
+		_showmsg(win, g_strdup_printf("spawn: %s", p->cmd ?: p->path));
 
-	char *dir = shell ?
-		(path ? g_strdup(path) : path2conf("menu")) : g_path_get_dirname(path);
+	char *dir = p->cmd ?
+		(p->path ? g_strdup(p->path) : path2conf("menu"))
+		: g_path_get_dirname(p->path);
 
 	char **envp = g_get_environ();
 	envp = g_environ_setenv(envp, "ISCALLBACK",
@@ -1393,7 +1405,7 @@ static void envspawn(Win *win,
 			:
 			!g_spawn_async(
 				dir, argv, envp,
-				shell ? G_SPAWN_SEARCH_PATH : G_SPAWN_DEFAULT,
+				p->cmd ? G_SPAWN_SEARCH_PATH : G_SPAWN_DEFAULT,
 				NULL, NULL, &child_pid, &err))
 	{
 		showmsg(win, err->message);
@@ -1420,6 +1432,9 @@ static void envspawn(Win *win,
 	g_strfreev(envp);
 	g_strfreev(argv);
 	g_free(dir);
+
+out:
+	spawnfree(p, false);
 }
 
 static void scroll(Win *win, int x, int y)
@@ -2254,7 +2269,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 		agv = g_strsplit(++arg, " ", 3);
 		arg = agv[1];
 
-		action = win->action;
+		action = win->spawn->action;
 		if (!strcmp(action, "bookmark"))
 			arg = strchr(orgarg, ' ') + 1;
 		else if (!strcmp(action, "spawn") || !strcmp(action, "sh"))
@@ -2271,7 +2286,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 				win->media = g_strdup(arg); break;
 			}
 
-			envspawn(win, true, exarg, NULL, 0);
+			envspawn(win->spawn, true, exarg, NULL, 0);
 			goto out;
 		}
 	}
@@ -2324,22 +2339,23 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 		)
 		Z("openeditor", openeditor(win, arg, NULL))
 		ZZ("sh", "spawn",
-				nextspawn(win, zz, arg, cdir);
-				envspawn(win, true, exarg, NULL, 0))
+				envspawn(spawnp(win, zz, arg, cdir, true)
+					, true, exarg, NULL, 0))
 		ZZ("shjs", "jscallback"/*backward*/,
-			nextspawn(win, zz, exarg, cdir);
-			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb, win))
+			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb
+				, spawnp(win, zz, exarg, cdir, true)))
 		ZZ("shsrc", "sourcecallback"/*backward*/,
 			WebKitWebResource *res =
 				webkit_web_view_get_main_resource(win->kit);
-			nextspawn(win, zz, arg, cdir);
-			webkit_web_resource_get_data(res, NULL, resourcecb, win))
+			webkit_web_resource_get_data(res, NULL, resourcecb
+				, spawnp(win, zz, arg, cdir, true));
+			)
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
 		ZZ("shcookie", "cookies"/*backward*/,
 			WebKitCookieManager *cm =
 				webkit_web_context_get_cookie_manager(ctx);
-			nextspawn(win, zz, exarg, cdir);
-			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb, win))
+			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb
+				, spawnp(win, zz, exarg, cdir, true)))
 #endif
 	}
 
@@ -2364,7 +2380,9 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	}
 
 #define H(str, pcom, paction, arg, dir, pmode) Z(str, win->com = pcom; \
-		nextspawn(win, paction, arg, dir); win->mode = pmode)
+		spawnfree(win->spawn, true); \
+		win->spawn = spawnp(win, paction, arg, dir, false); \
+		win->mode = pmode)
 	H("tohint"        , Cclick, ""        , NULL, NULL, Mhint) //click
 	H("tohintopen"    , Clink , "open"    , NULL, NULL, Mhint)
 	H("tohintnew"     , Clink , "opennew" , NULL, NULL, Mhint)
@@ -3260,8 +3278,7 @@ static void destroycb(Win *win)
 	g_free(win->histstr);
 
 	//spawn
-	g_free(win->command);
-	g_free(win->current);
+	spawnfree(win->spawn, true);
 
 	g_free(win);
 }
@@ -3857,12 +3874,9 @@ static gboolean sdialogcb(Win *win)
 static void setspawn(Win *win, char *key)
 {
 	char *fname = getset(win, key);
-	if (fname)
-	{
-		nextspawn(win, "", NULL, sfree(
-					g_build_filename(sfree(path2conf("menu")), fname, NULL)));
-		envspawn(win, false, NULL, NULL, 0);
-	}
+	if (!fname) return;
+	char *path = sfree(g_build_filename(sfree(path2conf("menu")), fname, NULL));
+	envspawn(spawnp(win, "", NULL , path, true) , false, NULL, NULL, 0);
 }
 static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 {
@@ -3987,8 +4001,7 @@ static void clearai(gpointer p)
 }
 static gboolean actioncb(char *path)
 {
-	nextspawn(LASTWIN, "", NULL, path);
-	envspawn(LASTWIN, false, NULL, NULL, 0);
+	envspawn(spawnp(LASTWIN, "", NULL, path, true), false, NULL, NULL, 0);
 	return true;
 }
 static guint menuhash = 0;
