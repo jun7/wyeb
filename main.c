@@ -4225,7 +4225,6 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		if (!(ke->state & GDK_CONTROL_MASK)) return false;
 	case GDK_KEY_KP_Enter:
 	case GDK_KEY_Return:
-	{
 		switch (win->mode) {
 		case Mfind:
 			if (!win->infind || !findtxt(win) || strcmp(findtxt(win), getent(win)))
@@ -4242,7 +4241,6 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		}
 		tonormal(win);
 		return true;
-	}
 	case GDK_KEY_Escape:
 		if (win->mode == Mfind)
 			webkit_find_controller_search_finish(win->findct);
@@ -4269,7 +4267,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	case GDK_KEY_e:
 		gtk_editable_set_position(e, -1); break;
 	case GDK_KEY_b:
-		gtk_editable_set_position(e, pos - 1); break;
+		gtk_editable_set_position(e, MAX(0, pos - 1)); break;
 	case GDK_KEY_f:
 		gtk_editable_set_position(e, pos + 1); break;
 
@@ -4278,10 +4276,8 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 	case GDK_KEY_h:
 		gtk_editable_delete_text(e, pos - 1, pos); break;
 	case GDK_KEY_k:
-	{
 		GFA(buf, g_strdup(gtk_editable_get_chars(e, pos, -1)));
 		gtk_editable_delete_text(e, pos, -1); break;
-	}
 	case GDK_KEY_w:
 		for (int i = pos; i > 0; i--)
 		{
@@ -4292,20 +4288,15 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 				break;
 		}
 	case GDK_KEY_u:
-	{
 		GFA(buf, g_strdup(gtk_editable_get_chars(e, wpos, pos)));
 		gtk_editable_delete_text(e, wpos, pos);
 		break;
-	}
 	case GDK_KEY_y:
-	{
-		int ret = pos;
-		gtk_editable_insert_text(e, buf ?: "", -1, &ret);
-		gtk_editable_select_region(e, pos, ret);
+		wpos = pos;
+		gtk_editable_insert_text(e, buf ?: "", -1, &wpos);
+		gtk_editable_select_region(e, pos, wpos);
 		break;
-	}
 	case GDK_KEY_t:
-	{
 		if (pos == 0) pos++;
 		gtk_editable_set_position(e, -1);
 		int chk = gtk_editable_get_position(e);
@@ -4320,7 +4311,6 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 		gtk_editable_set_position(e, pos);
 		g_free(rm);
 		break;
-	}
 	case GDK_KEY_l:
 	{
 		int ss, se;

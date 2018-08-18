@@ -479,7 +479,7 @@ static void initconf(GKeyFile *kf)
 			"It is enabled by actions(set/set2/setstack) or included by others"
 			, NULL);
 	g_key_file_set_comment(conf, DSET, NULL,
-			"\n\nDefault of 'set's\n"
+			"\n\nDefaults of 'set's\n"
 			"You can use set;'s keys in set:* and uri:*\n\n", NULL);
 	g_key_file_set_comment(conf, DSET, "hardware-acceleration-policy",
 			"ON_DEMAND | ALWAYS | NEVER", NULL);
