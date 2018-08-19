@@ -151,30 +151,30 @@ struct _Spawn {
 
 //@global
 static char      *suffix = "";
-static GPtrArray *wins = NULL;
-static GPtrArray *dlwins = NULL;
-static GQueue    *histimgs = NULL;
+static GPtrArray *wins;
+static GPtrArray *dlwins;
+static GQueue    *histimgs;
 typedef struct {
 	char   *buf;
 	gsize   size;
 	guint64 id;
 } Img;
-static char *lastmsg = NULL;
+static char *lastmsg;
 
-static char *mdpath = NULL;
-static char *accelp = NULL;
+static char *mdpath;
+static char *accelp;
 
 static char *hists[]  = {"h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9", NULL};
 static int   histfnum = sizeof(hists) / sizeof(*hists) - 1;
-static char *histdir  = NULL;
+static char *histdir;
 
-static GtkAccelGroup *accelg = NULL;
-static WebKitWebContext *ctx = NULL;
-static bool ephemeral = false;
+static GtkAccelGroup *accelg;
+static WebKitWebContext *ctx;
+static bool ephemeral;
 
 //for xembed
 #include <gtk/gtkx.h>
-static long plugto = 0;
+static long plugto;
 
 //shared code
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group);
@@ -326,8 +326,8 @@ static void pushimg(Win *win, bool swap)
 	}
 
 	Img *img = g_new(Img, 1);
-	static guint64 unique = 1;
-	img->id = unique++;
+	static guint64 unique;
+	img->id = ++unique;
 
 	GdkPixbuf *pix =
 		gdk_pixbuf_get_from_window(gdkw(win->kitw), 0, 0, ww, wh);
@@ -344,8 +344,8 @@ static void pushimg(Win *win, bool swap)
 
 	g_queue_push_head(histimgs, img);
 }
-static char *histfile = NULL;
-static char *lasthist = NULL;
+static char *histfile;
+static char *lasthist;
 static gboolean histcb(Win *win)
 {
 	if (!isin(wins, win)) return false;
@@ -353,7 +353,7 @@ static gboolean histcb(Win *win)
 
 #define MAXSIZE 22222
 	static int ci = -1;
-	static int csize = 0;
+	static int csize;
 	if (!histfile || !g_file_test(histdir, G_FILE_TEST_EXISTS))
 	{
 		_mkdirif(histdir, false);
@@ -477,7 +477,7 @@ static void send(Win *win, Coms type, char *args)
 {
 	char *arg = g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: "");
 
-	static bool alerted = false;
+	static bool alerted;
 	if(!ipcsend(shared ? "ext" : win->pageid, arg) &&
 			!win->crashed && !alerted && type == Cstart)
 	{
@@ -877,7 +877,7 @@ static void checkwb(const char *mp)
 }
 static void preparewb()
 {
-	static char *wbpath = NULL;
+	static char *wbpath;
 	prepareif(&wbpath, "whiteblack.conf",
 			"# First char is 'w':white list or 'b':black list.\n"
 			"# Second and following chars are regular expressions.\n"
@@ -1228,7 +1228,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 		goto out;
 	}
 
-	static regex_t *url = NULL;
+	static regex_t *url;
 	if (!url)
 	{
 		url = g_new(regex_t, 1);
@@ -1510,7 +1510,7 @@ void pmove(Win *win, guint key)
 }
 static void altcur(Win *win, double x, double y)
 {
-	static GdkCursor *cur = NULL;
+	static GdkCursor *cur;
 	if (!cur) cur = gdk_cursor_new_for_display(
 			gdk_display_get_default(), GDK_CENTER_PTR);
 	if (x + y == 0)
@@ -2022,8 +2022,8 @@ static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 #endif
 
 //textlink
-static char *tlpath = NULL;
-static Win  *tlwin  = NULL;
+static char *tlpath;
+static Win  *tlwin;
 static void textlinkcheck(const char *mp)
 {
 	if (!isin(wins, tlwin)) return;
@@ -3471,7 +3471,7 @@ static void targetcb(
 	setresult(win, htr);
 	update(win);
 }
-static GdkEvent *pendingmiddlee = NULL;
+static GdkEvent *pendingmiddlee;
 static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	win->userreq = true;
@@ -3699,7 +3699,7 @@ typedef struct {
 	int times;
 	GdkEvent *e;
 } Scrl;
-static int scrlcnt = 0;
+static int scrlcnt;
 static gboolean multiscrlcb(Scrl *si)
 {
 	if (si->times--)
@@ -3959,10 +3959,10 @@ static gboolean failcb(WebKitWebView *k, WebKitLoadEvent event,
 	//D(failcb %d %d %s, err->domain, err->code, err->message)
 	// 2042 6 Unacceptable TLS certificate
 	// 2042 6 Error performing TLS handshake: An unexpected TLS packet was received.
-	static char *last = NULL;
+	static char *last;
 	if (err->code == 6 && confbool("ignoretlserr"))
 	{
-		static int count = 0;
+		static int count;
 		if (g_strcmp0(last, uri))
 			count = 0;
 		else if (++count > 2) //three times
@@ -4003,7 +4003,7 @@ static gboolean actioncb(char *path)
 	envspawn(spawnp(LASTWIN, "", NULL, path, true), false, NULL, NULL, 0);
 	return true;
 }
-static guint menuhash = 0;
+static guint menuhash;
 static GSList *dirmenu(
 		WebKitContextMenu *menu,
 		char *dir,
@@ -4086,7 +4086,7 @@ static GSList *dirmenu(
 	return ret;
 }
 static void makemenu(WebKitContextMenu *menu); //declaration
-static guint menudirtime = 0;
+static guint menudirtime;
 static gboolean menudirtimecb(gpointer p)
 {
 	makemenu(NULL);
@@ -4134,7 +4134,7 @@ static char *menuitems[][2] =
 },{NULL}};
 void makemenu(WebKitContextMenu *menu)
 {
-	static GSList *actions = NULL;
+	static GSList *actions;
 	static bool firsttime = true;
 
 	char *dir = path2conf("menu");
@@ -4249,7 +4249,7 @@ static gboolean entkeycb(GtkWidget *w, GdkEventKey *ke, Win *win)
 
 	if (!(ke->state & GDK_CONTROL_MASK)) return false;
 	//ctrls
-	static char *buf = NULL;
+	static char *buf;
 	int wpos = 0;
 	GtkEditable *e = (void *)w;
 	int pos = gtk_editable_get_position(e);

@@ -89,7 +89,7 @@ static void resetconf(Page *page, const char *uri, bool force)
 }
 
 
-static GPtrArray *pages = NULL;
+static GPtrArray *pages;
 
 static void freepage(Page *page)
 {
@@ -168,7 +168,7 @@ static JSCValue *pagejsv(Page *page, char *name)
 }
 static JSCValue *sdoc(Page *page)
 {
-	static JSCValue *s = NULL;
+	static JSCValue *s;
 	if (s) g_object_unref(s);
 	return s = pagejsv(page, "document");
 }
@@ -268,7 +268,7 @@ static void clearelm(Elm *elm)
 static char *stag(let elm)
 {
 	if (!elm) return NULL;
-	static char *name = NULL;
+	static char *name;
 	g_free(name);
 #if JSC
 	name = props(elm, "tagName");

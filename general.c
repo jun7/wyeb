@@ -82,15 +82,15 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 //the responsibility is on the one who using this for args
 static char *sfree(char *p)
 {
-	static void *s = NULL;
+	static void *s;
 	g_free(s);
 	return s = p;
 }
 
 static char *fullname = "";
 static bool shared = true;
-static GKeyFile *conf = NULL;
-static char *confpath = NULL;
+static GKeyFile *conf;
+static char *confpath;
 
 typedef struct _WP WP;
 
@@ -259,7 +259,7 @@ static double confdouble(char *key)
 #endif
 static char *confcstr(char *key)
 {//return is static string
-	static char *str = NULL;
+	static char *str;
 	GFA(str, g_key_file_get_string(conf, "all", key, NULL))
 	return str ? *str ? str : NULL : NULL;
 }
@@ -267,7 +267,7 @@ static char *getset(WP *wp, char *key)
 {//return is static string
 	if (!wp)
 	{
-		static char *ret = NULL;
+		static char *ret;
 		GFA(ret, g_key_file_get_string(conf, DSET, key, NULL))
 		return ret ? *ret ? ret : NULL : NULL;
 	}
@@ -302,7 +302,7 @@ static bool setprop(WP *wp, GKeyFile *kf, char *group, char *key)
 static void setprops(WP *wp, GKeyFile *kf, char *group)
 {
 	//sets
-	static int deps = 0;
+	static int deps;
 	if (deps > 99) return;
 	char **sets = g_key_file_get_string_list(kf, group, "sets", NULL, NULL);
 	for (char **set = sets; set && *set; set++) {
@@ -330,8 +330,8 @@ static void setprops(WP *wp, GKeyFile *kf, char *group)
 			setprop(wp, kf, group, dconf[i].key);
 }
 
-static GSList *regs = NULL;
-static GSList *regsrev = NULL;
+static GSList *regs;
+static GSList *regsrev;
 static void makeuriregs() {
 	for (GSList *next = regs; next; next = next->next)
 	{
@@ -578,7 +578,7 @@ static char *regesc(const char *str)
 //@ipc
 static char *ipcpath(char *name)
 {
-	static char *path = NULL;
+	static char *path;
 	GFA(path, g_build_filename(g_get_user_runtime_dir(), fullname, name, NULL));
 	mkdirif(path);
 	return path;
