@@ -3354,6 +3354,12 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 
 	if (action && !strcmp(action, "tonormal"))
 	{
+		if (win->lastx || win->lasty)
+		{
+			win->lastx = win->lasty = 0;
+			gtk_widget_queue_draw(win->kitw);
+		}
+
 		keyr = !(win->mode & (Mnormal | Minsert));
 
 		if (win->mode == Mpointer)
@@ -3574,20 +3580,13 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		break;
 	case 2:
 	{
-		double
-			deltax = (e->x - win->lastx),
-			deltay = e->y - win->lasty;
-
-		if (win->lastx == 0 && win->lasty == 0)
-			deltax = deltay = 0;
-
+		bool cancel = win->cancelmdlr || !(win->lastx + win->lasty);
+		double deltax = e->x - win->lastx;
+		double deltay = e->y - win->lasty;
 		win->lastx = win->lasty = 0;
+		win->cancelmdlr = false;
 
-		if (win->cancelmdlr)
-		{
-			win->cancelmdlr = false;
-			return true;
-		}
+		if (cancel) return true;
 
 		if (MAX(abs(deltax), abs(deltay)) < threshold(win))
 		{ //default
