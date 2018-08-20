@@ -985,7 +985,7 @@ static bool eachclick(let win, let cl,
 			div = true; //div is random
 
 		Elm elm = checkelm(win, frect, prect, te, true, true);
-		if (!elm.insight && (!div || elm.y > 1))
+		if (!elm.insight && !div)
 		{
 			jscunref(te);
 			continue;
