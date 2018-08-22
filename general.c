@@ -230,7 +230,7 @@ Conf dconf[] = {
 	{DSET    , "keybindswaps"     , "",
 		"keybindswaps=Xx;ZZ;zZ ->if typed x: x to X, if Z: Z to Z"},
 	{DSET    , "hjkl2arrowkeys"   , "false",
-		"hjkl's default are scrolls, not arrow keys"},
+		"hjkl's defaults are scrolls, not arrow keys"},
 	{DSET    , "mdlbtnlinkaction" , "openback"},
 	{DSET    , "mdlbtnleft"       , "prevwin", "mdlbtnleft=winlist"},
 	{DSET    , "mdlbtnright"      , "nextwin"},
