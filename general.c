@@ -187,7 +187,7 @@ Conf dconf[] = {
 
 	//loading
 	{DSET    , "adblock"          , "true",
-		"\nloading\n\nThis has a point only while "APP"adblock is working."
+		"\nloading\n\nadblock has a point only while "APP"adblock is working."
 	},
 	{DSET    , "reldomaindataonly", "false"},
 	{DSET    , "reldomaincutheads", "www.;wiki.;bbs.;developer."},
