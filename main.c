@@ -2707,7 +2707,8 @@ static void dlfincb(DLWin *win)
 		addlabel(win, sfree(g_strdup_printf("=>  %s", nfn)));
 		g_free(fn);
 
-		g_timeout_add(win->closemsec, (GSourceFunc)dlclosecb, win);
+		if (win->closemsec)
+			g_timeout_add(win->closemsec, (GSourceFunc)dlclosecb, win);
 	}
 	else
 		title = g_strdup_printf("DL: Failed: %s", win->dispname);
