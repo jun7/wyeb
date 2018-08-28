@@ -1918,11 +1918,8 @@ static gboolean reqcb(
 	page->pagereq++;
 	const char *reqstr = webkit_uri_request_get_uri(req);
 	if (g_str_has_prefix(reqstr, APP":"))
-	{
-		if (!strcmp(reqstr, APP":F"))
-			return true;
 		return false;
-	}
+
 	const char *pagestr = webkit_web_page_get_uri(page->kit);
 	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
 
