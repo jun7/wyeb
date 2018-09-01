@@ -1777,7 +1777,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 
 		if (lww == 0 || lwh == 0) lww = lwh = 9;
 
-		double scale = MIN(uw / lww, uh / lwh) * (1.0 - 1.0/(yunit * xunit + 1));
+		double scale = MIN(uw / lww, uh / lwh) * (1.0 - 1.0/(pow(MAX(yunit, xunit), 2) + 1));
 		double tw = lww * scale;
 		double th = lwh * scale;
 		//pos is double makes blur
