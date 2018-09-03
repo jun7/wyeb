@@ -3202,16 +3202,16 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		int w, h;
 		pango_layout_get_pixel_size(layout, &w, &h);
 
-		int y = gtk_widget_get_allocated_height(win->kitw) - h*1.7;
+		int y = gtk_widget_get_allocated_height(win->kitw) - h*1.4;
 		y -= gtk_widget_get_visible(win->entw) ?
 				gtk_widget_get_allocated_height(win->entw) : 0;
 
 		colorb(win, cr, .8);
-		cairo_rectangle(cr, 0, y, w + h*1.2, h);
+		cairo_rectangle(cr, 0, y, w + h*.7, h);
 		cairo_fill(cr);
 
 		colorf(win, cr, .9);
-		cairo_move_to(cr, h, y);
+		cairo_move_to(cr, h*.6, y);
 		pango_cairo_show_layout(cr, layout);
 
 		g_object_unref(layout);
@@ -4691,7 +4691,8 @@ int main(int argc, char **argv)
 
 	GtkCssProvider *cssp = gtk_css_provider_new();
 	gtk_css_provider_load_from_data(cssp,
-			"tooltip *{padding:0}menuitem{padding:.2em}", -1, NULL);
+			"entry {margin:0 1em 1em 1em; border-color:black; opacity:.9;}"
+			"tooltip *{padding:0}menuitem{padding:.2em}" , -1, NULL);
 	gtk_style_context_add_provider_for_screen(
 			gdk_display_get_default_screen(gdk_display_get_default()),
 			(void *)cssp, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
