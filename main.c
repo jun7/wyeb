@@ -160,6 +160,7 @@ typedef struct {
 	guint64 id;
 } Img;
 static char *lastmsg;
+static char *lastkeyaction;
 
 static char *mdpath;
 static char *accelp;
@@ -3001,7 +3002,8 @@ static char *helpdata()
 	GString *ret = g_string_new(NULL);
 	g_string_append_printf(ret,
 		"<body style=margin:0>\n"
-		"<p style=padding:.3em;background-color:#ccc>Last MSG: %s</p>\n"
+		"<pre style=padding:.3em;background-color:#ccc;font-size:large>"
+		"Last Key: %s<br>Last MSG: %s</pre>\n"
 		"<pre style=margin:.3em;font-size:large>\n"
 		"%s\n"
 		"mouse:\n"
@@ -3041,7 +3043,7 @@ static char *helpdata()
 		"key:\n"
 		"#%d - is ctrl\n"
 		"#(null) is only for script\n"
-		, lastmsg, usage, GDK_CONTROL_MASK);
+		, lastkeyaction, lastmsg, usage, GDK_CONTROL_MASK);
 
 	for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
 		g_string_append_printf(ret, "%d - %-11s: %-19s: %s\n",
@@ -3452,6 +3454,9 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (!action)
 		return keyr = false;
 
+	if (strcmp(action, "showhelp"))
+		GFA(lastkeyaction, g_strdup_printf("%d+%s -> %s",
+					ek->state, gdk_keyval_name(ek->keyval), action))
 	run(win, action, NULL);
 
 	return true;
