@@ -1452,8 +1452,14 @@ static void scroll(Win *win, int x, int y)
 
 	es->delta_x = x;
 	es->delta_y = y;
+
 	es->x = win->px;
 	es->y = win->py;
+	if (!es->x && !es->y)
+	{
+		es->x = gtk_widget_get_allocated_width(win->kitw) / 2;
+		es->y = gtk_widget_get_allocated_height(win->kitw) / 2;
+	}
 
 	putevent(es);
 }
