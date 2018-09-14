@@ -878,6 +878,7 @@ static bool eachclick(let win, let cl,
 	let te;
 	for (int j = 0; (te = idx(cl, j)); j++)
 	{
+		bool div = false;
 		char *tag = stag(te);
 		if (isins(clicktags, tag))
 		{
@@ -887,10 +888,11 @@ static bool eachclick(let win, let cl,
 
 			jscunref(te);
 			continue;
-		}
+		} else if (!strcmp(tag, "DIV"))
+			div = true; //div is random
 
 		Elm elm = checkelm(win, frect, prect, te, true, true);
-		if (!elm.insight && elm.h > 0)
+		if (!elm.insight && !div && elm.h > 0)
 		{
 			jscunref(te);
 			continue;
@@ -1380,8 +1382,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 			rangein = --rangeleft > 0 && rangeend != te;
 	}
 
-	if (hintstr->len)
-		send(page, "_hintdata", hintstr->str);
+	send(page, "_hintdata", hintstr->str);
 
 	g_string_free(hintstr, true);
 
