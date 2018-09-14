@@ -3199,7 +3199,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 	PangoLayout *layout = gtk_widget_create_pango_layout(win->winw, txt);
 	pango_layout_set_font_description(layout, desc);
 
-	int m = 1;
+	int m = 2;
 	pango_layout_get_pixel_size(layout, &w, &h);
 	h -= 1; //alphabet has spaces
 
