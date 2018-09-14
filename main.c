@@ -126,6 +126,7 @@ typedef struct _WP {
 	guint   histcb;
 
 	//hint
+	char   *hintdata;
 	char    com; //Coms
 	//hint and spawn
 	Spawn  *spawn;
@@ -1058,6 +1059,8 @@ static void _modechanged(Win *win)
 	case Mhint:
 		if (win->mode != Mpointer) win->pbtn = 0;
 	case Mhintrange:
+		GFA(win->hintdata, NULL);
+		gtk_widget_queue_draw(win->kitw);
 		send(win, Crm, NULL);
 		break;
 
@@ -1666,6 +1669,17 @@ static bool quitnext(Win *win, bool next)
 		run(win, "prevwin", NULL);
 	return run(win, "quit", NULL);
 }
+static void arcrect(cairo_t *cr, double r,
+		double rx, double ry, double rr,  double rb)
+{
+	r = r ?: (rb - ry) / 4;
+	cairo_new_sub_path(cr);
+	cairo_arc(cr, rr - r, ry + r, r, M_PI / -2, 0         );
+	cairo_arc(cr, rr - r, rb - r, r, 0        , M_PI / 2  );
+	cairo_arc(cr, rx + r, rb - r, r, M_PI / 2 , M_PI      );
+	cairo_arc(cr, rx + r, ry + r, r, M_PI     , M_PI * 1.5);
+	cairo_close_path(cr);
+}
 bool winlist(Win *win, guint type, cairo_t *cr)
 //type: 0: none 1:present 2:setcursor 3:close, and GDK_KEY_Down ... GDK_KEY_Right
 {
@@ -1835,13 +1849,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		if (!cr) goto out;
 
 		cairo_reset_clip(cr);
-		cairo_new_sub_path(cr);
-		double r = 4 + th / 66.0;
-		cairo_arc(cr, tr - r, ty + r, r, M_PI / -2, 0         );
-		cairo_arc(cr, tr - r, tb - r, r, 0        , M_PI / 2  );
-		cairo_arc(cr, tx + r, tb - r, r, M_PI / 2 , M_PI      );
-		cairo_arc(cr, tx + r, ty + r, r, M_PI     , M_PI * 1.5);
-		cairo_close_path(cr);
+		arcrect(cr, 4 + th / 66.0, tx, ty, tr, tb);
 		if (pin)
 		{
 			colorf(lw, cr, 1);
@@ -2268,6 +2276,8 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			_showmsg(win, g_strdup_printf("Blocked %s", arg));
 			return true;)
 	Z("_reloadlast", reloadlast())
+	Z("_hintdata"  , gtk_widget_queue_draw(win->kitw);
+			GFA(win->hintdata, g_strdup(arg)))
 	Z("_focusuri"  , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
 	if (!strcmp(action, "_hintret"))
 	{
@@ -3169,6 +3179,72 @@ static gboolean detachcb(GtkWidget * w)
 	gtk_widget_grab_focus(w);
 	return false;
 }
+static void drawhint(Win *win, cairo_t *cr, guint32 font,
+		bool center, int x, int y, int w, int h,
+		int len, bool head, char *txt)
+{
+	int r = x + w;
+	int b = y + h;
+
+	//area
+	cairo_set_source_rgba(cr, .6, .4, .9, .1);
+	arcrect(cr, 0, x, y, r, b);
+	cairo_fill(cr);
+
+	if (!head) return;
+
+	//hintelm
+	txt += MIN(len, strlen(txt));
+	PangoLayout *layout =
+			gtk_widget_create_pango_layout(win->winw, txt);
+
+	PangoFontDescription *desc = pango_font_description_copy(
+			pango_context_get_font_description(
+				gtk_widget_get_pango_context(win->winw)));
+	pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
+//	pango_font_description_set_family(desc, "monospace");
+
+	pango_layout_set_font_description(layout, desc);
+	pango_font_description_free(desc);
+
+	int m = 1;
+	pango_layout_get_pixel_size(layout, &w, &h);
+
+	x = (x + r - w) / 2 - m;
+	y = MAX(-h/4, y + (center ? h : -h)/2);
+
+	w += m * 2;
+
+	cairo_pattern_t *ptrn =
+		cairo_pattern_create_linear(x, y,  x, y + h);
+
+	static GdkRGBA ctop, cbtm, ntop, nbtm;
+	static bool ready;
+	if (!ready)
+	{
+		gdk_rgba_parse(&ctop, "darkorange");
+		gdk_rgba_parse(&cbtm, "red");
+		gdk_rgba_parse(&ntop, "#649");
+		gdk_rgba_parse(&nbtm, "#203");
+		ready = true;
+	}
+#define Z(o, r) \
+	cairo_pattern_add_color_stop_rgba(ptrn, o, r.red, r.green, r.blue, r.alpha);
+	Z(0, (center ? ctop : ntop));
+	Z(1, (center ? cbtm : nbtm));
+#undef Z
+	cairo_set_source(cr, ptrn);
+
+	arcrect(cr, 0, x, y, x + w, y + h);
+	cairo_fill(cr);
+
+	cairo_set_source_rgba(cr, 1., 1., 1., 1.);
+	cairo_move_to(cr, x + m, y);
+	pango_cairo_show_layout(cr, layout);
+
+	cairo_pattern_destroy(ptrn);
+	g_object_unref(layout);
+}
 static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
 	if (win->lastx || win->lastx || win->mode == Mpointer)
@@ -3261,6 +3337,25 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		cairo_stroke(cr);
 	} else
 		win->progrect.width = 0;
+	if (win->hintdata)
+	{
+		guint32 fsize = webkit_settings_get_default_font_size(win->set);
+		double z = webkit_web_view_get_zoom_level(win->kit);
+		char **hints = g_strsplit(win->hintdata, ";", -1);
+		for (char **lh = hints; *lh && **lh; lh++)
+		{
+			char *h = *lh;
+			//0   123*   141*   190*   164*  0*FF //example
+			h[7]=h[14]=h[21]=h[28]=h[32] = '\0';
+#define Z(i) atoi(h + i) * z
+			drawhint(win, cr, fsize, *h == '1',
+				Z(1), Z(8), Z(15), Z(22), atoi(h + 29),
+				h[33] == '1', h + 34);
+
+#undef Z
+		}
+		g_strfreev(hints);
+	}
 
 	winlist(win, 0, cr);
 	return false;

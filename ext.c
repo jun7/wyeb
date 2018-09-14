@@ -41,8 +41,7 @@ typedef struct _WP {
 #if JSC
 	WebKitFrame   *mf;
 #endif
-	let            apnode;
-	let            apchild;
+	bool           hint;
 	char          *apkeys;
 
 	char           lasttype;
@@ -661,82 +660,6 @@ static void _trim(double *tx, double *tw, double *px, double *pw)
 	}
 }
 
-static char *_makehintelm(Page *page,
-		bool center ,int y, int x, int h, int w,
-		char *uri, const char* text, int len, bool head)
-{
-	//ret
-	GString *str = g_string_new(NULL);
-	g_string_printf(str,
-			"<div style="
-			"position:absolute;" //somehow if fixed web page crashes
-			"overflow:visible;"
-			"display:block;"
-			"visibility:visible;"
-			"padding:0;"
-			"margin:0;"
-			"opacity:1;"
-			"top:%dpx;"
-			"left:%dpx;"
-			"height:%dpx;"
-			"width:%dpx;"
-			"text-align:center;"
-			">"
-			, y, x, h, w);
-
-	//area
-	g_string_append(str,
-			"<div style="
-			"position:absolute;"
-			"z-index:2147483646;" //max -1 for hint's title
-			"background-color:#a6f;"
-			"opacity:.1;"
-			"border-radius:.4em;"
-			"height:100%;"
-			"width:100%;"
-			"></div>");
-
-	if (!text) goto out;
-
-	//hint
-	char *ht = g_strdup_printf("%s", text + len);
-	const double offset = 6;
-
-	g_string_append_printf(str,
-			"<span title=%s style='"
-			"position: relative;"
-			"z-index: 2147483647;"
-			"font-size: small !important;"
-			"font-family: \"DejaVu Sans Mono\", monospace !important;"
-			"font-weight: bold;"
-			"background: linear-gradient(%s);"
-			"color: white;"
-			"border-radius: .3em;"
-			"opacity: 0.%s;"
-			"display:inline-block;"
-			"padding: .1em %spx 0;"
-			"line-height: 1em;"
-			"top: %fem;"
-			"%s;" //user setting
-			"%s" //center
-			"'>%s</span>"
-			, uri ?: "-"
-			, head ? "#649, #203" : "#203, #203"
-			, head ? "9" : "4"
-			, strlen(ht) == 1 ? "2" : "1"
-			, center ? offset / 10 : (y > offset ? offset : y) / -10
-			, getset(page, "hintstyle") ?: ""
-			, center ? "background: linear-gradient(darkorange, red);" : ""
-			, ht
-			);
-
-	g_free(ht);
-
-out:
-	g_string_append(str, "</div>");
-
-	return g_string_free(str, false);
-}
 static char *makehintelm(Page *page, Elm *elm,
 		const char* text, int len, double pagex, double pagey)
 {
@@ -771,24 +694,25 @@ static char *makehintelm(Page *page, Elm *elm,
 		_trim(&x, &w, &elm->x, &elm->w);
 		_trim(&y, &h, &elm->y, &elm->h);
 
-
-		g_string_append(str, sfree(
-			_makehintelm(page, center,
-					y + elm->fy + pagey,
-					x + elm->fx + pagex,
-					h,
-					w,
-					uri, text, len, i == 0)
-		));
+		g_string_append_printf(str, "%d%6.0lf*%6.0lf*%6.0lf*%6.0lf*%3d*%d%s;",
+				center,
+				x + elm->fx,
+				y + elm->fy,
+				w,
+				h,
+				len, i == 0, text);
 	}
 	g_object_unref(rects);
 
 	char *ret = g_string_free(str, false);
 
 #else
-	char *ret = _makehintelm(page, doc, center,
-			elm->y + elm->fy + pagey,
-			elm->x + elm->fx + pagex, elm->h, elm->w, uri, text, len, true);
+	char *ret = g_strdup_printf("%d%6.0lf*%6.0lf*%6.0lf*%6.0lf*%3d*%d%s;",
+			elm->x + elm->fx,
+			elm->y + elm->fy,
+			elm->w,
+			elm->h,
+			len, 1, text);
 
 #endif
 	g_free(uri);
@@ -828,25 +752,8 @@ static char *makekey(char *keys, int len, int max, int tnum, int digit)
 
 static void rmhint(Page *page)
 {
-	if (!page->apnode) return;
-
-	let doc = sdoc(page);
-	let cdoc = docelm(doc);
-	jscunref(cdoc);
-
-	if (page->apnode == cdoc && page->apchild)
-#if JSC
-		invoke(page->apnode, "removeChild", aJ(page->apchild));
-#else
-		webkit_dom_node_remove_child(page->apnode, page->apchild, NULL);
-#endif
-
-	jscunref(page->apnode);
-	jscunref(page->apchild);
-	g_free(page->apkeys);
-	page->apchild = NULL;
-	page->apnode = NULL;
-	page->apkeys = NULL;
+	page->hint = false;
+	GFA(page->apkeys, NULL);
 }
 
 static void trim(Elm *te, Elm *prect)
@@ -1298,7 +1205,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 
 	guint tnum = g_slist_length(elms);
 
-	page->apnode = docelm(doc);
+	page->hint = true;
 	GString *hintstr = g_string_new(NULL);
 
 	int  keylen = strlen(hintkeys);
@@ -1477,17 +1384,8 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 	}
 
 	if (hintstr->len)
-	{
-#if JSC
-		page->apchild = invoker(doc, "createElement", aS("DIV"));
-		setprop_s(page->apchild, "innerHTML", hintstr->str);
-		invoke(page->apnode, "appendChild", aJ(page->apchild));
-#else
-		page->apchild = (void *)webkit_dom_document_create_element(doc, "div", NULL);
-		webkit_dom_element_set_inner_html((void *)page->apchild, hintstr->str, NULL);
-		webkit_dom_node_append_child(page->apnode, page->apchild, NULL);
-#endif
-	}
+		send(page, "_hintdata", hintstr->str);
+
 	g_string_free(hintstr, true);
 
 	for (GSList *next = rangeelms; next; next = next->next)
@@ -1547,7 +1445,7 @@ static void domloadcb(let w, let e, let doc)
 }
 static void hintcb(let w, let e, Page *page)
 {
-	if (page->apnode)
+	if (page->hint)
 		makehint(page, page->lasttype, NULL, NULL);
 }
 static void unloadcb(let w, let e, Page *page)
@@ -1807,7 +1705,7 @@ void ipccb(const char *line)
 	case Coverset:
 		GFA(page->overset, g_strdup(*arg ? arg : NULL))
 		resetconf(page, webkit_web_page_get_uri(page->kit), true);
-		if (page->apnode)
+		if (page->hint)
 			makehint(page, page->lasttype, NULL, g_strdup(page->apkeys));
 		break;
 	case Cstart:

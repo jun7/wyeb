@@ -161,8 +161,6 @@ Conf dconf[] = {
 	{"set:image" , "auto-load-images"     , "true"},
 	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s](%s)"},
 	{"set:image" , "linkdata"     , "tu"},
-	{"set:image" , "hintstyle"    ,
-		"font-size:medium !important;-webkit-transform:rotate(-9deg)"},
 
 	//core
 	{DSET    , "editor"           , MIMEOPEN,
@@ -202,8 +200,7 @@ Conf dconf[] = {
 	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
 
 	//hint
-	{DSET    , "hintstyle"        , "", "\nhint\n"},
-	{DSET    , "hintkeys"        , HINTKEYS},
+	{DSET    , "hintkeys"        , HINTKEYS, "\nhint\n"},
 	{DSET    , "hackedhint4js"    , "true"},
 	{DSET    , "hintrangemax"     , "9"},
 	{DSET    , "rangeloopusec"    , "90000"},
