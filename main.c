@@ -1672,7 +1672,6 @@ static bool quitnext(Win *win, bool next)
 static void arcrect(cairo_t *cr, double r,
 		double rx, double ry, double rr,  double rb)
 {
-	r = r ?: (rb - ry) / 3;
 	cairo_new_sub_path(cr);
 	cairo_arc(cr, rr - r, ry + r, r, M_PI / -2, 0         );
 	cairo_arc(cr, rr - r, rb - r, r, 0        , M_PI / 2  );
@@ -3179,36 +3178,30 @@ static gboolean detachcb(GtkWidget * w)
 	gtk_widget_grab_focus(w);
 	return false;
 }
-static void drawhint(Win *win, cairo_t *cr,
+static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 		bool center, int x, int y, int w, int h,
 		int len, bool head, char *txt)
 {
 	int r = x + w;
 	int b = y + h;
+	int fsize = pango_font_description_get_size(desc) / PANGO_SCALE;
 
 	//area
 	cairo_set_source_rgba(cr, .6, .4, .9, .1);
-	arcrect(cr, 0, x, y, r, b);
+
+	arcrect(cr, fsize/2, x, y, r, b);
 	cairo_fill(cr);
 
 	if (!head) return;
 
 	//hintelm
-	txt += MIN(len, strlen(txt));
-	PangoLayout *layout =
-			gtk_widget_create_pango_layout(win->winw, txt);
-
-	PangoFontDescription *desc = pango_font_description_copy(
-			pango_context_get_font_description(
-				gtk_widget_get_pango_context(win->winw)));
-	pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
-//	pango_font_description_set_family(desc, "monospace");
-
+	txt += len;
+	PangoLayout *layout = gtk_widget_create_pango_layout(win->winw, txt);
 	pango_layout_set_font_description(layout, desc);
-	pango_font_description_free(desc);
 
 	int m = 1;
 	pango_layout_get_pixel_size(layout, &w, &h);
+	h -= 1; //alphabet has spaces
 
 	x = (x + r - w) / 2 - m;
 	y = MAX(-h/4, y + (center ? h : -h)/2);
@@ -3236,11 +3229,11 @@ static void drawhint(Win *win, cairo_t *cr,
 #undef Z
 	cairo_set_source(cr, ptrn);
 
-	arcrect(cr, 0, x, y, x + w, y + h);
+	arcrect(cr, h/3, x, y, x + w, y + h);
 	cairo_fill(cr);
 
 	cairo_set_source_rgba(cr, 1., 1., 1., 1.);
-	cairo_move_to(cr, x + m, y);
+	cairo_move_to(cr, x + m, y - 1);
 	pango_cairo_show_layout(cr, layout);
 
 	cairo_pattern_destroy(ptrn);
@@ -3340,6 +3333,13 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		win->progrect.width = 0;
 	if (win->hintdata)
 	{
+		PangoFontDescription *desc = pango_font_description_copy(
+				pango_context_get_font_description(
+					gtk_widget_get_pango_context(win->winw)));
+
+		pango_font_description_set_family(desc, "monospace");
+		pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
+
 		double z = webkit_web_view_get_zoom_level(win->kit);
 		char **hints = g_strsplit(win->hintdata, ";", -1);
 		for (char **lh = hints; *lh && **lh; lh++)
@@ -3348,13 +3348,14 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 			//0   123*   141*   190*   164*  0*FF //example
 			h[7]=h[14]=h[21]=h[28]=h[32] = '\0';
 #define Z(i) atoi(h + i) * z
-			drawhint(win, cr, *h == '1',
+			drawhint(win, cr, desc, *h == '1',
 				Z(1), Z(8), Z(15), Z(22), atoi(h + 29),
 				h[33] == '1', h + 34);
 
 #undef Z
 		}
 		g_strfreev(hints);
+		pango_font_description_free(desc);
 	}
 
 	winlist(win, 0, cr);
