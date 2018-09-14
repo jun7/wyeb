@@ -3199,14 +3199,13 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 	PangoLayout *layout = gtk_widget_create_pango_layout(win->winw, txt);
 	pango_layout_set_font_description(layout, desc);
 
+	PangoRectangle inkrect, logicrect;
+	pango_layout_get_pixel_extents(layout, &inkrect, &logicrect);
 	int m = 2;
-	pango_layout_get_pixel_size(layout, &w, &h);
-	h -= 1; //alphabet has spaces
-
-	x = (x + r - w) / 2 - m;
+	w = logicrect.width + m*2;
+	h = inkrect.height + m*2;
+	x = (x + r - w) / 2;
 	y = MAX(-h/4, y + (center ? h : -h)/2);
-
-	w += m * 2;
 
 	cairo_pattern_t *ptrn =
 		cairo_pattern_create_linear(x, 0,  x + w, 0);
@@ -3215,16 +3214,17 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 	static bool ready;
 	if (!ready)
 	{
-		gdk_rgba_parse(&ctop, "red");
-		gdk_rgba_parse(&cbtm, "darkorange");
-		gdk_rgba_parse(&ntop, "#203");
-		gdk_rgba_parse(&nbtm, "#649");
+		gdk_rgba_parse(&ctop, "darkorange");
+		gdk_rgba_parse(&cbtm, "red");
+		gdk_rgba_parse(&ntop, "#649");
+		gdk_rgba_parse(&nbtm, "#326");
 		ready = true;
 	}
 #define Z(o, r) \
 	cairo_pattern_add_color_stop_rgba(ptrn, o, r.red, r.green, r.blue, r.alpha);
 	Z(0, (center ? ctop : ntop));
-	Z(.5, (center ? cbtm : nbtm));
+	Z(.3, (center ? cbtm : nbtm));
+	Z(.7, (center ? cbtm : nbtm));
 	Z(1, (center ? ctop : ntop));
 #undef Z
 	cairo_set_source(cr, ptrn);
@@ -3233,7 +3233,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 	cairo_fill(cr);
 
 	cairo_set_source_rgba(cr, 1., 1., 1., 1.);
-	cairo_move_to(cr, x + m, y - 1);
+	cairo_move_to(cr, x + m, y + m - inkrect.y);
 	pango_cairo_show_layout(cr, layout);
 
 	cairo_pattern_destroy(ptrn);
