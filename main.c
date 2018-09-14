@@ -3229,7 +3229,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 #undef Z
 	cairo_set_source(cr, ptrn);
 
-	arcrect(cr, h/3, x, y, x + w, y + h);
+	arcrect(cr, MIN(w, h)/4, x, y, x + w, y + h);
 	cairo_fill(cr);
 
 	cairo_set_source_rgba(cr, 1., 1., 1., 1.);
