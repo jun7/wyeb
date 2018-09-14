@@ -1672,7 +1672,7 @@ static bool quitnext(Win *win, bool next)
 static void arcrect(cairo_t *cr, double r,
 		double rx, double ry, double rr,  double rb)
 {
-	r = r ?: (rb - ry) / 4;
+	r = r ?: (rb - ry) / 3;
 	cairo_new_sub_path(cr);
 	cairo_arc(cr, rr - r, ry + r, r, M_PI / -2, 0         );
 	cairo_arc(cr, rr - r, rb - r, r, 0        , M_PI / 2  );
@@ -3179,7 +3179,7 @@ static gboolean detachcb(GtkWidget * w)
 	gtk_widget_grab_focus(w);
 	return false;
 }
-static void drawhint(Win *win, cairo_t *cr, guint32 font,
+static void drawhint(Win *win, cairo_t *cr,
 		bool center, int x, int y, int w, int h,
 		int len, bool head, char *txt)
 {
@@ -3216,22 +3216,23 @@ static void drawhint(Win *win, cairo_t *cr, guint32 font,
 	w += m * 2;
 
 	cairo_pattern_t *ptrn =
-		cairo_pattern_create_linear(x, y,  x, y + h);
+		cairo_pattern_create_linear(x, 0,  x + w, 0);
 
 	static GdkRGBA ctop, cbtm, ntop, nbtm;
 	static bool ready;
 	if (!ready)
 	{
-		gdk_rgba_parse(&ctop, "darkorange");
-		gdk_rgba_parse(&cbtm, "red");
-		gdk_rgba_parse(&ntop, "#649");
-		gdk_rgba_parse(&nbtm, "#203");
+		gdk_rgba_parse(&ctop, "red");
+		gdk_rgba_parse(&cbtm, "darkorange");
+		gdk_rgba_parse(&ntop, "#203");
+		gdk_rgba_parse(&nbtm, "#649");
 		ready = true;
 	}
 #define Z(o, r) \
 	cairo_pattern_add_color_stop_rgba(ptrn, o, r.red, r.green, r.blue, r.alpha);
 	Z(0, (center ? ctop : ntop));
-	Z(1, (center ? cbtm : nbtm));
+	Z(.5, (center ? cbtm : nbtm));
+	Z(1, (center ? ctop : ntop));
 #undef Z
 	cairo_set_source(cr, ptrn);
 
@@ -3339,7 +3340,6 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		win->progrect.width = 0;
 	if (win->hintdata)
 	{
-		guint32 fsize = webkit_settings_get_default_font_size(win->set);
 		double z = webkit_web_view_get_zoom_level(win->kit);
 		char **hints = g_strsplit(win->hintdata, ";", -1);
 		for (char **lh = hints; *lh && **lh; lh++)
@@ -3348,7 +3348,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 			//0   123*   141*   190*   164*  0*FF //example
 			h[7]=h[14]=h[21]=h[28]=h[32] = '\0';
 #define Z(i) atoi(h + i) * z
-			drawhint(win, cr, fsize, *h == '1',
+			drawhint(win, cr, *h == '1',
 				Z(1), Z(8), Z(15), Z(22), atoi(h + 29),
 				h[33] == '1', h + 34);
 
