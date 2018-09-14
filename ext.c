@@ -909,7 +909,6 @@ static bool eachclick(let win, let cl,
 #endif
 		jscunref(te);
 		if (
-				elm.zi > prect->zi ||
 				styleis(dec, "overflow", "hidden") ||
 				styleis(dec, "overflow", "scroll") ||
 				styleis(dec, "overflow", "auto")
