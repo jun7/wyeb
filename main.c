@@ -3205,7 +3205,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 	w = logicrect.width + m*2;
 	h = inkrect.height + m*2;
 	x = (x + r - w) / 2;
-	y = MAX(-h/4, y + (center ? h : -h)/2);
+	y = MAX(-h/4, y + (center ? h/2 : -h/2 - 1));
 
 	cairo_pattern_t *ptrn =
 		cairo_pattern_create_linear(x, 0,  x + w, 0);
