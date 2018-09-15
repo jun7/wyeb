@@ -2275,7 +2275,8 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			_showmsg(win, g_strdup_printf("Blocked %s", arg));
 			return true;)
 	Z("_reloadlast", reloadlast())
-	Z("_hintdata"  , gtk_widget_queue_draw(win->kitw);
+	Z("_hintdata"  , if (!(win->mode & Mhint)) return false;
+			gtk_widget_queue_draw(win->kitw);
 			GFA(win->hintdata, g_strdup(arg)))
 	Z("_focusuri"  , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
 	if (!strcmp(action, "_hintret"))
