@@ -128,7 +128,7 @@ typedef struct {
 	char *val;
 	char *desc;
 } Conf;
-Conf dconf[] = {
+static Conf dconf[] = {
 	{"all"   , "winwidth"     , "1000"},
 	{"all"   , "winheight"    , "1000"},
 	{"all"   , "zoom"         , "1.000"},
