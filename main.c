@@ -2080,7 +2080,7 @@ static Keybind dkeys[]= {
 	{"topointermdl"  , 'P', 0, "Makes middle click"},
 	{"topointerright", 'p', GDK_CONTROL_MASK, "right click"},
 
-	{"tohint"        , 'f', 0},
+	{"tohint"        , 'f', 0, "Follow Mode"},
 	{"tohintnew"     , 'F', 0},
 	{"tohintback"    , 't', 0},
 	{"tohintdl"      , 'd', 0, "dl is Download"},
@@ -3058,7 +3058,7 @@ static char *helpdata()
 		"\n"
 		"key:\n"
 		"#%d - is ctrl\n"
-		"#(null) is only for script\n"
+		"#(null) is only for scripts\n"
 		, lastkeyaction, lastmsg, usage, GDK_CONTROL_MASK);
 
 	for (int i = 0; i < sizeof(dkeys) / sizeof(*dkeys); i++)
@@ -3382,6 +3382,7 @@ static void destroycb(Win *win)
 	g_free(win->lastsearch);
 
 	g_free(win->histstr);
+	g_free(win->hintdata);
 
 	//spawn
 	spawnfree(win->spawn, true);
