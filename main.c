@@ -3767,14 +3767,12 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
 	}
-	else drawprogif(win, false);
 
 	checkppress(win, 0); //right click
 	return false;
 }
 static gboolean leavecb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 {
-	drawprogif(win, false);
 	return false;
 }
 static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
@@ -3799,8 +3797,6 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 
 		return true;
 	}
-
-	drawprogif(win, false);
 
 	return false;
 }
