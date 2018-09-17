@@ -43,7 +43,7 @@ typedef struct _WP {
 #endif
 	bool           hint;
 	char          *apkeys;
-
+	guint          hintcb;
 	char           lasttype;
 	char          *lasthintkeys;
 	char          *rangestart;
@@ -93,6 +93,8 @@ static GPtrArray *pages;
 static void freepage(Page *page)
 {
 	g_free(page->apkeys);
+	if (page->hintcb)
+		g_source_remove(page->hintcb);
 	g_free(page->lasthintkeys);
 	g_free(page->rangestart);
 
@@ -750,12 +752,6 @@ static char *makekey(char *keys, int len, int max, int tnum, int digit)
 	return g_strdup(ret);
 }
 
-static void rmhint(Page *page)
-{
-	page->hint = false;
-	GFA(page->apkeys, NULL);
-}
-
 static void trim(Elm *te, Elm *prect)
 {
 	_trim(&te->x, &te->w, &prect->x, &prect->w);
@@ -1188,8 +1184,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		hintkeys = page->lasthintkeys;
 	if (strlen(hintkeys ?: "") < 3) hintkeys = HINTKEYS;
 
-	rmhint(page);
-	page->apkeys = ipkeys;
+	GFA(page->apkeys, ipkeys);
 
 	let win = defaultview(doc);
 #if JSC
@@ -1204,7 +1199,6 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 
 	guint tnum = g_slist_length(elms);
 
-	page->hint = true;
 	GString *hintstr = g_string_new(NULL);
 
 	int  keylen = strlen(hintkeys);
@@ -1383,7 +1377,6 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 	}
 
 	send(page, "_hintdata", hintstr->str);
-
 	g_string_free(hintstr, true);
 
 	for (GSList *next = rangeelms; next; next = next->next)
@@ -1441,14 +1434,25 @@ static void domloadcb(let w, let e, let doc)
 {
 	rmtags(doc, "NOSCRIPT");
 }
-static void hintcb(let w, let e, Page *page)
+static gboolean _hintcb(Page *page)
 {
 	if (page->hint)
 		makehint(page, page->lasttype, NULL, NULL);
+	if (page->hintcb)
+		g_source_remove(page->hintcb);
+	page->hintcb = 0;
+	return false;
+}
+static void hintcb(let w, let e, Page *page)
+{ _hintcb(page); }
+static void dhintcb(let w, let e, Page *page)
+{
+	if (!page->hintcb)
+		page->hintcb = g_timeout_add(300, (GSourceFunc)_hintcb, page);
 }
 static void unloadcb(let w, let e, Page *page)
 {
-	rmhint(page);
+	GFA(page->apkeys, NULL);
 }
 static void pagestart(Page *page)
 {
@@ -1507,8 +1511,8 @@ static void *frameon(let doc, Page *page)
 	addlistener(emt, "resize"      , hintcb  , page);
 	addlistener(emt, "scroll"      , hintcb  , page);
 	addlistener(emt, "beforeunload", unloadcb, page);
-	//heavy
-	//addlistener(emt, "DOMSubtreeModified", hintcb, page);
+	addlistener(emt, "DOMContentLoaded"  , hintcb , page);
+	addlistener(emt, "DOMSubtreeModified", dhintcb, page);
 
 	return NULL;
 }
@@ -1738,7 +1742,7 @@ void ipccb(const char *line)
 			page->script = *arg == 'y';
 		}
 //gint64 start = g_get_monotonic_time();
-		if (!makehint(page, type, getset(page, "hintkeys"), ipkeys))
+		if (!(page->hint = makehint(page, type, getset(page, "hintkeys"), ipkeys)))
 		{
 			send(page, "showmsg", "No hint");
 			send(page, "tonormal", NULL);
@@ -1754,7 +1758,8 @@ void ipccb(const char *line)
 		break;
 	}
 	case Crm:
-		rmhint(page);
+		page->hint = false;
+		GFA(page->apkeys, NULL);
 		break;
 
 	case Cmode:
