@@ -3572,12 +3572,15 @@ static gboolean keyrcb(GtkWidget *w, GdkEventKey *ek, Win *win)
 	if (ek->is_modifier) return false;
 	return keyr;
 }
+static bool ignoretargetcb;
 static void targetcb(
 		WebKitWebView *w,
 		WebKitHitTestResult *htr,
 		guint m,
 		Win *win)
 {
+	//workaround: when context-menu shown this is called with real pointer pos
+	if (ignoretargetcb) return;
 	setresult(win, htr);
 	update(win);
 }
@@ -4290,6 +4293,11 @@ void makemenu(WebKitContextMenu *menu)
 
 	g_free(dir);
 }
+
+static void contextclosecb(WebKitWebView *k, Win *win)
+{
+	ignoretargetcb = false;
+}
 static gboolean contextcb(WebKitWebView *k,
 		WebKitContextMenu   *menu,
 		GdkEvent            *e,
@@ -4303,6 +4311,7 @@ static gboolean contextcb(WebKitWebView *k,
 	}
 	setresult(win, htr);
 	makemenu(menu);
+	ignoretargetcb = true;
 	return false;
 }
 
@@ -4610,6 +4619,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	SIG( o, "load-failed"          , failcb    , win);
 
 	SIG( o, "context-menu"         , contextcb , win);
+	SIG( o, "context-menu-dismissed", contextclosecb , win);
 
 	//for entry
 	SIGW(o, "focus-in-event"       , focusincb , win);
