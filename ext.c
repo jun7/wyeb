@@ -1448,7 +1448,7 @@ static void hintcb(let w, let e, Page *page)
 static void dhintcb(let w, let e, Page *page)
 {
 	if (!page->hintcb)
-		page->hintcb = g_timeout_add(300, (GSourceFunc)_hintcb, page);
+		page->hintcb = g_timeout_add(400, (GSourceFunc)_hintcb, page);
 }
 static void unloadcb(let w, let e, Page *page)
 {
@@ -1724,6 +1724,12 @@ void ipccb(const char *line)
 
 	case Ckey:
 	{
+		if (page->hintcb)
+		{
+			g_source_remove(page->hintcb);
+			page->hintcb = g_timeout_add(400, (GSourceFunc)_hintcb, page);
+		}
+
 		char key[2] = {0};
 		key[0] = toupper(arg[0]);
 		ipkeys = page->apkeys ?
