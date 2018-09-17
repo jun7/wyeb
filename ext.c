@@ -1511,8 +1511,10 @@ static void *frameon(let doc, Page *page)
 	addlistener(emt, "resize"      , hintcb  , page);
 	addlistener(emt, "scroll"      , hintcb  , page);
 	addlistener(emt, "beforeunload", unloadcb, page);
-	addlistener(emt, "DOMContentLoaded"  , hintcb , page);
-	addlistener(emt, "DOMSubtreeModified", dhintcb, page);
+	addlistener(emt, "load"                 , dhintcb, page);
+	addlistener(emt, "DOMContentLoaded"     , dhintcb, page);
+	addlistener(emt, "DOMFrameContentLoaded", dhintcb, page);
+	addlistener(emt, "DOMSubtreeModified"   , dhintcb, page);
 
 	return NULL;
 }
