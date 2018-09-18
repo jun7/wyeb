@@ -3765,7 +3765,8 @@ static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
 }
 static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 { //for checking drag end with button1
-	if (!(e->state & GDK_BUTTON1_MASK) && win->lastx + win->lasty)
+	static int mask = GDK_BUTTON1_MASK | GDK_BUTTON2_MASK | GDK_BUTTON3_MASK;
+	if (!(e->state & mask) && win->lastx + win->lasty)
 	{
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->kitw);
