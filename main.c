@@ -4807,7 +4807,7 @@ int main(int argc, char **argv)
 
 	GtkCssProvider *cssp = gtk_css_provider_new();
 	gtk_css_provider_load_from_data(cssp,
-			"entry{margin:0 1em 1em 1em; border:none; opacity:.92;}"
+			"overlay entry{margin:0 1em 1em 1em; border:none; opacity:.92;}"
 			"tooltip *{padding:0}menuitem{padding:.2em}" , -1, NULL);
 	gtk_style_context_add_provider_for_screen(
 			gdk_display_get_default_screen(gdk_display_get_default()),
