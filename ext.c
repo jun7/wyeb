@@ -668,10 +668,10 @@ static char *makehintelm(Page *page, Elm *elm,
 	char *tag = stag(elm->elm);
 	bool center = isins(uritags, tag) && !isins(linktags, tag);
 
-	char *uri =
-		attr(elm->elm, "ONCLICK") ?:
-		attr(elm->elm, "HREF") ?:
-		attr(elm->elm, "SRC");
+//	char *uri =
+//		attr(elm->elm, "ONCLICK") ?:
+//		attr(elm->elm, "HREF") ?:
+//		attr(elm->elm, "SRC");
 
 #if V18
 	GString *str = g_string_new(NULL);
@@ -717,7 +717,7 @@ static char *makehintelm(Page *page, Elm *elm,
 			len, 1, text);
 
 #endif
-	g_free(uri);
+//	g_free(uri);
 
 	return ret;
 }
