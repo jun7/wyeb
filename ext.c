@@ -1067,11 +1067,10 @@ static GSList *makelist(Page *page, let doc, let win,
 	return elms;
 }
 
-static void hintret(Page *page, Coms type, let te, bool hasnext)
+static char *hinturi(Coms type, let te, char *uritype)
 {
-	char uritype = 'l';
 	char *uri = NULL;
-	char *label = NULL;
+
 	if (type == Curi || type == Cspawn || type == Crange)
 	{
 		uri = attr(te, "SRC");
@@ -1099,19 +1098,22 @@ static void hintret(Page *page, Coms type, let te, bool hasnext)
 		if (uri && (type == Cspawn || type == Crange))
 		{
 			if (!strcmp(stag(te), "IMG"))
-				uritype = 'i';
+				*uritype = 'i';
 			else
-				uritype = 'm';
+				*uritype = 'm';
 		}
 	}
 
 	if (!uri)
 		uri = attr(te, "HREF");
 
-	if (!uri)
-		uri = g_strdup("about:blank");
-
-	label =
+	return uri;
+}
+static void hintret(Page *page, Coms type, let te, bool hasnext)
+{
+	char uritype = 'l';
+	char *uri = hinturi(type, te, &uritype) ?: g_strdup("about:blank");
+	char *label =
 #if JSC
 		props(te, "innerText") ?:
 #else
