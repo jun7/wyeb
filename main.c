@@ -2662,8 +2662,15 @@ typedef struct {
 	guint64 len;
 	bool    res;
 	bool    finished;
+	bool    operated;
 	int     closemsec;
 } DLWin;
+static gboolean dlbtncb(GtkWidget *w, GdkEventButton *e, DLWin *win)
+{
+	if (win->finished)
+		win->operated = true;
+	return false;
+}
 static void addlabel(DLWin *win, const char *str)
 {
 	GtkWidget *lbl = gtk_label_new(str);
@@ -2671,6 +2678,7 @@ static void addlabel(DLWin *win, const char *str)
 	gtk_box_pack_start(win->box, lbl, true, true, 0);
 	gtk_label_set_ellipsize((GtkLabel *)lbl, PANGO_ELLIPSIZE_MIDDLE);
 	gtk_widget_show_all(lbl);
+	SIG(lbl, "button-press-event", dlbtncb, win);
 }
 static void dldestroycb(DLWin *win)
 {
@@ -2687,7 +2695,7 @@ static void dldestroycb(DLWin *win)
 }
 static gboolean dlclosecb(DLWin *win)
 {
-	if (isin(dlwins, win))
+	if (isin(dlwins, win) && !win->operated)
 		gtk_widget_destroy(win->winw);
 
 	return false;
@@ -2808,6 +2816,8 @@ static gboolean dlkeycb(GtkWidget *w, GdkEventKey *ek, DLWin *win)
 	if (GDK_KEY_q == ek->keyval &&
 			(!win->ent || !gtk_widget_has_focus(win->entw)))
 		gtk_widget_destroy(w);
+
+	if (win->finished) win->operated = true;
 	return false;
 }
 static gboolean acceptfocuscb(GtkWindow *w)
