@@ -134,7 +134,7 @@ typedef struct _WP {
 	//misc
 	bool    scheme;
 	GTlsCertificateFlags tlserr;
-	bool    fordl;
+	char   *fordl;
 	guint   msgfunc;
 
 	bool cancelcontext;
@@ -2181,7 +2181,7 @@ static Keybind dkeys[]= {
 	{"openback"      , 0, 0},
 	{"openwithref"   , 0, 0, "Current uri is sent as Referer"},
 	{"download"      , 0, 0},
-	{"dlwithheaders" , 0, 0, "Current uri is sent as Referer. Also cookies"},
+	{"dlwithheaders" , 0, 0, "Current uri is sent as Referer. Also cookies. arg 2 is dir"},
 	{"showmsg"       , 0, 0},
 	{"raise"         , 0, 0},
 	{"winpos"        , 0, 0, "x:y"},
@@ -2245,9 +2245,8 @@ static char *ke2name(Win *win, GdkEventKey *ke)
 static Win *newwin(const char *uri, Win *cbwin, Win *caller, int back);
 static bool _run(Win *win, const char* action, const char *arg, char *cdir, char *exarg)
 {
-	const char *zz = NULL;
 #define Z(str, func) if (!strcmp(action, str)) {func; goto out;}
-#define ZZ(t1, t2, f) Z((zz = t1), f) Z((zz = t2), f)
+#define ZZ(t1, t2, f) Z(t1, f) Z(t2, f)
 	//D(action %s, action)
 	if (action == NULL) return false;
 	char **agv = NULL;
@@ -2266,7 +2265,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	Z("newsecondary", CLIP(GDK_SELECTION_SECONDARY))
 #undef CLIP
 
-	if (win == NULL) return false;
+	if (win == NULL && (!arg || strcmp(action, "dlwithheaders"))) return false;
 
 	//internal
 	Z("_setreq"    , send(win, Coverset, win->overset))
@@ -2282,7 +2281,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	if (!strcmp(action, "_hintret"))
 	{
 		const char *orgarg = arg;
-		exarg = *++arg == '0' ? "0" : "1";
+		char *result = *++arg == '0' ? "0" : "1";
 		agv = g_strsplit(++arg, " ", 3);
 		arg = agv[1];
 
@@ -2303,7 +2302,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 				win->media = g_strdup(arg); break;
 			}
 
-			envspawn(win->spawn, true, exarg, NULL, 0);
+			envspawn(win->spawn, true, result, NULL, 0);
 			goto out;
 		}
 	}
@@ -2332,9 +2331,9 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
 		Z("dlwithheaders",
 			Win *dlw = newwin(NULL, win, win, 2);
-			dlw->fordl = true;
+			dlw->fordl = g_strdup(exarg ?: "");
 
-			const char *ref = agv ? *agv : URI(win);
+			const char *ref = agv ? *agv : win ? URI(win) : arg;
 			WebKitURIRequest *req = webkit_uri_request_new(arg);
 			SoupMessageHeaders *hdrs = webkit_uri_request_get_http_headers(req);
 			if (hdrs && //scheme APP: returns NULL
@@ -2356,23 +2355,23 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 		)
 		Z("openeditor", openeditor(win, arg, NULL))
 		ZZ("sh", "spawn",
-				envspawn(spawnp(win, zz, arg, cdir, true)
+				envspawn(spawnp(win, action, arg, cdir, true)
 					, true, exarg, NULL, 0))
 		ZZ("shjs", "jscallback"/*backward*/,
 			webkit_web_view_run_javascript(win->kit, arg, NULL, jscb
-				, spawnp(win, zz, exarg, cdir, true)))
+				, spawnp(win, action, exarg, cdir, true)))
 		ZZ("shsrc", "sourcecallback"/*backward*/,
 			WebKitWebResource *res =
 				webkit_web_view_get_main_resource(win->kit);
 			webkit_web_resource_get_data(res, NULL, resourcecb
-				, spawnp(win, zz, arg, cdir, true));
+				, spawnp(win, action, arg, cdir, true));
 			)
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
 		ZZ("shcookie", "cookies"/*backward*/,
 			WebKitCookieManager *cm =
 				webkit_web_context_get_cookie_manager(ctx);
 			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb
-				, spawnp(win, zz, exarg, cdir, true)))
+				, spawnp(win, action, exarg, cdir, true)))
 #endif
 	}
 
@@ -2602,7 +2601,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 #undef ZZ
 #undef Z
 out:
-	update(win);
+	if (win) update(win);
 	if (agv) g_strfreev(agv);
 	return true;
 }
@@ -2823,7 +2822,8 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 	WebKitWebView *kit = webkit_download_get_web_view(pdl);
 	Win *mainwin = kit ? g_object_get_data(G_OBJECT(kit), "win") : NULL;
-	win->dldir   = dldir(mainwin);
+	win->dldir   = mainwin && mainwin->fordl && *mainwin->fordl ?
+		g_strdup(mainwin->fordl) : dldir(mainwin);
 	win->closemsec = getsetint(mainwin, "dlwinclosemsec");
 
 	win->winw  = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -3383,6 +3383,7 @@ static void destroycb(Win *win)
 
 	g_free(win->histstr);
 	g_free(win->hintdata);
+	g_free(win->fordl);
 
 	//spawn
 	spawnfree(win->spawn, true);
