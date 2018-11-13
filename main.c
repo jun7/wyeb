@@ -144,7 +144,7 @@ typedef struct _WP {
 
 struct _Spawn {
 	Win  *win;
-	const char *action;
+	char *action;
 	char *cmd;
 	char *path;
 	bool once;
@@ -1277,12 +1277,13 @@ static void openuri(Win *win, const char *str)
 static Spawn *spawnp(Win *win,
 		const char *action, const char *cmd, const char *path, bool once)
 {
-	Spawn ret = {win, action, g_strdup(cmd), g_strdup(path), once};
+	Spawn ret = {win, g_strdup(action), g_strdup(cmd), g_strdup(path), once};
 	return g_memdup(&ret, sizeof(Spawn));
 }
 static void spawnfree(Spawn* s, bool force)
 {
 	if (!s || (!s->once && !force)) return;
+	g_free(s->action);
 	g_free(s->cmd);
 	g_free(s->path);
 	g_free(s);
