@@ -3949,6 +3949,9 @@ static gboolean policycb(
 	WebKitResponsePolicyDecision *rdec = dec;
 	WebKitURIResponse *res = webkit_response_policy_decision_get_response(rdec);
 
+	if(!SOUP_STATUS_IS_SUCCESSFUL(webkit_uri_response_get_status_code(res)))
+		return false;
+
 	bool dl = false;
 	char *msr = getset(win, "dlmimetypes");
 	//for checking whether is sub frame or not.
