@@ -233,7 +233,7 @@ static char *mainmdstr =
 "[Wiki](https://github.com/jun7/"APP"/wiki)\n"
 "[Adblock](https://github.com/jun7/"APP"adblock)\n"
 "[![]("APP":F) Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
-"[![]("APP":f/https://www.archlinux.org/) Arch Linux](https://www.archlinux.org/)\n"
+"[![]("APP":f/"DISTROURI") "DISTRONAME"]("DISTROURI")\n"
 ;
 
 //@misc

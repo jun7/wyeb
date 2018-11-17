@@ -33,6 +33,7 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define HINTKEYS "fsedagwrvxqcz"
 #define DSEARCH  "https://www.google.com/search?q=%s"
 #define DSEARCHKEY "g"
+
 //bt324"
 
 #if ! DEBUG + 0

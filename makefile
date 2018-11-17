@@ -1,5 +1,7 @@
 PREFIX ?= /usr
 EXTENSION_DIR ?= $(PREFIX)/lib/wyebrowser
+DISTROURI ?= https://www.archlinux.org/
+DISTRONAME ?= "Arch Linux"
 ifeq ($(DEBUG), 1)
 	CFLAGS += -Wall -Wno-deprecated-declarations
 else
@@ -12,6 +14,8 @@ wyeb: main.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< \
 		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
 		-DEXTENSION_DIR=\"$(EXTENSION_DIR)\" \
+		-DDISTROURI=\"$(DISTROURI)\" \
+		-DDISTRONAME=\"$(DISTRONAME)\" \
 		-DDEBUG=${DEBUG} -lm
 
 ext.so: ext.c general.c makefile
