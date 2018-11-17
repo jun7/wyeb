@@ -25,7 +25,7 @@ prepare() {
 
 build() {
 	cd "$srcdir/wyeb"
-	DEBUG=
+	DEBUG=0
 	make
 }
 
