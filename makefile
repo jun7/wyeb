@@ -1,4 +1,4 @@
-EXTENSION_DIR=$(DESTDIR)/usr/lib/wyebrowser
+EXTENSION_DIR=/usr/lib/wyebrowser
 ifeq ($(DEBUG), 1)
 	CFLAGS += -Wall -Wno-deprecated-declarations
 else
@@ -23,14 +23,14 @@ clean:
 
 install: all
 	install -Dm755 wyeb   $(DESTDIR)/usr/bin/wyeb
-	install -Dm755 ext.so   $(EXTENSION_DIR)/ext.so
+	install -Dm755 ext.so   $(DESTDIR)$(EXTENSION_DIR)/ext.so
 	install -Dm644 wyeb.png   $(DESTDIR)/usr/share/pixmaps/wyeb.png
 	install -Dm644 wyeb.desktop $(DESTDIR)/usr/share/applications/wyeb.desktop
 
 uninstall:
 	rm -f  $(DESTDIR)/usr/bin/wyeb
-	rm -f  $(EXTENSION_DIR)/ext.so
-	-rmdir $(EXTENSION_DIR)
+	rm -f  $(DESTDIR)$(EXTENSION_DIR)/ext.so
+	-rmdir $(DESTDIR)$(EXTENSION_DIR)
 	rm -f  $(DESTDIR)/usr/share/pixmaps/wyeb.png
 	rm -f  $(DESTDIR)/usr/share/applications/wyeb.desktop
 
