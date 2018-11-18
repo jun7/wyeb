@@ -276,6 +276,11 @@ static char *stag(let elm)
 #else
 	name = webkit_dom_element_get_tag_name(elm);
 #endif
+
+	//normally name is uppercase letters but some times lower
+	if (name) for (char *c = name; *c; c++)
+		*c = g_ascii_toupper(*c);
+
 	return name;
 }
 static bool attrb(let v, char *name)
@@ -1186,7 +1191,7 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		hintkeys = page->lasthintkeys;
 	if (strlen(hintkeys ?: "") < 3) hintkeys = HINTKEYS;
 
-	GFA(page->apkeys, ipkeys);
+	GFA(page->apkeys, ipkeys)
 
 	let win = defaultview(doc);
 #if JSC
@@ -1454,7 +1459,7 @@ static void dhintcb(let w, let e, Page *page)
 }
 static void unloadcb(let w, let e, Page *page)
 {
-	GFA(page->apkeys, NULL);
+	GFA(page->apkeys, NULL)
 }
 static void pagestart(Page *page)
 {
@@ -1769,7 +1774,7 @@ void ipccb(const char *line)
 	}
 	case Crm:
 		page->hint = false;
-		GFA(page->apkeys, NULL);
+		GFA(page->apkeys, NULL)
 		break;
 
 	case Cmode:
