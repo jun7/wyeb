@@ -277,7 +277,7 @@ static char *stag(let elm)
 	name = webkit_dom_element_get_tag_name(elm);
 #endif
 
-	//normally name is uppercase letters but some times lower
+	//normally name is uppercase letters but occasionally lower
 	if (name) for (char *c = name; *c; c++)
 		*c = g_ascii_toupper(*c);
 
