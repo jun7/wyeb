@@ -3725,7 +3725,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 			else if (win->link)
 				setact(win, "mdlbtnlinkaction", win->link);
 			else if (gtk_window_is_active(win->win))
-				setact(win, "mdlbtnleft", URI(win));
+				setact(win, "mdlbtnspace", URI(win));
 		}
 		else if (fabs(deltax) > fabs(deltay)) {
 			if (deltax < 0) //left
@@ -4253,9 +4253,10 @@ static char *menuitems[][2] =
 },{"6searchDictionary", APP" // open \"u $PRIMARY\""
 },{"9---"             , ""
 },{"cviewSource"      , APP" // shsrc 'd=\"$DLDIR/"APP"-source\" && tee > \"$d\" && mimeopen -n \"$d\"'"
-},{"v---"             , ""
 },{"vchromium"        , "chromium $LINK_OR_URI"
 },{"xnoSuffixProcess" , APP" / new $LINK_OR_URI"
+},{"z---"             , ""
+},{"zquitAll"         , APP" // quitall ''"
 },{NULL}};
 void makemenu(WebKitContextMenu *menu)
 {
