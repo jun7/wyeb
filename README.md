@@ -76,13 +76,13 @@ mouse:
     left press and move down  and right: raise next   window and close
   middle button:
     on a link            : new background window
-    on free space        : raise bottom window
+    on free space        : winlist
     press and move left  : raise bottom window
     press and move right : raise next   window
     press and move up    : go to top
     press and move down  : go to bottom
     press and scroll up  : go to top
-    press and scroll down: winlist
+    press and scroll down: go to bottom
 
 context-menu:
   You can add your own script to context-menu. See 'menu' dir in
