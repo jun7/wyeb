@@ -629,12 +629,12 @@ static void setent(Win *win, const char *str)
 }
 
 //@@conf
-static int threshold(Win *win)
+static int thresholdp(Win *win)
 {
 	int ret = 8;
 	g_object_get(gtk_widget_get_settings(win->winw),
 			"gtk-dnd-drag-threshold", &ret, NULL);
-	return ret;
+	return ret * ret;
 }
 static char *dldir(Win *win)
 {
@@ -3672,7 +3672,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		double deltax = e->x - win->lastx,
 		       deltay = e->y - win->lasty;
 
-		if (MAX(abs(deltax), abs(deltay)) < threshold(win) * 3)
+		if ((pow(deltax, 2) + pow(deltay, 2)) < thresholdp(win))
 		{ //default
 			setact(win, "rockerleft", URI(win));
 		}
@@ -3713,7 +3713,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 		if (cancel) return true;
 
-		if (MAX(abs(deltax), abs(deltay)) < threshold(win))
+		if ((pow(deltax, 2) + pow(deltay, 2)) < thresholdp(win))
 		{ //default
 			if (win->oneditable)
 			{
@@ -3796,8 +3796,8 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 	if (win->mode == Mlist)
 	{
 		if (win->scrlf &&
-				MAX(abs(e->x - win->scrlx), abs(e->y - win->scrly))
-				 < threshold(win))
+				(pow(e->x - win->scrlx, 2) + pow(e->y - win->scrly, 2))
+				 < thresholdp(win))
 			return true;
 
 		win->scrlf = false;
