@@ -3672,7 +3672,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		double deltax = e->x - win->lastx,
 		       deltay = e->y - win->lasty;
 
-		if ((pow(deltax, 2) + pow(deltay, 2)) < thresholdp(win))
+		if ((pow(deltax, 2) + pow(deltay, 2)) < thresholdp(win) * 9)
 		{ //default
 			setact(win, "rockerleft", URI(win));
 		}
