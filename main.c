@@ -3867,11 +3867,13 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
 
-	times--;
-#define Z 3
-	if (scrlcnt >= Z && pe->device != keyboard())
-		times = (times + 1) * scrlcnt / Z;
-#undef Z
+
+	if (pe->device == keyboard())
+		times--;
+	else if (scrlcnt)
+		times *= scrlcnt;
+	else
+		times = 0;
 
 	GdkEventScroll *es = kitevent(win, true, GDK_SCROLL);
 
