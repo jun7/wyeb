@@ -3826,12 +3826,14 @@ static gboolean multiscrlcb(Scrl *si)
 {
 	if (si->times--)
 	{
+		scrlcnt--;
 		gdk_event_put(si->e);
 		return true;
 	}
+
+	scrlcnt--;
 	gdk_event_free(si->e);
 	g_free(si);
-	scrlcnt--;
 	return false;
 }
 static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
@@ -3862,7 +3864,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 		return true;
 	}
 
-	if (scrlcnt > 44) return false;
+	if (scrlcnt > 222) return false;
 
 	int times = getsetint(win, "multiplescroll");
 	if (!times) return false;
@@ -3871,7 +3873,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	if (pe->device == keyboard())
 		;
 	else if (scrlcnt)
-		times *= scrlcnt;
+		times += scrlcnt / 3;
 	else
 		times = 0;
 
@@ -3891,7 +3893,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 	si->e = (void *)es;
 
 	g_timeout_add(300 / (times + 4), (GSourceFunc)multiscrlcb, si);
-	scrlcnt++;
+	scrlcnt += times + 1;
 	return false;
 }
 static bool urihandler(Win *win, const char *uri, char *group)
