@@ -28,7 +28,7 @@ without adding `if(sel != c) focus(c);` to the configure event.
 (e.g. mdlbtnleft=spawn sh -c "wyeb // showmsg \`pwd\`")
 Of course it is in the 'set;', so we can set it by uri.
 - Pointer Mode. **p** makes pure click event for javascript pages.
-Also it moves pointer pos used by scroll and keeps pos last clicked for same layout pages.
+Also it moves pointer pos(don't **esc** but **p**) used by scroll and keeps pos last clicked for same layout pages.
 - Range hinting. **ctrl-r**. Also see hidden files in the menu dir, it has callback interface.
 - Misc. related domain only loading,
 whiteblack.conf, new window with clipboard text, hinting for callback scripts.
