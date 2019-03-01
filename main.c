@@ -4671,18 +4671,13 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 
 	GtkWidget *boxw  = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	GtkBox    *box   = (GtkBox *)boxw;
-	GtkWidget *box2w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	GtkBox    *box2  = (GtkBox *)box2w;
-
 	gtk_box_pack_start(box , win->lblw , false, true, 0);
 	gtk_box_pack_end(  box , win->kitw , true , true, 0);
-	gtk_box_pack_end(  box2, win->entw , false, true, 0);
-	gtk_widget_set_valign(box2w, GTK_ALIGN_END);
-
-	gtk_overlay_add_overlay(ol, box2w);
-	gtk_overlay_set_overlay_pass_through(ol, box2w, true);
-
 	gtk_container_add(GTK_CONTAINER(ol), boxw);
+
+	gtk_widget_set_valign(win->entw, GTK_ALIGN_END);
+	gtk_overlay_add_overlay(ol, win->entw);
+
 	gtk_container_add(GTK_CONTAINER(win->win), olw);
 
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
@@ -4708,7 +4703,6 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 
 	gtk_widget_show(olw);
 	gtk_widget_show(boxw);
-	gtk_widget_show(box2w);
 	gtk_widget_show(win->kitw);
 	gtk_widget_grab_focus(win->kitw);
 
