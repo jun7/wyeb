@@ -3616,7 +3616,8 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		if (e->button == 3)
 		{
 			GdkEvent *ne = gdk_event_peek();
-			if (ne && (ne->type == GDK_2BUTTON_PRESS || ne->type == GDK_3BUTTON_PRESS))
+			if (!ne) return true;
+			if (ne->type == GDK_2BUTTON_PRESS || ne->type == GDK_3BUTTON_PRESS)
 				win->cancelcontext = true;
 			gdk_event_free(ne);
 		}
