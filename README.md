@@ -11,7 +11,7 @@
 wyeb is inspired by dwb and luakit, so basically usage is similar to them.
 
 - Editable main page. It is a markdown text containing bookmarks.
-**e** key opens it by an text editor. As this, all settings are thrown to text editors.
+**e** key opens it by a text editor. As this, all settings are thrown to text editors.
 - Monitored conf files. For example, do `echo "* {color:red \!important}" >> user.css` on the conf dir(key **c**).
 It should be applied immediately.
 - Settings per URI matched regular expression. **e** on a page adds URI to the conf and opens it.
