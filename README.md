@@ -98,9 +98,9 @@ context-menu:
   '.' hides it from the menu but still available in the accels.
 accels:
   You can add your own keys to access context-menu items we added.
-  To add Ctrl-Z to GtkAccelMap, insert '<Primary><Shift>z' to the
+  To add Ctrl-Z to GtkAccelMap, insert '&lt;Primary&gt;&lt;Shift&gt;z' to the
   last "" in the file 'accels' in the conf directory assigned 'c'
-  key, and remove the ';' at the beginning of the line. alt is <Alt>.
+  key, and remove the ';' at the beginning of the line. alt is &lt;Alt&gt;.
 
 key:
 #4 - is ctrl
@@ -196,10 +196,11 @@ key:
 0 - (null)     : click              : x:y
 0 - (null)     : openeditor         : 
 0 - (null)     : spawn              : arg is called with environment variables
-0 - (null)     : jscallback         : Runs script of arg1 and arg2 is called with $RESULT
-0 - (null)     : tohintcallback     : arg is called with env selected by hint
-0 - (null)     : tohintrange        : Same as tohintcallback but range
-0 - (null)     : sourcecallback     : The web resource is sent via pipe
+0 - (null)     : sh                 : sh -c arg with env vars
+0 - (null)     : shjs               : sh(arg2) with javascript(arg)'s $RESULT
+0 - (null)     : shhint             : sh with envs selected by a hint
+0 - (null)     : shrange            : sh with envs selected by ranged hints
+0 - (null)     : shsrc              : sh with src of current page via pipe
 0 - (null)     : cookies            : ` wyeb // cookies $URI 'sh -c "echo $RESULT"' ` prints headers.
   Make sure, the callbacks of wyeb are async.
   The stdout is not caller's but first process's stdout.
