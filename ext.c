@@ -1954,8 +1954,18 @@ static void uricb(Page* page)
 	page->redirected = false;
 }
 
+
+//static gboolean printopt(const char *option, JSCOptionType type,
+//		const char *description, gpointer user_data)
+//{
+//	D(option %s --- %s, option, description);
+//	return false;
+//}
+
 static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 {
+//	jsc_options_foreach(printopt, NULL);
+
 	Page *page = g_new0(Page, 1);
 	g_object_weak_ref(G_OBJECT(kp), (GWeakNotify)freepage, page);
 	page->kit = kp;
