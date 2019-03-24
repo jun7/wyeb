@@ -1,4 +1,6 @@
-PREFIX ?= /usr
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+DATAROOTDIR ?= $(PREFIX)/share
 EXTENSION_DIR ?= $(PREFIX)/lib/wyebrowser
 DISTROURI ?= https://www.archlinux.org/
 DISTRONAME ?= "Arch Linux"
@@ -27,17 +29,17 @@ clean:
 	rm -f wyeb ext.so
 
 install: all
-	install -Dm755 wyeb   $(DESTDIR)$(PREFIX)/bin/wyeb
+	install -Dm755 wyeb   $(DESTDIR)$(BINDIR)/wyeb
 	install -Dm755 ext.so   $(DESTDIR)$(EXTENSION_DIR)/ext.so
-	install -Dm644 wyeb.png   $(DESTDIR)$(PREFIX)/share/pixmaps/wyeb.png
-	install -Dm644 wyeb.desktop $(DESTDIR)$(PREFIX)/share/applications/wyeb.desktop
+	install -Dm644 wyeb.png   $(DESTDIR)$(DATAROOTDIR)/pixmaps/wyeb.png
+	install -Dm644 wyeb.desktop $(DESTDIR)$(DATAROOTDIR)/applications/wyeb.desktop
 
 uninstall:
-	rm -f  $(PREFIX)/bin/wyeb
+	rm -f  $(BINDIR)/wyeb
 	rm -f  $(EXTENSION_DIR)/ext.so
 	-rmdir $(EXTENSION_DIR)
-	rm -f  $(PREFIX)/share/pixmaps/wyeb.png
-	rm -f  $(PREFIX)/share/applications/wyeb.desktop
+	rm -f  $(DATAROOTDIR)/pixmaps/wyeb.png
+	rm -f  $(DATAROOTDIR)/applications/wyeb.desktop
 
 
 re: clean all
