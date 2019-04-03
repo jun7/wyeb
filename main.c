@@ -564,6 +564,18 @@ static void makeclick(Win *win, guint btn)
 	else
 		putbtn(win, GDK_BUTTON_RELEASE, btn);
 }
+static void motion(Win *win, double x, double y)
+{
+	GdkEventMotion *em = kitevent(win, true, GDK_MOTION_NOTIFY);
+	em->x = x;
+	em->y = y;
+	if (win->ppress)
+		em->state = win->pbtn == 3 ? GDK_BUTTON3_MASK :
+		            win->pbtn == 2 ? GDK_BUTTON2_MASK : GDK_BUTTON1_MASK;
+
+	gtk_widget_event(win->kitw, (void *)em);
+	gdk_event_free((void *)em);
+}
 
 //shared
 static void setresult(Win *win, WebKitHitTestResult *htr)
@@ -1047,6 +1059,10 @@ static void _modechanged(Win *win)
 		break;
 
 	case Mlist:
+		if (win->lastx || win->lasty)
+			motion(win, win->lastx, win->lasty);
+		win->lastx = win->lasty = 0;
+
 		gtk_widget_queue_draw(win->kitw);
 		gdk_window_set_cursor(gdkw(win->winw), NULL);
 		break;
@@ -1466,18 +1482,6 @@ static void scroll(Win *win, int x, int y)
 	}
 
 	putevent(es);
-}
-static void motion(Win *win, double x, double y)
-{
-	GdkEventMotion *em = kitevent(win, true, GDK_MOTION_NOTIFY);
-	em->x = x;
-	em->y = y;
-	if (win->ppress)
-		em->state = win->pbtn == 3 ? GDK_BUTTON3_MASK :
-		            win->pbtn == 2 ? GDK_BUTTON2_MASK : GDK_BUTTON1_MASK;
-
-	gtk_widget_event(win->kitw, (void *)em);
-	gdk_event_free((void *)em);
 }
 void pmove(Win *win, guint key)
 {
@@ -3253,7 +3257,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 }
 static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
-	if (win->lastx || win->lastx || win->mode == Mpointer)
+	if (win->mode != Mlist && (win->lastx || win->lasty || win->mode == Mpointer))
 	{
 		guint csize = gdk_display_get_default_cursor_size(
 				gtk_widget_get_display(win->winw));
@@ -3654,9 +3658,6 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			break;
 		}
 
-		motion(win, e->x, e->y - 10000); //move somewhere
-		motion(win, e->x, e->y        ); //and now enter !!
-
 		if (pendingmiddlee)
 			gdk_event_free(pendingmiddlee);
 		pendingmiddlee = gdk_event_copy((GdkEvent *)e);
@@ -3796,6 +3797,9 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 {
 	if (win->mode == Mlist)
 	{
+		win->lastx = e->x;
+		win->lasty = e->y;
+
 		if (win->scrlf &&
 				(pow(e->x - win->scrlx, 2) + pow(e->y - win->scrly, 2))
 				 < thresholdp(win))
