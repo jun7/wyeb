@@ -4,6 +4,9 @@ DATAROOTDIR ?= $(PREFIX)/share
 EXTENSION_DIR ?= $(PREFIX)/lib/wyebrowser
 DISTROURI ?= https://www.archlinux.org/
 DISTRONAME ?= "Arch Linux"
+
+PKG_CONFIG ?= pkg-config
+
 ifeq ($(DEBUG), 1)
 	CFLAGS += -Wall -Wno-deprecated-declarations
 else
@@ -14,7 +17,7 @@ all: wyeb ext.so
 
 wyeb: main.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< \
-		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
+		`$(PKG_CONFIG) --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
 		-DEXTENSION_DIR=\"$(EXTENSION_DIR)\" \
 		-DDISTROURI=\"$(DISTROURI)\" \
 		-DDISTRONAME=\"$(DISTRONAME)\" \
@@ -22,7 +25,7 @@ wyeb: main.c general.c makefile
 
 ext.so: ext.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -shared -fPIC \
-		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
+		`$(PKG_CONFIG) --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
 		-DDEBUG=${DEBUG} -DJSC=${JSC}
 
 clean:
