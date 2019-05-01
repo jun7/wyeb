@@ -19,8 +19,8 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <webkit2/webkit2.h>
 
+//for window list
 #ifdef GDK_WINDOWING_X11
-// gtk_plug_new
 #include <gdk/gdkx.h>
 #endif
 
@@ -4506,13 +4506,11 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 {
 	Win *win = g_new0(Win, 1);
 	win->userreq = true;
-
+	win->winw =
 #ifdef GDK_WINDOWING_X11
-	if (plugto)
-		win->winw = gtk_plug_new(plugto);
-	else
+		plugto ? gtk_plug_new(plugto) :
 #endif
-	win->winw = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+		gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
 	int w, h;
 	if (caller)
