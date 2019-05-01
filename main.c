@@ -3653,9 +3653,6 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	if (e->button == 1) break;
 	{
-		//for lacking of target change event when btn event happens with focus in;
-		//now this is also for back from mlist mode may be
-		//and pointer mode making events without the target change.
 		if (e->send_event)
 		{
 			win->lastx = win->lasty = 0;
