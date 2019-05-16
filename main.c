@@ -4549,7 +4549,8 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		if (!ephemeral)
 			//we assume cookies are conf
 			webkit_cookie_manager_set_persistent_storage(cookiemgr,
-					sfree(path2conf("cookies")),
+					sfree(g_build_filename(
+						g_get_user_data_dir(), fullname, "cookies", NULL)),
 					WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
 
 		webkit_cookie_manager_set_accept_policy(cookiemgr,
