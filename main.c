@@ -1240,9 +1240,14 @@ static void _openuri(Win *win, const char *str, Win *caller)
 	if (!url)
 	{
 		url = g_new(regex_t, 1);
-		regcomp(url,
+		if (regcomp(url,
 				"^([a-zA-Z0-9-]{2,256}\\.)+[a-z]{2,6}(/.*)?$",
-				REG_EXTENDED | REG_NOSUB);
+				REG_EXTENDED | REG_NOSUB) != 0) {
+			g_print("There has been a fatal error with Regex");
+			g_free(uri);
+			g_strfreev(stra);
+			exit(1);
+		}
 	}
 
 	char *dsearch;
