@@ -1257,7 +1257,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 	{
 		url = g_new(regex_t, 1);
 		regcomp(url,
-				"^([a-zA-Z0-9-]{2,256}\\.)+[a-z]{2,6}(/.*)?$",
+				"^([a-zA-Z0-9-]{1,63}\\.)+[a-z]{2,6}(/.*)?$",
 				REG_EXTENDED | REG_NOSUB);
 	}
 
