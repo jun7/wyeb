@@ -3690,6 +3690,12 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			else //down
 				setact(win, "rockerdown", URI(win));
 		}
+
+		//workaround. while selecting(no target) on an iframe webkit crashes
+		GdkEventKey *ek = kitevent(win, false, GDK_KEY_PRESS);
+		ek->keyval = GDK_KEY_Escape;
+		gtk_widget_event(win->kitw, (void *)ek);
+		gdk_event_free((void *)ek);
 	}
 
 	return false;
