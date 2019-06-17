@@ -3365,7 +3365,7 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		for (char **lh = hints; *lh && **lh; lh++)
 		{
 			char *h = *lh;
-			//0   123*   141*   190*   164*  0*FF //example
+			//0   123*   141*   190*   164*  0*1FF //example
 			h[7]=h[14]=h[21]=h[28]=h[32] = '\0';
 #define Z(i) atoi(h + i) * z
 			drawhint(win, cr, desc, *h == '1',
