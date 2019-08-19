@@ -2010,10 +2010,7 @@ G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 {
 	const char *str = g_variant_get_string((GVariant *)v, NULL);
 	fullname = g_strdup(g_strrstr(str, ";") + 1);
-	fullname = fullname;
-
 	pages = g_ptr_array_new();
-
 	SIG(ex, "page-created", initpage, NULL);
 }
 
