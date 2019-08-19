@@ -1979,19 +1979,18 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	wbpath = path2conf("whiteblack.conf");
 	setwblist(false);
 
-	char *name = NULL;
-	if (!shared)
+	static char *name;
+	if (!name)
 	{
-		name = g_strdup_printf("%"G_GUINT64_FORMAT, page->id);
+		name = g_strdup_printf("%d", getpid());
 		ipcwatch(name);
 	}
 	loadconf();
-	send(page, "_setreq", NULL);
+	send(page, "_pageinit", name);
 
 	GMainContext *ctx = g_main_context_new();
 	page->sync = g_main_loop_new(ctx, true);
-	GSource *watch = _ipcwatch(shared ? "ext" : name, ctx);
-	g_free(name);
+	GSource *watch = _ipcwatch(name, ctx);
 
 	g_main_loop_run(page->sync);
 
@@ -2011,11 +2010,7 @@ G_MODULE_EXPORT void webkit_web_extension_initialize_with_user_data(
 {
 	const char *str = g_variant_get_string((GVariant *)v, NULL);
 	fullname = g_strdup(g_strrstr(str, ";") + 1);
-	shared = fullname[0] == 's';
-	fullname = fullname + 1;
-
-	if (shared)
-		ipcwatch("ext");
+	fullname = fullname;
 
 	pages = g_ptr_array_new();
 

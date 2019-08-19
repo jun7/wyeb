@@ -71,6 +71,7 @@ typedef struct _WP {
 		GObject   *ento;
 	};
 	char   *pageid;
+	char   *pagepid;
 	WebKitFindController *findct;
 
 	//mode
@@ -484,12 +485,23 @@ static void send(Win *win, Coms type, char *args)
 	char *arg = g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: "");
 
 	static bool alerted;
-	if(!ipcsend(shared ? "ext" : win->pageid, arg) &&
+	if(!ipcsend(win->pagepid, arg) &&
 			!win->crashed && !alerted && type == Cstart)
 	{
 		alerted = true;
 		alert("Failed to communicate with the Web Extension.\n"
 				"Make sure ext.so is in "EXTENSION_DIR".");
+	}
+}
+static void sendeach(Coms type, char *args)
+{
+	char *sent = NULL;
+	for (int i = 0; i < wins->len; i++)
+	{
+		Win *lw = wins->pdata[i];
+		if (sent && !strcmp(sent, lw->pagepid)) continue;
+		sent = lw->pagepid;
+		send(lw, type, args);
 	}
 }
 typedef struct {
@@ -883,14 +895,7 @@ static void preparemd()
 static bool wbreload = true;
 static void checkwb(const char *mp)
 {
-	char *arg = wbreload ? "r" : "n";
-	if (wins->len)
-	{
-		if (shared)
-			send(LASTWIN, Cwhite, arg);
-		else for (int i = 0; i < wins->len; i++)
-			send(wins->pdata[i], Cwhite, arg);
-	}
+	sendeach(Cwhite, wbreload ? "r" : "n");
 	wbreload = true;
 }
 static void preparewb()
@@ -1014,9 +1019,11 @@ static void checkconf(const char *mp)
 				WEBKIT_TLS_ERRORS_POLICY_IGNORE :
 				WEBKIT_TLS_ERRORS_POLICY_FAIL);
 
-	if (wins)
-		for (int i = 0; i < wins->len; i++)
-			resetconf(wins->pdata[i], shared && i ? 1 : 3);
+	if (!wins) return;
+
+	sendeach(Cload, NULL);
+	for (int i = 0; i < wins->len; i++)
+		resetconf(wins->pdata[i], 1);
 }
 
 
@@ -2277,7 +2284,9 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	if (win == NULL && (!arg || strcmp(action, "dlwithheaders"))) return false;
 
 	//internal
-	Z("_setreq"    , send(win, Coverset, win->overset))
+	Z("_pageinit"  ,
+			GFA(win->pagepid, g_strdup(arg))
+			send(win, Coverset, win->overset))
 	Z("_textlinkon", textlinkon(win))
 	Z("_blocked"   ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg));
@@ -3388,6 +3397,7 @@ static void destroycb(Win *win)
 	quitif();
 
 	g_free(win->pageid);
+	g_free(win->pagepid);
 	g_free(win->lasturiconf);
 	g_free(win->lastreset);
 	g_free(win->overset);
@@ -4554,8 +4564,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		webkit_cookie_manager_set_accept_policy(cookiemgr,
 				WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
 
-		shared = !g_key_file_get_boolean(conf, "boot", "multiwebprocs", NULL);
-		if (!shared)
+		if (g_key_file_get_boolean(conf, "boot", "multiwebprocs", NULL))
 			webkit_web_context_set_process_model(ctx,
 					WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 
@@ -4564,7 +4573,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		char *args = g_strjoinv(";", argv);
 		g_strfreev(argv);
 		char *udata = g_strconcat(args,
-				";"APP"abapi;", shared ? "s" : "m", fullname, NULL);
+				";"APP"abapi;", fullname, NULL);
 		g_free(args);
 
 		webkit_web_context_set_web_extensions_initialization_user_data(

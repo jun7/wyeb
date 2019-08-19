@@ -89,7 +89,6 @@ static char *sfree(char *p)
 }
 
 static char *fullname = "";
-static bool shared = true;
 static GKeyFile *conf;
 static char *confpath;
 
@@ -145,7 +144,7 @@ static Conf dconf[] = {
 
 	{"boot"  , "enablefavicon", "true"},
 	{"boot"  , "extensionargs", "adblock:true;"},
-	{"boot"  , "multiwebprocs", "false"},
+	{"boot"  , "multiwebprocs", "true"},
 	{"boot"  , "ephemeral"    , "false"},
 	{"boot"  , "unsetGTK_OVERLAY_SCROLLING", "true", "workaround"},
 
