@@ -4507,6 +4507,13 @@ static void foundcb(WebKitFindController *f, guint cnt, Win *win)
 	_showmsg(win, cnt > 1 ? g_strdup_printf("%d", cnt) : NULL);
 }
 
+static gboolean openuricb(void **args)
+{
+	_openuri(args[0], args[1], isin(wins, args[2]) ? args[2] : NULL);
+	g_free(args[1]);
+	g_free(args);
+	return FALSE;
+}
 
 //@newwin
 Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
@@ -4724,10 +4731,12 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	gtk_widget_show(win->kitw);
 	gtk_widget_grab_focus(win->kitw);
 
-	if (!cbwin)
-		_openuri(win, uri, caller);
-
 	present(back && LASTWIN ? LASTWIN : win);
+
+	if (!cbwin)
+		g_idle_add((GSourceFunc) openuricb,
+				g_memdup((void *[]){win, g_strdup(uri), caller},
+				   sizeof(void *) * 3));
 
 	return win;
 }
