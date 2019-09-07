@@ -819,7 +819,7 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group)
 }
 
 static void setcss(Win *win, char *namesstr); //declaration
-static void resetconf(Win *win, int type)
+static void resetconf(Win *win, const char *uri, int type)
 { //type: 0: uri, 1:force, 2:overset, 3:file
 //	"reldomaindataonly", "removeheaders"
 	char *checks[] = {"reldomaincutheads", "rmnoscripttag", NULL};
@@ -830,7 +830,7 @@ static void resetconf(Win *win, int type)
 		for (char **check = checks; *check; check++)
 			addhash(getset(win, *check) ?: "", &hash);
 
-	_resetconf(win, URI(win), type);
+	_resetconf(win, uri ?: URI(win), type);
 	if (type == 3)
 		send(win, Cload, NULL);
 	if (type >= 2)
@@ -1030,7 +1030,7 @@ static void checkconf(const char *mp)
 
 	sendeach(Cload, NULL);
 	for (int i = 0; i < wins->len; i++)
-		resetconf(wins->pdata[i], 1);
+		resetconf(wins->pdata[i], NULL, 1);
 }
 
 
@@ -2592,10 +2592,10 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			if (add)
 				GFA(*os, g_strconcat(*os ?: arg, *os ? "/" : NULL, arg, NULL))
 			g_strfreev(ss);
-			resetconf(win, 2))
+			resetconf(win, NULL, 2))
 	Z("set2"        ,
 			GFA(win->overset, g_strdup(arg))
-			resetconf(win, 2))
+			resetconf(win, NULL, 2))
 	Z("setstack"    ,
 			char **os = &win->overset;
 			if (arg)
@@ -2604,7 +2604,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 				*(strrchr(*os, '/')) = '\0';
 			else if (*os)
 				GFA(*os, NULL)
-			resetconf(win, 2))
+			resetconf(win, NULL, 2))
 
 	Z("wbnoreload", wbreload = false) //internal
 	Z("addwhitelist", send(win, Cwhite, "white"))
@@ -3985,7 +3985,8 @@ static gboolean policycb(
 	//this time webkit_web_resource_get_response is null yet except on sub frames
 	//unfortunately on nav it returns prev page though
 	WebKitWebResource *mresrc = webkit_web_view_get_main_resource(win->kit);
-	if (msr && *msr && !webkit_web_resource_get_response(mresrc))
+	bool mainframe = !webkit_web_resource_get_response(mresrc);
+	if (msr && *msr && mainframe)
 	{
 		char **ms = g_strsplit(msr, ";", -1);
 		const char *mime = webkit_uri_response_get_mime_type(res);
@@ -3999,7 +4000,11 @@ static gboolean policycb(
 	}
 
 	if (!dl && webkit_response_policy_decision_is_mime_type_supported(rdec))
+	{
+		if (mainframe)
+			resetconf(win, webkit_uri_response_get_uri(res), 0);
 		webkit_policy_decision_use(dec);
+	}
 	else
 		webkit_policy_decision_download(dec);
 	return true;
@@ -4034,7 +4039,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	win->crashed = false;
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
-		//D(WEBKIT_LOAD_STARTED %s, URI(win))
+		D(WEBKIT_LOAD_STARTED %s, URI(win))
 		histperiod(win);
 		if (tlwin == win) tlwin = NULL;
 		win->scheme = false;
@@ -4047,7 +4052,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		if (win->userreq) {
 			win->userreq = false; //currently not used
 		}
-		resetconf(win, 0);
+		resetconf(win, NULL, 0);
 		setspawn(win, "onstartmenu");
 
 		//there is progcb before this event but sometimes it is
@@ -4063,13 +4068,13 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		send(win, Cstart, NULL);
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
-		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
-		resetconf(win, 0);
+		D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
+		resetconf(win, NULL, 0);
 		send(win, Cstart, NULL);
 
 		break;
 	case WEBKIT_LOAD_COMMITTED:
-		//D(WEBKIT_LOAD_COMMITED %s, URI(win))
+		D(WEBKIT_LOAD_COMMITED %s, URI(win))
 		if (!win->scheme && g_str_has_prefix(URI(win), APP":"))
 		{
 			webkit_web_view_reload(win->kit);
@@ -4088,7 +4093,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 		if (g_strcmp0(win->lastreset, URI(win)))
 		{ //for load-failed before commit e.g. download
-			resetconf(win, 0);
+			resetconf(win, NULL, 0);
 			send(win, Cstart, NULL);
 		}
 		else if (win->scheme || !g_str_has_prefix(URI(win), APP":"))
