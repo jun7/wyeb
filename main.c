@@ -4741,7 +4741,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	present(back && LASTWIN ? LASTWIN : win);
 
 	if (!cbwin)
-		g_idle_add((GSourceFunc) openuricb,
+		g_timeout_add(40, (GSourceFunc) openuricb,
 				g_memdup((void *[]){win, g_strdup(uri), caller},
 				   sizeof(void *) * 3));
 
