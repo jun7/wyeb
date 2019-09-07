@@ -487,15 +487,18 @@ static void send(Win *win, Coms type, char *args)
 	static bool alerted;
 
 	for (GSList *next = win->ipcids; next; next = next->next)
-	{
-		if(!ipcsend(next->data, arg) &&
-				!win->crashed && !alerted && type == Cstart)
+		if (!ipcsend(next->data, arg))
 		{
-			alerted = true;
-			alert("Failed to communicate with the Web Extension.\n"
-					"Make sure ext.so is in "EXTENSION_DIR".");
+			g_free(next->data);
+			win->ipcids = g_slist_delete_link(win->ipcids, next);
+
+			if (!win->ipcids && !win->crashed && !alerted && type == Cstart)
+			{
+				alerted = true;
+				alert("Failed to communicate with the Web Extension.\n"
+						"Make sure ext.so is in "EXTENSION_DIR".");
+			}
 		}
-	}
 }
 static void sendeach(Coms type, char *args)
 {
@@ -503,7 +506,7 @@ static void sendeach(Coms type, char *args)
 	for (int i = 0; i < wins->len; i++)
 	{
 		Win *lw = wins->pdata[i];
-		if (sent && !strcmp(sent, lw->ipcids->data)) continue;
+		if (!lw->ipcids || (sent && !strcmp(sent, lw->ipcids->data))) continue;
 		sent = lw->ipcids->data;
 		send(lw, type, args);
 	}
