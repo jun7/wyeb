@@ -1706,8 +1706,12 @@ void ipccb(const char *line)
 
 			//workaround
 			//we can't detect suspended webprocess
-			if (defaultview(sdoc(page)))
+			let win = defaultview(sdoc(page));
+			if (win)
+			{
+				g_object_unref(win);
 				break;
+			}
 			else
 				page = NULL;
 		}
