@@ -71,7 +71,7 @@ typedef struct _WP {
 		GObject   *ento;
 	};
 	char   *pageid;
-	char   *pagepid;
+	GSList *ipcids;
 	WebKitFindController *findct;
 
 	//mode
@@ -482,15 +482,19 @@ static void showmsg(Win *win, const char *msg)
 //com
 static void send(Win *win, Coms type, char *args)
 {
-	char *arg = g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: "");
+	char *arg = sfree(g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: ""));
 
 	static bool alerted;
-	if(!ipcsend(win->pagepid, arg) &&
-			!win->crashed && !alerted && type == Cstart)
+
+	for (GSList *next = win->ipcids; next; next = next->next)
 	{
-		alerted = true;
-		alert("Failed to communicate with the Web Extension.\n"
-				"Make sure ext.so is in "EXTENSION_DIR".");
+		if(!ipcsend(next->data, arg) &&
+				!win->crashed && !alerted && type == Cstart)
+		{
+			alerted = true;
+			alert("Failed to communicate with the Web Extension.\n"
+					"Make sure ext.so is in "EXTENSION_DIR".");
+		}
 	}
 }
 static void sendeach(Coms type, char *args)
@@ -499,8 +503,8 @@ static void sendeach(Coms type, char *args)
 	for (int i = 0; i < wins->len; i++)
 	{
 		Win *lw = wins->pdata[i];
-		if (sent && !strcmp(sent, lw->pagepid)) continue;
-		sent = lw->pagepid;
+		if (sent && !strcmp(sent, lw->ipcids->data)) continue;
+		sent = lw->ipcids->data;
 		send(lw, type, args);
 	}
 }
@@ -2285,7 +2289,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 
 	//internal
 	Z("_pageinit"  ,
-			GFA(win->pagepid, g_strdup(arg))
+			win->ipcids = g_slist_prepend(win->ipcids, g_strdup(arg));
 			send(win, Coverset, win->overset))
 	Z("_textlinkon", textlinkon(win))
 	Z("_blocked"   ,
@@ -3397,7 +3401,7 @@ static void destroycb(Win *win)
 	quitif();
 
 	g_free(win->pageid);
-	g_free(win->pagepid);
+	g_slist_free_full(win->ipcids, g_free);
 	g_free(win->lasturiconf);
 	g_free(win->lastreset);
 	g_free(win->overset);

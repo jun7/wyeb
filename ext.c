@@ -37,7 +37,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 
 typedef struct _WP {
 	WebKitWebPage *kit;
-	guint64        id;
 #if JSC
 	WebKitFrame   *mf;
 #endif
@@ -341,8 +340,9 @@ static void recttovals(let rect, double *x, double *y, double *w, double *h)
 static void send(Page *page, char *action, const char *arg)
 {
 	//D(send to main %s, ss)
-	ipcsend("main", g_strdup_printf(
-		"%"G_GUINT64_FORMAT":%s:%s", page->id, action, arg ?: ""));
+	ipcsend("main", sfree(g_strdup_printf(
+		"%"G_GUINT64_FORMAT":%s:%s",
+		webkit_web_page_get_id(page->kit), action, arg ?: "")));
 }
 static bool isins(const char **ary, char *val)
 {
@@ -1700,8 +1700,17 @@ void ipccb(const char *line)
 	Page *page = NULL;
 	long lid = atol(args[0]);
 	for (int i = 0; i < pages->len; i++)
-		if (((Page *)pages->pdata[i])->id == lid)
+		if (webkit_web_page_get_id(((Page *)pages->pdata[i])->kit) == lid)
+		{
 			page = pages->pdata[i];
+
+			//workaround
+			//we can't detect suspended webprocess
+			if (defaultview(sdoc(page)))
+				break;
+			else
+				page = NULL;
+		}
 
 	if (!page) return;
 
@@ -1969,7 +1978,6 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	Page *page = g_new0(Page, 1);
 	g_object_weak_ref(G_OBJECT(kp), (GWeakNotify)freepage, page);
 	page->kit = kp;
-	page->id = webkit_web_page_get_id(kp);
 #if JSC
 	page->mf = webkit_web_page_get_main_frame(kp);
 #endif
@@ -1979,18 +1987,19 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	wbpath = path2conf("whiteblack.conf");
 	setwblist(false);
 
-	static char *name;
-	if (!name)
+	static char *ipcid;
+	if (!ipcid)
 	{
-		name = g_strdup_printf("%d", getpid());
-		ipcwatch(name);
+		ipcid = g_strdup_printf("%d", getpid());
+		ipcwatch(ipcid);
 	}
+
 	loadconf();
-	send(page, "_pageinit", name);
+	send(page, "_pageinit", ipcid);
 
 	GMainContext *ctx = g_main_context_new();
 	page->sync = g_main_loop_new(ctx, true);
-	GSource *watch = _ipcwatch(name, ctx);
+	GSource *watch = _ipcwatch(ipcid, ctx);
 
 	g_main_loop_run(page->sync);
 

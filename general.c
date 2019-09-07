@@ -604,7 +604,7 @@ static gboolean ipcgencb(GIOChannel *ch, GIOCondition c, gpointer p)
 	return true;
 }
 
-static bool ipcsend(char *name, char *str) { //str is eaten
+static bool ipcsend(char *name, char *str) {
 	char *path = ipcpath(name);
 	bool ret = false;
 	int cpipe = 0;
@@ -625,7 +625,6 @@ static bool ipcsend(char *name, char *str) { //str is eaten
 
 		//D(send -end- %s %s, name, str)
 	}
-	g_free(str);
 	return ret;
 }
 static GSource *_ipcwatch(char *name, GMainContext *ctx) {
