@@ -4039,7 +4039,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	win->crashed = false;
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
-		D(WEBKIT_LOAD_STARTED %s, URI(win))
+		//D(WEBKIT_LOAD_STARTED %s, URI(win))
 		histperiod(win);
 		if (tlwin == win) tlwin = NULL;
 		win->scheme = false;
@@ -4068,13 +4068,13 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		send(win, Cstart, NULL);
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
-		D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
+		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
 		resetconf(win, NULL, 0);
 		send(win, Cstart, NULL);
 
 		break;
 	case WEBKIT_LOAD_COMMITTED:
-		D(WEBKIT_LOAD_COMMITED %s, URI(win))
+		//D(WEBKIT_LOAD_COMMITED %s, URI(win))
 		if (!win->scheme && g_str_has_prefix(URI(win), APP":"))
 		{
 			webkit_web_view_reload(win->kit);
