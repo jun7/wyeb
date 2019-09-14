@@ -2806,12 +2806,12 @@ static gboolean dldecidecb(WebKitDownload *pdl, char *name, DLWin *win)
 
 	char *org = g_strdup(path);
 	//Last ext is duplicated for keeping order and easily rename
-	char *dot = strrchr(org, '.');
-	if (!dot || dot == org || !*(dot + 1) ||
-			strlen(dot) > 4 + 1) //have not to support long ext
-		dot = "";
+	char *ext = strrchr(org, '.');
+	if (!ext || ext == org || !*(ext + 1) ||
+			strlen(ext) > 4 + 1) //have not support long ext
+		ext = "";
 	for (int i = 2; g_file_test(path, G_FILE_TEST_EXISTS); i++)
-		GFA(path, g_strdup_printf("%s.%d%s", org, i, dot))
+		GFA(path, g_strdup_printf("%s.%d%s", org, i, ext))
 	g_free(org);
 
 	webkit_download_set_destination(pdl, sfree(
