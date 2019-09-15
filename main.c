@@ -3708,6 +3708,11 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			else //down
 				setact(win, "rockerdown", URI(win));
 		}
+
+		break;
+	default:
+		return setact(win,
+				sfree(g_strdup_printf("button%d", e->button)), URI(win));
 	}
 
 	return false;

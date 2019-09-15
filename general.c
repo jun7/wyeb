@@ -240,6 +240,8 @@ static Conf dconf[] = {
 	{DSET    , "rockerright"      , "forward"},
 	{DSET    , "rockerup"         , "quitprev"},
 	{DSET    , "rockerdown"       , "quitnext"},
+	{DSET    , "button8"          , "back"},
+	{DSET    , "button9"          , "forward"},
 
 	//changes
 	//{DSET      , "auto-load-images" , "false"},
