@@ -517,19 +517,14 @@ static void initconf(GKeyFile *kf)
 static bool _mkdirif(char *path, bool isfile)
 {
 	bool ret = false;
-	char *dir;
-	if (isfile)
-		dir = g_path_get_dirname(path);
-	else
-		dir = path;
+	char *dir = isfile ? g_path_get_dirname(path) : path;
 
 	if (!g_file_test(dir, G_FILE_TEST_EXISTS))
 		ret = !g_mkdir_with_parents(dir, 0700);
 
 	g_assert(g_file_test(dir, G_FILE_TEST_IS_DIR));
 
-	if (isfile)
-		g_free(dir);
+	if (isfile) g_free(dir);
 
 	return ret;
 }
