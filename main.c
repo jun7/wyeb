@@ -3788,6 +3788,8 @@ static void dragccb(GdkDragContext *ctx, GdkDragCancelReason reason, Win *win)
 		double px, py;
 		gdk_window_get_device_position_double(gw, gd, &px, &py, NULL);
 		_putbtn(win, GDK_BUTTON_PRESS, 13, px, py);
+		if (!(mask & GDK_BUTTON1_MASK))
+			_putbtn(win, GDK_BUTTON_RELEASE, 1, px, py);
 	}
 }
 static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
