@@ -3626,6 +3626,7 @@ static GdkEvent *pendingmiddlee;
 static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	win->userreq = true;
+	win->cancelbtn1r = false;
 
 	if (e->type != GDK_BUTTON_PRESS) return false;
 	altcur(win, e->x, e->y); //clears if it is alt cur
