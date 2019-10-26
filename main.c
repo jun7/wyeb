@@ -3797,7 +3797,7 @@ static void dragbcb(GtkWidget *w, GdkDragContext *ctx ,Win *win)
 {
 	if (win->mode == Mpointer)
 	{
-		showmsg(win, "Pointer Mode does not support drag");
+		showmsg(win, "Pointer Mode does not support real drag");
 		putkey(win, GDK_KEY_Escape);
 		checkppress(win, 0);
 	}
