@@ -2582,15 +2582,14 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			char **os = &win->overset;
 			char **ss = g_strsplit(*os ?: "", "/", -1);
 			GFA(*os, NULL)
-			bool add = !unset;
 			if (arg) for (char **s = ss; *s; s++)
 			{
 				if (g_strcmp0(*s, arg))
 					GFA(*os, g_strconcat(*os ?: *s, *os ? "/" : NULL, *s, NULL))
 				else
-					add = false;
+					unset = true;
 			}
-			if (add)
+			if (!unset)
 				GFA(*os, g_strconcat(*os ?: arg, *os ? "/" : NULL, arg, NULL))
 			g_strfreev(ss);
 			resetconf(win, NULL, 2))
