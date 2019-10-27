@@ -129,6 +129,7 @@ typedef struct {
 	char *desc;
 } Conf;
 static Conf dconf[] = {
+	{"all"   , "keepproc"     , "false"},
 	{"all"   , "winwidth"     , "1000"},
 	{"all"   , "winheight"    , "1000"},
 	{"all"   , "zoom"         , "1.000"},

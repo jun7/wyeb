@@ -266,7 +266,7 @@ static Win *winbyid(const char *pageid)
 }
 static void quitif()
 {
-	if (!wins->len && !dlwins->len)
+	if (!wins->len && !dlwins->len && !confbool("keepproc"))
 		gtk_main_quit();
 }
 static void reloadlast()
