@@ -3376,14 +3376,14 @@ static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 		pango_font_description_set_family(desc, "monospace");
 		pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
 
-		double z = webkit_web_view_get_zoom_level(win->kit);
+		double zoom = webkit_web_view_get_zoom_level(win->kit);
 		char **hints = g_strsplit(win->hintdata, ";", -1);
 		for (char **lh = hints; *lh && **lh; lh++)
 		{
 			char *h = *lh;
 			//0   123*   141*   190*   164*  0*1FF //example
 			h[7]=h[14]=h[21]=h[28]=h[32] = '\0';
-#define Z(i) atoi(h + i) * z
+#define Z(i) atoi(h + i) * zoom
 			drawhint(win, cr, desc, *h == '1',
 				Z(1), Z(8), Z(15), Z(22), atoi(h + 29),
 				h[33] == '1', h + 34);
