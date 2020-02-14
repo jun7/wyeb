@@ -2275,6 +2275,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	if (action == NULL) return false;
 	char **agv = NULL;
 
+	Z("quitall"     , gtk_main_quit())
 	Z("new"         , win = newwin(arg, NULL, NULL, 0))
 	Z("plugto"      , plugto = atol(exarg ?: arg ?: "0");
 			return run(win, "new", exarg ? arg : NULL))
@@ -2461,7 +2462,6 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	Z("bookmarkbreak", addlink(win, NULL, NULL))
 
 	Z("quit"        , gtk_widget_destroy(win->winw); return true)
-	Z("quitall"     , gtk_main_quit())
 
 	if (win->mode == Mpointer)
 	{
