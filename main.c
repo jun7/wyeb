@@ -819,12 +819,14 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group)
 }
 
 static void setcss(Win *win, char *namesstr); //declaration
+static void setscripts(Win *win, char *namesstr); //declaration
 static void resetconf(Win *win, const char *uri, int type)
 { //type: 0: uri, 1:force, 2:overset, 3:file
 //	"reldomaindataonly", "removeheaders"
 	char *checks[] = {"reldomaincutheads", "rmnoscripttag", NULL};
 	guint hash = 0;
 	char *lastcss = g_strdup(getset(win, "usercss"));
+	char *lastscripts = g_strdup(getset(win, "userscripts"));
 
 	if (type && LASTWIN == win)
 		for (char **check = checks; *check; check++)
@@ -854,10 +856,14 @@ static void resetconf(Win *win, const char *uri, int type)
 	char *newcss = getset(win, "usercss");
 	if (g_strcmp0(lastcss, newcss))
 		setcss(win, newcss);
+	char *newscripts = getset(win, "userscripts");
+	if (g_strcmp0(lastscripts, newscripts))
+		setscripts(win, newscripts);
 
 	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor") ?: "");
 
 	g_free(lastcss);
+	g_free(lastscripts);
 }
 
 static void checkmd(const char *mp)
@@ -936,13 +942,13 @@ static void checkaccels(const char *mp)
 	cancelaccels = false;
 }
 
-static void checkcss(const char *mp)
+static void checkset(const char *mp, char *set, void (*setfunc)(Win *, char *))
 {
 	if (!wins) return;
 	for (int i = 0; i < wins->len; i++)
 	{
 		Win *lw = wins->pdata[i];
-		char *us = getset(lw, "usercss");
+		char *us = getset(lw, set);
 		if (!us) continue;
 
 		bool changed = false;
@@ -952,39 +958,54 @@ static void checkcss(const char *mp)
 		g_strfreev(names);
 
 		if (changed)
-			setcss(lw, us);
+			setfunc(lw, us);
 	}
 }
-void setcss(Win *win, char *namesstr)
+static void checkcss    (const char *mp) { checkset(mp, "usercss"    , setcss    ); }
+static void checkscripts(const char *mp) { checkset(mp, "userscripts", setscripts); }
+
+void setcontent(Win *win, char *namesstr, bool css)
 {
 	char **names = g_strsplit(namesstr ?: "", ";", -1);
 
 	WebKitUserContentManager *cmgr =
 		webkit_web_view_get_user_content_manager(win->kit);
-	webkit_user_content_manager_remove_all_style_sheets(cmgr);
+
+	if (css)
+		webkit_user_content_manager_remove_all_style_sheets(cmgr);
+	else
+		webkit_user_content_manager_remove_all_scripts(cmgr);
 
 	for (char **name = names; *name; name++)
 	{
 		char *path = path2conf(*name);
-		monitor(path, checkcss); //even not exists
+		monitor(path, css ? checkcss : checkscripts); //even not exists
 
 		char *str;
 		if (g_file_test(path, G_FILE_TEST_EXISTS)
 				&& g_file_get_contents(path, &str, NULL, NULL))
 		{
-			WebKitUserStyleSheet *css =
-				webkit_user_style_sheet_new(str,
-						WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
-						WEBKIT_USER_STYLE_LEVEL_USER,
-						NULL, NULL);
+			if (css)
+				webkit_user_content_manager_add_style_sheet(cmgr,
+					webkit_user_style_sheet_new(str,
+							WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+							WEBKIT_USER_STYLE_LEVEL_USER,
+							NULL, NULL));
+			else
+				webkit_user_content_manager_add_script(cmgr,
+					webkit_user_script_new(str,
+							WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+							WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+							NULL, NULL));
 
-			webkit_user_content_manager_add_style_sheet(cmgr, css);
 			g_free(str);
 		}
 		g_free(path);
 	}
 	g_strfreev(names);
 }
+void setcss    (Win *win, char *names) { setcontent(win, names, true ); }
+void setscripts(Win *win, char *names) { setcontent(win, names, false); }
 
 static void checkconf(const char *mp)
 {
@@ -4653,6 +4674,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	g_object_unref(win->set);
 	webkit_web_view_set_zoom_level(win->kit, confdouble("zoom"));
 	setcss(win, getset(win, "usercss"));
+	setscripts(win, getset(win, "userscripts"));
 	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor") ?: "");
 
 	GObject *o = win->kito;

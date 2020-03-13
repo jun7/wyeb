@@ -175,6 +175,7 @@ static Conf dconf[] = {
 
 	//misc
 	{DSET    , "usercss"          , "user.css", "\nmisc\n\nusercss=user.css;user2.css"},
+	{DSET    , "userscripts"      , ""},
 	{DSET    , "search"           , DSEARCHKEY, "search="DSEARCH},
 	{DSET    , "searchstrmax"     , "99"},
 	{DSET    , "addressbar"       , "false"},
