@@ -3258,7 +3258,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 
 	PangoRectangle inkrect, logicrect;
 	pango_layout_get_pixel_extents(layout, &inkrect, &logicrect);
-	int m = 2;
+	int m = fsize/4.1;
 	w = logicrect.width + m*2;
 	h = inkrect.height + m*2;
 	x = (x + r - w) / 2;
