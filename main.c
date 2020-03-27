@@ -236,8 +236,7 @@ static char *mainmdstr =
 "-->\n"
 "[![]("APP":i/"APP") "APP"](https://github.com/jun7/"APP")\n"
 "[Wiki](https://github.com/jun7/"APP"/wiki)\n"
-"[Adblock](https://github.com/jun7/"APP"adblock)\n"
-"[![]("APP":F) Testing adblocker](http://simple-adblock.com/faq/testing-your-adblocker/)\n"
+"[![]("APP":F) Adblock](https://github.com/jun7/"APP"adblock)\n"
 "[![]("APP":f/"DISTROURI") "DISTRONAME"]("DISTROURI")\n"
 ;
 
