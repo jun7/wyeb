@@ -3540,6 +3540,10 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		return keyr;
 	}
 
+	if ((!action || win->mode == Minsert) &&
+			(ek->keyval == GDK_KEY_Tab || ek->keyval == GDK_KEY_ISO_Left_Tab))
+		senddelay(win, Cmode, NULL);
+
 	if (win->mode == Minsert)
 	{
 		if (ek->state & GDK_CONTROL_MASK &&
