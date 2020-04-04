@@ -1216,7 +1216,14 @@ normal:
 	{
 		bool f = (win->usefocus && win->focusuri) || !win->link;
 		settitle(win, sfree(g_strconcat(f ? "Focus" : "Link",
-				": ", f ? win->focusuri : win->link, NULL)));
+				": ",
+#if V24
+				sfree(webkit_uri_for_display(
+#else
+				((
+#endif
+					  f ? win->focusuri : win->link)),
+				NULL)));
 	}
 	else
 		settitle(win, NULL);
@@ -4248,20 +4255,12 @@ static GSList *dirmenu(
 
 			if (menu && *org != '.')
 			{
-#if V18
 				GSimpleAction *gsa = g_simple_action_new(laccelp, NULL);
 				SIGW(gsa, "activate", actioncb, path);
 				webkit_context_menu_append(menu,
 						webkit_context_menu_item_new_from_gaction(
 							(GAction *)gsa, name, NULL));
 				g_object_unref(gsa);
-#else
-				GtkAction *action = gtk_action_new(name, name, NULL, NULL);
-				SIGW(action, "activate", actioncb, path);
-				webkit_context_menu_append(menu,
-						webkit_context_menu_item_new(action));
-				g_object_unref(action);
-#endif
 			}
 		}
 

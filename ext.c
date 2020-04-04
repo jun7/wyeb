@@ -624,7 +624,6 @@ static Elm getrect(let te)
 {
 	Elm elm = {0};
 
-#if V18
 #if JSC
 	let rect = invoker(te, "getBoundingClientRect");
 #else
@@ -633,22 +632,6 @@ static Elm getrect(let te)
 #endif
 	recttovals(rect, &elm.x, &elm.y, &elm.w, &elm.h);
 	g_object_unref(rect);
-
-#else
-	elm.h = webkit_dom_element_get_offset_height(te);
-	elm.w = webkit_dom_element_get_offset_width(te);
-
-	for (WebKitDOMElement *le = te; le;
-			le = webkit_dom_element_get_offset_parent(le))
-	{
-		elm.y +=
-			webkit_dom_element_get_offset_top(le) -
-			webkit_dom_element_get_scroll_top(le);
-		elm.x +=
-			webkit_dom_element_get_offset_left(le) -
-			webkit_dom_element_get_scroll_left(le);
-	}
-#endif
 
 	return elm;
 }
@@ -678,7 +661,6 @@ static char *makehintelm(Page *page, Elm *elm,
 //		attr(elm->elm, "HREF") ?:
 //		attr(elm->elm, "SRC");
 
-#if V18
 	GString *str = g_string_new(NULL);
 
 #if JSC
@@ -713,15 +695,6 @@ static char *makehintelm(Page *page, Elm *elm,
 
 	char *ret = g_string_free(str, false);
 
-#else
-	char *ret = g_strdup_printf("%d%6.0lf*%6.0lf*%6.0lf*%6.0lf*%3d*%d%s;",
-			elm->x + elm->fx,
-			elm->y + elm->fy,
-			elm->w,
-			elm->h,
-			len, 1, text);
-
-#endif
 //	g_free(uri);
 
 	return ret;
@@ -797,7 +770,6 @@ static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
 			goto retfalse;
 
 
-#if ! V18
 	if (styleis(dec, "display", "inline"))
 	{
 		WebKitDOMElement *le = te;
@@ -816,7 +788,6 @@ static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
 			g_object_unref(decp);
 		}
 	}
-#endif
 
 	ret.zi = atoi(sfree(getstyleval(dec, "z-index")));
 
@@ -1295,7 +1266,6 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 				if (type == Cclick)
 				{
 					bool isi = isinput(te);
-#if V18
 					if (page->script && !isi)
 					{
 #if JSC
@@ -1316,15 +1286,6 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 							x + elm->fx + w / 2.0 + 1.0,
 							y + elm->fy + h / 2.0 + 1.0
 						);
-#else
-					bool isa = !strcmp(stag(te), "A");
-
-					if (page->script && !isi && !isa)
-					{
-						char *arg = g_strdup_printf("%ld:%ld",
-								elm->x + elm->fx + elm->w / 2,
-								elm->y + elm->fy + 1);
-#endif
 						send(page, "click", arg);
 						g_free(arg);
 					}

@@ -53,12 +53,14 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 # define DENUM(v, e) ;
 #endif
 
+// this app depends on WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
 
-#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
-# define V18 1
+#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 22
+# define V24 1
 #else
-# define V18 0
+# define V24 0
 #endif
+
 #if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 20
 # define V22 1
 #else
