@@ -3672,12 +3672,12 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 	//workaround
 	//for lacking of target change event when btn event happens with focus in;
-	if (win->mode != Mpointer || !win->ppress)
-		senddelay(win, Cmode, NULL);
-//	if (win->oneditable)
-//		win->mode = Minsert;
-//	else
-//		win->mode = Mnormal;
+//	if (win->mode != Mpointer || !win->ppress)
+//		senddelay(win, Cmode, NULL);
+	if (win->oneditable)
+		win->mode = Minsert;
+	else
+		win->mode = Mnormal;
 
 	update(win);
 
