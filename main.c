@@ -3770,7 +3770,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 		if (cancel) return true;
 
-		if ((pow(deltax, 2) + pow(deltay, 2)) < thresholdp(win))
+		if ((pow(deltax, 2) + pow(deltay, 2)) < thresholdp(win) * 4)
 		{ //default
 			if (win->oneditable)
 			{
