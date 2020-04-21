@@ -2732,6 +2732,12 @@ static void addlabel(DLWin *win, const char *str)
 	gtk_widget_show_all(lbl);
 	SIG(lbl, "button-press-event", dlbtncb, win);
 }
+static void setdltitle(DLWin *win, char *title) //eaten
+{
+	gtk_window_set_title(win->win, sfree(g_strconcat(
+					suffix, *suffix ? "| " : "",
+					sfree(g_strdup_printf("DL: %s", sfree(title))), NULL)));
+}
 static void dldestroycb(DLWin *win)
 {
 	g_ptr_array_remove(dlwins, win);
@@ -2761,7 +2767,7 @@ static void dlfincb(DLWin *win)
 	char *title;
 	if (win->res)
 	{
-		title = g_strdup_printf("DL: Finished: %s", win->dispname);
+		title = g_strdup_printf("Finished: %s", win->dispname);
 		gtk_progress_bar_set_fraction(win->prog, 1);
 
 		char *fn = g_filename_from_uri(
@@ -2787,10 +2793,9 @@ static void dlfincb(DLWin *win)
 			g_timeout_add(win->closemsec, (GSourceFunc)dlclosecb, win);
 	}
 	else
-		title = g_strdup_printf("DL: Failed: %s", win->dispname);
+		title = g_strdup_printf("Failed: %s", win->dispname);
 
-	gtk_window_set_title(win->win, title);
-	g_free(title);
+	setdltitle(win, title);
 }
 static void dlfailcb(WebKitDownload *wd, GError *err, DLWin *win)
 {
@@ -2799,16 +2804,15 @@ static void dlfailcb(WebKitDownload *wd, GError *err, DLWin *win)
 	win->finished = true;
 
 	addlabel(win, err->message);
-	gtk_window_set_title(win->win, sfree(g_strdup_printf(
-					"DL: Failed: %s - %s", win->dispname, err->message)));
+	setdltitle(win,
+			g_strdup_printf("Failed: %s - %s", win->dispname, err->message));
 }
 static void dldatacb(DLWin *win)
 {
 	double p = webkit_download_get_estimated_progress(win->dl);
 	gtk_progress_bar_set_fraction(win->prog, p);
 
-	gtk_window_set_title(win->win, sfree(g_strdup_printf(
-					"DL: %.2f%%: %s ", (p * 100), win->dispname)));
+	setdltitle(win, g_strdup_printf("%.2f%%: %s ", (p * 100), win->dispname));
 }
 //static void dlrescb(DLWin *win) {}
 static void dldestcb(DLWin *win)
@@ -2889,7 +2893,7 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	win->closemsec = getsetint(mainwin, "dlwinclosemsec");
 
 	win->winw  = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_title(win->win, "DL : Waiting for a response.");
+	setdltitle(win, g_strdup("Waiting for a response."));
 	gtk_window_set_default_size(win->win, 400, -1);
 	SIGW(win->wino, "destroy"         , dldestroycb, win);
 	SIG( win->wino, "key-press-event" , dlkeycb    , win);
