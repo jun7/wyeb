@@ -2911,9 +2911,9 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	if (LASTWIN)
 	{
 		int gy;
-		gdk_window_get_geometry(gdkw(LASTWIN->winw), NULL, &gy, NULL, NULL);
+		gdk_window_get_geometry(gdkw((mainwin ?: LASTWIN)->winw), NULL, &gy, NULL, NULL);
 		int x, y;
-		gtk_window_get_position(LASTWIN->win, &x, &y);
+		gtk_window_get_position((mainwin ?: LASTWIN)->win, &x, &y);
 		gtk_window_move(win->win, MAX(0, x - 400), y + gy);
 	}
 
