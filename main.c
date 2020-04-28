@@ -1977,6 +1977,9 @@ static void addlink(Win *win, const char *title, const char *uri)
 		str = g_strdup_printf(getset(win, "linkformat"),
 				as[0], as[1], as[2], as[3], as[4], as[5], as[6], as[7], as[8]);
 
+		if (!g_utf8_validate(str, -1, NULL))
+			GFA(str, g_utf8_make_valid(str, -1))
+
 		g_free(fav);
 		g_free(escttl);
 	}
