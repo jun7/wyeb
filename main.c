@@ -3490,8 +3490,10 @@ static void progcb(Win *win)
 }
 static void favcb(Win *win)
 {
-	cairo_surface_t *suf = webkit_web_view_get_favicon(win->kit);
-	if (suf)
+	cairo_surface_t *suf;
+	//workaround: webkit_web_view_get_favicon returns random icon when APP:
+	if (!g_str_has_prefix(URI(win), APP":") &&
+			(suf = webkit_web_view_get_favicon(win->kit)))
 	{
 		GdkPixbuf *pix = gdk_pixbuf_get_from_surface(suf, 0, 0,
 					cairo_image_surface_get_width(suf),
