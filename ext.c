@@ -770,25 +770,6 @@ static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
 			goto retfalse;
 
 
-	if (styleis(dec, "display", "inline"))
-	{
-		WebKitDOMElement *le = te;
-		while ((le = webkit_dom_node_get_parent_element((WebKitDOMNode *)le)))
-		{
-			WebKitDOMCSSStyleDeclaration *decp =
-				webkit_dom_dom_window_get_computed_style(win, le, NULL);
-			if (!styleis(decp, "display", "inline"))
-			{
-				Elm rectp = getrect(le);
-				double nr = MIN(right, rectp.x + rectp.w);
-				ret.w += nr - right;
-				right = nr;
-				break;
-			}
-			g_object_unref(decp);
-		}
-	}
-
 	ret.zi = atoi(sfree(getstyleval(dec, "z-index")));
 
 	if (ret.zi > prect->zi || styleis(dec, "position", "absolute"))
