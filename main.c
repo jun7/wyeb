@@ -4670,7 +4670,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		g_object_new(WEBKIT_TYPE_WEB_VIEW,
 				"web-context", ctx, "user-content-manager", cmgr, NULL);
 
-	g_object_set_data(win->kito, "win", win);
+	g_object_set_data(win->kito, "win", back == 2 ? caller : win);
 
 	gtk_window_add_accel_group(win->win, accelg);
 	//workaround. without get_inspector inspector doesen't work
