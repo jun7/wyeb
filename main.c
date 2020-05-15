@@ -2917,10 +2917,13 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 
 	if (LASTWIN)
 	{
+		Win *reqwin = !mainwin ? LASTWIN :
+			mainwin->fordl ? g_object_get_data(G_OBJECT(kit), "caller") : mainwin;
+
 		int gy;
-		gdk_window_get_geometry(gdkw((mainwin ?: LASTWIN)->winw), NULL, &gy, NULL, NULL);
+		gdk_window_get_geometry(gdkw(reqwin->winw), NULL, &gy, NULL, NULL);
 		int x, y;
-		gtk_window_get_position((mainwin ?: LASTWIN)->win, &x, &y);
+		gtk_window_get_position(reqwin->win, &x, &y);
 		gtk_window_move(win->win, MAX(0, x - 400), y + gy);
 	}
 
@@ -4670,7 +4673,8 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		g_object_new(WEBKIT_TYPE_WEB_VIEW,
 				"web-context", ctx, "user-content-manager", cmgr, NULL);
 
-	g_object_set_data(win->kito, "win", back == 2 ? caller : win);
+	g_object_set_data(win->kito, "win", win);
+	g_object_set_data(win->kito, "caller", caller);
 
 	gtk_window_add_accel_group(win->win, accelg);
 	//workaround. without get_inspector inspector doesen't work
