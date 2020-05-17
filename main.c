@@ -4746,13 +4746,12 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 //	gtk_label_set_line_wrap_mode(win->lbl, PANGO_WRAP_CHAR);
 //	gtk_label_set_use_markup(win->lbl, TRUE);
 
-	win->canvas = gtk_overlay_new();
-	SIGA(G_OBJECT(win->canvas), "draw", drawcb, win);
 
 	GtkWidget *ol = gtk_overlay_new();
+	win->canvas = ol;
+	SIGA(G_OBJECT(win->canvas), "draw", drawcb, win);
+
 	gtk_container_add(GTK_CONTAINER(ol), win->kitw);
-	gtk_overlay_add_overlay(GTK_OVERLAY(ol), win->canvas);
-	gtk_overlay_set_overlay_pass_through(GTK_OVERLAY(ol), win->canvas, true);
 	gtk_widget_set_valign(win->entw, GTK_ALIGN_END);
 	gtk_overlay_add_overlay(GTK_OVERLAY(ol), win->entw);
 
