@@ -70,6 +70,11 @@ typedef struct _WP {
 		GtkWidget *entw;
 		GObject   *ento;
 	};
+	union {
+		GtkOverlay *ol;
+		GtkWidget  *olw;
+		GObject    *olo;
+	};
 	char   *pageid;
 	GSList *ipcids;
 	WebKitFindController *findct;
@@ -463,7 +468,7 @@ static gboolean clearmsgcb(Win *win)
 
 	GFA(lastmsg, win->msg)
 	win->msg = NULL;
-	gtk_widget_queue_draw(win->kitw);
+	gtk_widget_queue_draw(win->olw);
 	win->msgfunc = 0;
 	return false;
 }
@@ -473,7 +478,7 @@ static void _showmsg(Win *win, char *msg)
 	GFA(win->msg, msg)
 	win->msgfunc = !msg ? 0 :
 		g_timeout_add(getsetint(win, "msgmsec"), (GSourceFunc)clearmsgcb, win);
-	gtk_widget_queue_draw(win->kitw);
+	gtk_widget_queue_draw(win->olw);
 }
 static void showmsg(Win *win, const char *msg)
 { _showmsg(win, g_strdup(msg)); }
@@ -1101,20 +1106,20 @@ static void _modechanged(Win *win)
 			motion(win, win->lastx, win->lasty);
 		win->lastx = win->lasty = 0;
 
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 		gdk_window_set_cursor(gdkw(win->winw), NULL);
 		break;
 
 	case Mpointer:
 		if (win->mode != Mhint) win->pbtn = 0;
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 		break;
 
 	case Mhint:
 		if (win->mode != Mpointer) win->pbtn = 0;
 	case Mhintrange:
 		GFA(win->hintdata, NULL);
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 		send(win, Crm, NULL);
 		break;
 
@@ -1155,7 +1160,7 @@ static void _modechanged(Win *win)
 
 	case Mlist:
 		winlist(win, 2, NULL);
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 		break;
 
 	case Mpointer:
@@ -1567,7 +1572,7 @@ void pmove(Win *win, guint key)
 
 	motion(win, win->px, win->py);
 
-	gtk_widget_queue_draw(win->kitw);
+	gtk_widget_queue_draw(win->olw);
 }
 static void altcur(Win *win, double x, double y)
 {
@@ -1883,7 +1888,7 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 			{
 				if (count == len)
 					win->scrlcur = len - 1;
-				gtk_widget_queue_draw(win->kitw);
+				gtk_widget_queue_draw(win->olw);
 			}
 			else
 				tonormal(win);
@@ -2332,7 +2337,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			return true;)
 	Z("_reloadlast", reloadlast())
 	Z("_hintdata"  , if (!(win->mode & Mhint)) return false;
-			gtk_widget_queue_draw(win->kitw);
+			gtk_widget_queue_draw(win->olw);
 			GFA(win->hintdata, g_strdup(arg)))
 	Z("_focusuri"  , win->usefocus = true; GFA(win->focusuri, g_strdup(arg)))
 	if (!strcmp(action, "_hintret"))
@@ -3540,7 +3545,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 		if (win->lastx || win->lasty)
 		{
 			win->lastx = win->lasty = 0;
-			gtk_widget_queue_draw(win->kitw);
+			gtk_widget_queue_draw(win->olw);
 		}
 
 		keyr = !(win->mode & (Mnormal | Minsert));
@@ -3629,7 +3634,7 @@ static gboolean keycb(GtkWidget *w, GdkEventKey *ek, Win *win)
 			winlist(win, 3, NULL);
 			return true;
 		}
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 		return true;
 	}
 
@@ -3709,7 +3714,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	case 2:
 		win->lastx = e->x;
 		win->lasty = e->y;
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 
 	if (e->button == 1) break;
 	{
@@ -3764,7 +3769,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 	switch (e->button) {
 	case 1:
 		win->lastx = win->lasty = 0;
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 
 		if (win->cancelbtn1r) {
 			win->cancelbtn1r = false;
@@ -3807,7 +3812,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 				setact(win, "mdlbtndown", URI(win));
 		}
 
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 
 		return true;
 	}
@@ -3851,7 +3856,7 @@ static gboolean entercb(GtkWidget *w, GdkEventCrossing *e, Win *win)
 	if (!(e->state & mask) && win->lastx + win->lasty)
 	{
 		win->lastx = win->lasty = 0;
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 	}
 
 	checkppress(win, 0); //right click
@@ -3876,7 +3881,7 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 		win->scrlf = false;
 		win->scrlcur = 0;
 		win->cursorx = win->cursory = 0;
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 
 		static GdkCursor *hand = NULL;
 		if (!hand) hand = gdk_cursor_new_for_display(
@@ -3921,7 +3926,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 			pe->direction == GDK_SCROLL_UP || pe->delta_y < 0 ?
 				GDK_KEY_Page_Up : GDK_KEY_Page_Down,
 			NULL);
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 		return true;
 	}
 
@@ -4112,7 +4117,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		win->progd = 0;
 		if (!win->drawprogcb)
 			win->drawprogcb = g_timeout_add(30, (GSourceFunc)drawprogcb, win);
-		gtk_widget_queue_draw(win->kitw);
+		gtk_widget_queue_draw(win->olw);
 
 		//loadcb is multi thread!? and send may block others by alert
 		send(win, Cstart, NULL);
@@ -4692,7 +4697,6 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	gdk_rgba_parse(&win->rgba, getset(win, "msgcolor") ?: "");
 
 	GObject *o = win->kito;
-	SIGA(o, "draw"                 , drawcb    , win);
 	SIGW(o, "destroy"              , destroycb , win);
 	SIGW(o, "web-process-crashed"  , crashcb   , win);
 	SIGW(o, "notify::title"        , notifycb  , win);
@@ -4747,19 +4751,19 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 //	gtk_label_set_use_markup(win->lbl, TRUE);
 
 	//without overlay, showing ent delays when a page is heavy
-	GtkWidget  *olw = gtk_overlay_new();
-	GtkOverlay *ol  = (GtkOverlay *)olw;
+	win->olw = gtk_overlay_new();
+	SIGA(win->olo, "draw", drawcb, win);
 
 	GtkWidget *boxw  = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	GtkBox    *box   = (GtkBox *)boxw;
-	gtk_box_pack_start(box , win->lblw , false, true, 0);
-	gtk_box_pack_end(  box , win->kitw , true , true, 0);
-	gtk_container_add(GTK_CONTAINER(ol), boxw);
+	gtk_box_pack_start(box , win->lblw, false, true, 0);
+	gtk_box_pack_end(  box , win->olw , true , true, 0);
+	gtk_container_add(GTK_CONTAINER(win->ol), win->kitw);
 
 	gtk_widget_set_valign(win->entw, GTK_ALIGN_END);
-	gtk_overlay_add_overlay(ol, win->entw);
+	gtk_overlay_add_overlay(win->ol, win->entw);
 
-	gtk_container_add(GTK_CONTAINER(win->win), olw);
+	gtk_container_add(GTK_CONTAINER(win->win), boxw);
 
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
@@ -4782,7 +4786,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		gtk_widget_show(win->lblw);
 	SIGW(win->lblw, "notify::visible", update, win);
 
-	gtk_widget_show(olw);
+	gtk_widget_show(win->olw);
 	gtk_widget_show(boxw);
 	gtk_widget_show(win->kitw);
 	gtk_widget_grab_focus(win->kitw);
