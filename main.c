@@ -4745,19 +4745,16 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 //	gtk_label_set_line_wrap(win->lbl, true);
 //	gtk_label_set_line_wrap_mode(win->lbl, PANGO_WRAP_CHAR);
 //	gtk_label_set_use_markup(win->lbl, TRUE);
-
+	SIGW(win->lblw, "notify::visible", update, win);
 
 	GtkWidget *ol = gtk_overlay_new();
-	win->canvas = ol;
-	SIGA(G_OBJECT(win->canvas), "draw", drawcb, win);
-
 	gtk_container_add(GTK_CONTAINER(ol), win->kitw);
 	gtk_widget_set_valign(win->entw, GTK_ALIGN_END);
 	gtk_overlay_add_overlay(GTK_OVERLAY(ol), win->entw);
 
 	GtkWidget *box  = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_box_pack_start(GTK_BOX(box), win->lblw, false, true, 0);
-	gtk_box_pack_end(  GTK_BOX(box), ol , true , true, 0);
+	gtk_box_pack_end(  GTK_BOX(box), ol       , true , true, 0);
 
 	gtk_container_add(GTK_CONTAINER(win->win), box);
 
@@ -4778,14 +4775,11 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		gtk_entry_set_text(win->ent, getent(caller));
 	}
 
-	if (getsetbool(win, "addressbar"))
-		gtk_widget_show(win->lblw);
-	SIGW(win->lblw, "notify::visible", update, win);
-
 	gtk_widget_show_all(box);
 	gtk_widget_hide(win->entw);
 	gtk_widget_grab_focus(win->kitw);
 
+	SIGA(G_OBJECT(win->canvas = win->kitw), "draw", drawcb, win);
 	present(back && LASTWIN ? LASTWIN : win);
 
 	if (!cbwin)
