@@ -3316,7 +3316,7 @@ static void drawhint(Win *win, cairo_t *cr, PangoFontDescription *desc,
 static gboolean drawcb(GtkWidget *ww, cairo_t *cr, Win *win)
 {
 	//wayland with hardware-acceleration kills drawcb without this
-	gdk_window_mark_paint_from_clip (gdkw(ww), cr);
+	gdk_window_mark_paint_from_clip(gdkw(ww), cr);
 
 	if (win->mode != Mlist && (win->lastx || win->lasty || win->mode == Mpointer))
 	{
