@@ -336,12 +336,18 @@ static void pushimg(Win *win, bool swap)
 	static guint64 unique;
 	img->id = ++unique;
 
-	GdkPixbuf *pix =
-		gdk_pixbuf_get_from_window(gdkw(win->kitw), 0, 0, ww, wh);
-	GdkPixbuf *scaled = gdk_pixbuf_scale_simple(
-			pix, ww * scale, wh * scale, GDK_INTERP_BILINEAR);
+	cairo_surface_t *suf = cairo_image_surface_create(
+			CAIRO_FORMAT_ARGB32, ww * scale, wh * scale);
 
-	g_object_unref(pix);
+	cairo_t *cr = cairo_create(suf);
+	cairo_scale(cr, scale, scale);
+	gtk_widget_draw(win->kitw, cr);
+	cairo_destroy(cr);
+
+	GdkPixbuf *scaled = gdk_pixbuf_get_from_surface(suf, 0, 0,
+				cairo_image_surface_get_width(suf),
+				cairo_image_surface_get_height(suf));
+	cairo_surface_destroy(suf);
 
 	gdk_pixbuf_save_to_buffer(scaled,
 			&img->buf, &img->size,
@@ -1913,27 +1919,16 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 				&& gtk_widget_get_visible(lw->kitw)
 				&& gtk_widget_is_drawable(lw->kitw)
 		) {
-			cairo_scale(cr, scale, scale);
-
-			GdkPixbuf *pix =
-				gdk_pixbuf_get_from_window(gdkw(lw->kitw), 0, 0, lww, lwh);
-			cairo_surface_t *suf =
-				gdk_cairo_surface_create_from_pixbuf(pix, 0, NULL);
-
 			if (win->scrlf)
 			{
 				tx = MAX(tx, (w - lww) / 2);
 				ty = MAX(ty, (h - lwh) / 2);
 			}
-
-			cairo_set_source_surface(cr, suf, tx / scale, ty / scale);
-
-			cairo_paint(cr);
-
-			cairo_surface_destroy(suf);
-			g_object_unref(pix);
-
+			cairo_translate(cr, tx, ty);
+			cairo_scale(cr, scale, scale);
+			gtk_widget_draw(lw->kitw, cr);
 			cairo_scale(cr, 1 / scale, 1 / scale);
+			cairo_translate(cr, -tx, -ty);
 		}
 		else
 		{
