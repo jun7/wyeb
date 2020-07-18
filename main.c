@@ -776,10 +776,10 @@ void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group)
 		case G_TYPE_STRING:
 			if (set) {
 				char *v = sfree(g_key_file_get_string(kf, group, key, NULL));
-				if (!strcmp(g_value_get_string(&gv), v)) continue;;
+				if (!strcmp(g_value_get_string(&gv) ?: "", v)) continue;;
 				g_value_set_string(&gv, v);
 			} else
-				g_key_file_set_string(kf, group, key, g_value_get_string(&gv));
+				g_key_file_set_string(kf, group, key, g_value_get_string(&gv) ?: "");
 			break;
 		default:
 			if (!strcmp(key, "hardware-acceleration-policy")) {
