@@ -31,10 +31,9 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define DSET     "set;"
 #define MIMEOPEN "mimeopen -n %s"
 #define HINTKEYS "fsedagwrvxqcz"
+//bt324"
 #define DSEARCH  "https://www.google.com/search?q=%s"
 #define DSEARCHKEY "g"
-
-//bt324"
 
 #if ! DEBUG + 0
 #undef DEBUG
