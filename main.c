@@ -3869,7 +3869,7 @@ static gboolean motioncb(GtkWidget *w, GdkEventMotion *e, Win *win)
 
 		if (win->scrlf &&
 				(pow(e->x - win->scrlx, 2) + pow(e->y - win->scrly, 2))
-				 < thresholdp(win))
+				 < thresholdp(win) * 4)
 			return true;
 
 		win->scrlf = false;
