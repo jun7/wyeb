@@ -134,6 +134,7 @@ static Conf dconf[] = {
 	{"all"   , "winheight"    , "1000"},
 	{"all"   , "zoom"         , "1.000"},
 	{"all"   , "ignoretlserr" , "false"},
+	{"all"   , "itp"          , "false"},
 	{"all"   , "histviewsize" , "99"},
 	{"all"   , "histimgs"     , "99"},
 	{"all"   , "histimgsize"  , "222"},

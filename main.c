@@ -1048,10 +1048,16 @@ static void checkconf(const char *mp)
 	initconf(new);
 
 	if (ctx)
+	{
 		webkit_web_context_set_tls_errors_policy(ctx,
 				confbool("ignoretlserr") ?
 				WEBKIT_TLS_ERRORS_POLICY_IGNORE :
 				WEBKIT_TLS_ERRORS_POLICY_FAIL);
+#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 28
+		webkit_website_data_manager_set_itp_enabled(
+			webkit_web_context_get_website_data_manager(ctx), confbool("itp"));
+#endif
+	}
 
 	if (!wins) return;
 
@@ -4663,6 +4669,12 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 		if (confbool("ignoretlserr"))
 			webkit_web_context_set_tls_errors_policy(ctx,
 					WEBKIT_TLS_ERRORS_POLICY_IGNORE);
+
+#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 28
+		if (confbool("itp"))
+			webkit_website_data_manager_set_itp_enabled(
+					webkit_web_context_get_website_data_manager(ctx), true);
+#endif
 	}
 	WebKitUserContentManager *cmgr = webkit_user_content_manager_new();
 	win->kito = cbwin ?
