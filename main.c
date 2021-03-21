@@ -188,6 +188,12 @@ static long plugto;
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group);
 #define MAINC
 #include "general.c"
+#if V24
+#define FORDISP(s) sfree(webkit_uri_for_display(s))
+#else
+#define FORDISP(s) s
+#endif
+
 
 static char *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
@@ -1079,11 +1085,11 @@ static void settitle(Win *win, const char *pstr)
 		win->tlserr ? "!TLS " : "",
 		suffix            , *suffix      ? "| " : "",
 		win->overset ?: "", win->overset ? "| " : "",
-		wtitle, bar ? "" : " - ", bar && *wtitle ? NULL : URI(win), NULL);
+		wtitle, bar ? "" : " - ", bar && *wtitle ? NULL : FORDISP(URI(win)), NULL);
 
 	if (bar)
 	{
-		gtk_window_set_title(win->win, *title ? title : URI(win));
+		gtk_window_set_title(win->win, *title ? title :FORDISP(URI(win)));
 		gtk_label_set_text(win->lbl, pstr ?: URI(win));
 	}
 	else
@@ -1229,14 +1235,7 @@ normal:
 	{
 		bool f = (win->usefocus && win->focusuri) || !win->link;
 		settitle(win, sfree(g_strconcat(f ? "Focus" : "Link",
-				": ",
-#if V24
-				sfree(webkit_uri_for_display(
-#else
-				((
-#endif
-					  f ? win->focusuri : win->link)),
-				NULL)));
+				": ", FORDISP(f ? win->focusuri : win->link), NULL)));
 	}
 	else
 		settitle(win, NULL);
@@ -3067,7 +3066,7 @@ static char *histdata(bool rest, bool all)
 			g_string_append_printf(ret,
 					"<p><a href=%s><em>%s</em>"
 					"<span>%s<br><i>%s</i><br><time>%.11s</time></span></a>\n",
-					stra[1], itag ?: "-", escpd, stra[1], stra[0]);
+					stra[1], itag ?: "-", escpd, FORDISP(stra[1]), stra[0]);
 
 			g_free(itag);
 			il = il->next;
@@ -3075,7 +3074,7 @@ static char *histdata(bool rest, bool all)
 			g_string_append_printf(ret,
 					"<p><a href=%s><time>%.11s</time>"
 					"<span>%s<br><i>%s</i></span></a>\n",
-					stra[1], stra[0], escpd, stra[1]);
+					stra[1], stra[0], escpd, FORDISP(stra[1]));
 
 		g_free(escpd);
 	}
