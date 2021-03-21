@@ -194,7 +194,6 @@ static void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group);
 #define FORDISP(s) s
 #endif
 
-
 static char *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
 	"\n"
@@ -1089,7 +1088,7 @@ static void settitle(Win *win, const char *pstr)
 
 	if (bar)
 	{
-		gtk_window_set_title(win->win, *title ? title :FORDISP(URI(win)));
+		gtk_window_set_title(win->win, *title ? title : FORDISP(URI(win)));
 		gtk_label_set_text(win->lbl, pstr ?: URI(win));
 	}
 	else
