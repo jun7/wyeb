@@ -1079,21 +1079,18 @@ static void settitle(Win *win, const char *pstr)
 		pstr = "!! Web Process Crashed !!";
 
 	bool bar = getsetbool(win, "addressbar");
+
+	if (bar)
+		gtk_label_set_text(win->lbl, pstr ?: URI(win));
+
 	const char *wtitle = webkit_web_view_get_title(win->kit) ?: "";
-	char *title = pstr && !bar ? NULL : g_strconcat(
+	const char *title = pstr && !bar ? pstr : sfree(g_strconcat(
 		win->tlserr ? "!TLS " : "",
 		suffix            , *suffix      ? "| " : "",
 		win->overset ?: "", win->overset ? "| " : "",
-		wtitle, bar ? "" : " - ", bar && *wtitle ? NULL : FORDISP(URI(win)), NULL);
+		wtitle, bar ? "" : " - ", bar && *wtitle ? NULL : FORDISP(URI(win)), NULL));
 
-	if (bar)
-	{
-		gtk_window_set_title(win->win, *title ? title : FORDISP(URI(win)));
-		gtk_label_set_text(win->lbl, pstr ?: URI(win));
-	}
-	else
-		gtk_window_set_title(win->win, pstr ?: title);
-	g_free(title);
+	gtk_window_set_title(win->win, title);
 }
 static void enticon(Win *win, const char *name); //declaration
 static void pmove(Win *win, guint key); //declaration
