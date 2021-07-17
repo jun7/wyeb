@@ -370,23 +370,19 @@ static gboolean histcb(Win *win)
 	win->histcb = 0;
 
 #define MAXSIZE 22222
-	static int ci = -1;
+	static int ci;
 	static int csize;
 	if (!histfile || !g_file_test(histdir, G_FILE_TEST_EXISTS))
 	{
 		_mkdirif(histdir, false);
 
-		ci = -1;
 		csize = 0;
-		for (char **file = hists; *file; file++)
+		for (ci = histfnum - 1; ci >= 0; ci--)
 		{
-			ci++;
-			GFA(histfile, g_build_filename(histdir, *file, NULL))
+			GFA(histfile, g_build_filename(histdir, hists[ci], NULL))
 			struct stat info;
-			if (stat(histfile, &info) == -1)
-				break; //first time. errno == ENOENT
-			csize = info.st_size;
-			if (csize < MAXSIZE)
+			if (stat(histfile, &info) != -1 &&
+					(csize = info.st_size) < MAXSIZE)
 				break;
 		}
 	}
@@ -407,9 +403,7 @@ static gboolean histcb(Win *win)
 	csize += strlen(str) + 1;
 	if (csize > MAXSIZE)
 	{
-		ci++;
-		if (ci >= histfnum)
-			ci = 0;
+		if (++ci >= histfnum) ci = 0;
 
 		GFA(histfile, g_build_filename(histdir, hists[ci], NULL))
 		FILE *f = fopen(histfile, "w");
@@ -2954,7 +2948,6 @@ static char *histdata(bool rest, bool all)
 	int size = all ? 0 : confint("histviewsize");
 
 	int start = 0;
-	time_t mtime = 0;
 	for (int j = 2; j > 0; j--) for (int i = histfnum - 1; i >= 0; i--)
 	{
 		if (!rest && size && num >= size) break;
@@ -2968,9 +2961,8 @@ static char *histdata(bool rest, bool all)
 		{
 			struct stat info;
 			stat(path, &info);
-			if (mtime && mtime <= info.st_mtime)
+			if (info.st_size < MAXSIZE)
 				start = 1;
-			mtime = info.st_mtime;
 		}
 
 		if (start && exists)
