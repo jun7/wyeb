@@ -144,8 +144,6 @@ typedef struct _WP {
 	guint   msgfunc;
 
 	bool cancelcontext;
-	bool cancelbtn1r;
-	bool cancelmdlr;
 } Win;
 
 struct _Spawn {
@@ -3657,10 +3655,13 @@ static void targetcb(
 	update(win);
 }
 static GdkEvent *pendingmiddlee;
+static bool cancelbtn1r;
+static bool cancelbtn3r;
+static bool cancelmdlr;
 static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	win->userreq = true;
-	win->cancelbtn1r = false;
+	cancelbtn1r = cancelbtn3r = cancelmdlr = false;
 
 	if (e->type != GDK_BUTTON_PRESS) return false;
 	altcur(win, e->x, e->y); //clears if it is alt cur
@@ -3669,7 +3670,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 	{
 		win->cursorx = win->cursory = 0;
 		if (e->button == 1)
-			win->cancelbtn1r = true;
+			cancelbtn1r = true;
 		if ((e->button != 1 && e->button != 3)
 				|| !winlist(win, e->button, NULL))
 			tonormal(win);
@@ -3679,7 +3680,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			GdkEvent *ne = gdk_event_peek();
 			if (!ne) return true;
 			if (ne->type == GDK_2BUTTON_PRESS || ne->type == GDK_3BUTTON_PRESS)
-				win->cancelcontext = true;
+				win->cancelcontext = cancelbtn3r = true;
 			gdk_event_free(ne);
 		}
 		return true;
@@ -3721,7 +3722,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			return win->crashed ?
 				run(win, "reload", NULL) : false;
 
-		win->cancelcontext = win->cancelbtn1r = true;
+		win->cancelcontext = cancelbtn1r = cancelbtn3r = true;
 		if (!(win->lastx + win->lasty)) break;
 
 		double deltax = e->x - win->lastx,
@@ -3758,18 +3759,18 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->canvas);
 
-		if (win->cancelbtn1r) {
-			win->cancelbtn1r = false;
+		if (cancelbtn1r) {
+			cancelbtn1r = false;
 			return true;
 		}
 		break;
 	case 2:
 	{
-		bool cancel = win->cancelmdlr || !(win->lastx + win->lasty);
+		bool cancel = cancelmdlr || !(win->lastx + win->lasty);
 		double deltax = e->x - win->lastx;
 		double deltay = e->y - win->lasty;
 		win->lastx = win->lasty = 0;
-		win->cancelmdlr = false;
+		cancelmdlr = false;
 
 		if (cancel) return true;
 
@@ -3803,6 +3804,12 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 		return true;
 	}
+	case 3:
+		if (cancelbtn3r) {
+			cancelbtn3r = false;
+			return true;
+		}
+		win->lastx = win->lasty = 0;
 	}
 
 	update(win);
@@ -3925,7 +3932,7 @@ static gboolean scrollcb(GtkWidget *w, GdkEventScroll *pe, Win *win)
 		 setact(win, "pressscrolldown", URI(win))
 		) ))
 	{
-		win->cancelmdlr = true;
+		cancelmdlr = true;
 		return true;
 	}
 
