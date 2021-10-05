@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2020 jun7@hush.mail
+Copyright 2017-2020 jun7@hush.com
 
 This file is part of wyeb.
 
