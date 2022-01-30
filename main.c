@@ -2855,8 +2855,7 @@ static gboolean dldecidecb(WebKitDownload *pdl, char *name, DLWin *win)
 	win->len =  webkit_uri_response_get_content_length(res);
 
 	if (win->len)
-		addlabel(win, sfree(g_strdup_printf(
-						"size: %.3f MB", win->len / 1000000.0)));
+		addlabel(win, sfree(g_format_size(win->len)));
 	return true;
 }
 static gboolean dlkeycb(GtkWidget *w, GdkEventKey *ek, DLWin *win)
