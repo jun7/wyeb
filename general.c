@@ -35,6 +35,11 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 #define DSEARCH  "https://www.google.com/search?q=%s"
 #define DSEARCHKEY "g"
 
+//for webkit2gtk4.0. 4.1 has this
+#ifndef SOUP_HTTP_URI_FLAGS
+#define SOUP_HTTP_URI_FLAGS (G_URI_FLAGS_HAS_PASSWORD | G_URI_FLAGS_ENCODED_PATH | G_URI_FLAGS_ENCODED_QUERY | G_URI_FLAGS_ENCODED_FRAGMENT | G_URI_FLAGS_SCHEME_NORMALIZE)
+#endif
+
 #if ! DEBUG + 0
 #undef DEBUG
 #define DEBUG 0

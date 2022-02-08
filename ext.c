@@ -367,18 +367,14 @@ static char *tofull(let te, char *uri)
 {
 	if (!te || !uri) return NULL;
 #if JSC
-	char *bases = props(te, "baseURI");
+	char *base = props(te, "baseURI");
 #else
-	char *bases = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
+	char *base = webkit_dom_node_get_base_uri((WebKitDOMNode *)te);
 #endif
-	SoupURI *base = soup_uri_new(bases);
-	SoupURI *full = soup_uri_new_with_base(base, uri);
 
-	char *ret = soup_uri_to_string(full, false);
+	char *ret = g_uri_resolve_relative(base, uri, SOUP_HTTP_URI_FLAGS, NULL);
 
-	g_free(bases);
-	soup_uri_free(base);
-	soup_uri_free(full);
+	g_free(base);
 	return ret;
 }
 
@@ -1824,8 +1820,8 @@ static gboolean reqcb(
 	) goto out;
 
 	//reldomainonly
-	SoupURI *puri = soup_uri_new(pagestr);
-	const char *phost = soup_uri_get_host(puri);
+	GUri *puri = g_uri_parse(pagestr, SOUP_HTTP_URI_FLAGS, NULL);
+	const char *phost = g_uri_get_host(puri);
 	if (phost)
 	{
 		char **cuts = g_strsplit(
@@ -1838,14 +1834,14 @@ static gboolean reqcb(
 			}
 		g_strfreev(cuts);
 
-		SoupURI *ruri = soup_uri_new(reqstr);
-		const char *rhost = soup_uri_get_host(ruri);
+		GUri *ruri = g_uri_parse(reqstr, SOUP_HTTP_URI_FLAGS, NULL);
+		const char *rhost = g_uri_get_host(ruri);
 
 		ret = rhost && !g_str_has_suffix(rhost, phost);
 
-		soup_uri_free(ruri);
+		g_uri_unref(ruri);
 	}
-	soup_uri_free(puri);
+	g_uri_unref(puri);
 
 out:
 	if (ret)

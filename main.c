@@ -1324,9 +1324,9 @@ out:
 	{
 		webkit_web_view_load_uri(win->kit, uri);
 
-		SoupURI *suri = soup_uri_new(uri);
+		GUri *suri = g_uri_parse(uri, SOUP_HTTP_URI_FLAGS, NULL);
 		if (suri)
-			soup_uri_free(suri);
+			g_uri_unref(suri);
 		else
 			_showmsg(win, g_strdup_printf("Invalid URI: %s", uri));
 	}
@@ -2366,7 +2366,9 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			altcur(win, 0,0); showmsg(win, "Opened"); newwin(arg, NULL, win, 1))
 		Z("openwithref",
 			const char *ref = agv ? *agv : URI(win);
-			char *nrml = soup_uri_normalize(arg, NULL);
+			GUri *uri = g_uri_parse(arg, SOUP_HTTP_URI_FLAGS, NULL);
+			char *nrml = g_uri_to_string(uri);
+			g_uri_unref(uri);
 			if (!g_str_has_prefix(ref, APP":") &&
 				!g_str_has_prefix(ref, "file:")
 			) send(win, Cwithref, sfree(g_strdup_printf("%s %s", ref, nrml)));
