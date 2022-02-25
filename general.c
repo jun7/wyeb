@@ -86,7 +86,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 	g_signal_connect_swapped(o, n, G_CALLBACK(c), u)
 #define GFA(p, v) {void *__b = p; p = v; g_free(__b);}
 
-//the responsibility is on the one who using this for args
 static char *sfree(char *p)
 {
 	static void *s;
