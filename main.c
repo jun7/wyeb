@@ -483,7 +483,7 @@ static void showmsg(Win *win, const char *msg)
 { _showmsg(win, g_strdup(msg)); }
 
 //com
-static void send(Win *win, Coms type, char *args)
+static void send(Win *win, Coms type, const char *args)
 {
 	char *arg = sfree(g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: ""));
 
@@ -623,10 +623,8 @@ static void setresult(Win *win, WebKitHitTestResult *htr)
 	win->link = webkit_hit_test_result_context_is_link(htr) ?
 		g_strdup(webkit_hit_test_result_get_link_uri(htr)) : NULL;
 
-	const char *label = webkit_hit_test_result_get_link_label(htr);
-	if (!label)
-		label = webkit_hit_test_result_get_link_title(htr);
-	win->linklabel = label ? g_strdup(label): NULL;
+	win->linklabel = g_strdup(webkit_hit_test_result_get_link_label(htr) ?:
+			webkit_hit_test_result_get_link_title(htr));
 
 	win->oneditable = webkit_hit_test_result_context_is_editable(htr);
 }
@@ -1446,14 +1444,15 @@ static void envspawn(Spawn *p,
 			gtk_clipboard_get(GDK_SELECTION_PRIMARY));
 	envp = g_environ_setenv(envp, "PRIMARY"  , cbtext ?: "", true);
 	envp = g_environ_setenv(envp, "SELECTION", cbtext ?: "", true);
-
+	g_free(cbtext);
 	cbtext = gtk_clipboard_wait_for_text(
 			gtk_clipboard_get(GDK_SELECTION_SECONDARY));
 	envp = g_environ_setenv(envp, "SECONDARY", cbtext ?: "", true);
-
+	g_free(cbtext);
 	cbtext = gtk_clipboard_wait_for_text(
 			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
 	envp = g_environ_setenv(envp, "CLIPBOARD", cbtext ?: "", true);
+	g_free(cbtext);
 
 	int input;
 	GPid child_pid;
@@ -2301,7 +2300,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 
 #define CLIP(clip) \
 		char *uri = g_strdup_printf(arg ? "%s %s" : "%s%s", arg ?: "", \
-			gtk_clipboard_wait_for_text(gtk_clipboard_get(clip))); \
+			sfree(gtk_clipboard_wait_for_text(gtk_clipboard_get(clip)))); \
 		win = newwin(uri, NULL, NULL, 0); \
 		g_free(uri)
 	Z("newclipboard", CLIP(GDK_SELECTION_CLIPBOARD))
@@ -2426,7 +2425,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	Z("tonormal"    , win->mode = Mnormal)
 
 	Z("toinsert"    , win->mode = Minsert)
-	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, NULL))
+	Z("toinsertinput", win->mode = Minsert; send(win, Ctext, arg))
 
 	if (g_str_has_prefix(action, "topointer"))
 	{
@@ -2553,6 +2552,7 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	char *val = gtk_clipboard_wait_for_text(gtk_clipboard_get(clip)); \
 	if (val) setent(win, val); \
 	run(win, "find", val); \
+	g_free(val); \
 	senddelay(win, Cfocus, NULL);
 
 	Z("findselection", CLIP(GDK_SELECTION_PRIMARY))

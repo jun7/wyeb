@@ -423,8 +423,8 @@ static void clearwb(Wb *wb)
 	regfree(&wb->reg);
 	g_free(wb);
 }
-static GSList *wblist = NULL;
-static char   *wbpath = NULL;
+static GSList *wblist;
+static char   *wbpath;
 static void setwblist(bool reload)
 {
 	if (wblist)
@@ -883,6 +883,7 @@ static bool eachclick(let win, let cl,
 	}
 	return ret;
 }
+static char *ctexttext;
 static GSList *_makelist(Page *page, let doc, let win,
 		Coms type, GSList *elms, Elm *frect, Elm *prect)
 {
@@ -924,6 +925,12 @@ static GSList *_makelist(Page *page, let doc, let win,
 						continue;
 					}
 
+					if (ctexttext)
+#if JSC
+						setprop_s(elm.elm, "value", ctexttext);
+#else
+						webkit_dom_html_input_element_set_value(elm.elm, ctexttext);
+#endif
 					focuselm(elm.elm);
 					clearelm(&elm);
 
@@ -1717,6 +1724,7 @@ void ipccb(const char *line)
 		break;
 	case Ctext:
 	{
+		GFA(ctexttext, *arg ? g_strdup(arg) : NULL);
 		let doc = sdoc(page);
 		let win = defaultview(doc);
 		makelist(page, doc, win, Ctext, NULL, NULL);
