@@ -2240,7 +2240,7 @@ static Keybind dkeys[]= {
 	{"shsrc"         , 0, 0, "sh with src of current page via pipe"},
 #if WEBKIT_CHECK_VERSION(2, 20, 0)
 	{"shcookie"      , 0, 0,
-		"` "APP" // shcookie $URI 'echo $RESULT' ` prints headers."
+		"` "APP" // shcookie $URI 'echo $RESULT' ` prints cookies."
 			"\n  Make sure, the callbacks of "APP" are async."
 			"\n  The stdout is not caller's but first process's stdout."},
 #endif
