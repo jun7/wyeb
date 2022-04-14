@@ -773,7 +773,7 @@ static Elm checkelm(let win, Elm *frect, Elm *prect, let te,
 	else
 		trim(&ret, prect);
 
-	if (js && (ret.h < 1 || ret.w < 1))
+	if (js && (ret.h == 0 || ret.w == 0))
 		goto retfalse;
 
 	if (js && notttag && !styleis(dec, "cursor", "pointer"))
