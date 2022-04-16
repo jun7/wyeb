@@ -3723,8 +3723,8 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			return win->crashed ?
 				run(win, "reload", NULL) : false;
 
-		win->cancelcontext = cancelbtn1r = cancelbtn3r = true;
-		if (!(win->lastx + win->lasty)) break;
+		cancelbtn1r = cancelbtn3r = true;
+		if (!win->lastx && !win->lasty) break;
 
 		double deltax = e->x - win->lastx,
 		       deltay = e->y - win->lasty;
@@ -3745,7 +3745,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 				setact(win, "rockerdown", URI(win));
 		}
 
-		break;
+		return true;
 	default:
 		return setact(win,
 				sfree(g_strdup_printf("button%d", e->button)), URI(win));
