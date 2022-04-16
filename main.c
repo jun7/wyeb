@@ -142,8 +142,6 @@ typedef struct _WP {
 	GTlsCertificateFlags tlserr;
 	char   *fordl;
 	guint   msgfunc;
-
-	bool cancelcontext;
 } Win;
 
 struct _Spawn {
@@ -3659,12 +3657,12 @@ static GdkEvent *pendingmiddlee;
 static bool cancelbtn1r;
 static bool cancelbtn3r;
 static bool cancelmdlr;
+static bool cancel23;
 static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 {
 	win->userreq = true;
-	cancelbtn1r = cancelbtn3r = cancelmdlr = false;
-
-	if (e->type != GDK_BUTTON_PRESS) return false;
+	if (e->type != GDK_BUTTON_PRESS) return cancel23;
+	cancel23 = cancelbtn1r = cancelbtn3r = cancelmdlr = false;
 	altcur(win, e->x, e->y); //clears if it is alt cur
 
 	if (win->mode == Mlist)
@@ -3678,10 +3676,11 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 
 		if (e->button == 3)
 		{
+			cancelbtn3r = true;
 			GdkEvent *ne = gdk_event_peek();
 			if (!ne) return true;
 			if (ne->type == GDK_2BUTTON_PRESS || ne->type == GDK_3BUTTON_PRESS)
-				win->cancelcontext = cancelbtn3r = true;
+				cancel23 = true;
 			gdk_event_free(ne);
 		}
 		return true;
@@ -3723,8 +3722,8 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 			return win->crashed ?
 				run(win, "reload", NULL) : false;
 
-		cancelbtn1r = cancelbtn3r = true;
 		if (!win->lastx && !win->lasty) break;
+		cancel23 = cancelbtn1r = cancelbtn3r = true;
 
 		double deltax = e->x - win->lastx,
 		       deltay = e->y - win->lasty;
@@ -3760,10 +3759,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		win->lastx = win->lasty = 0;
 		gtk_widget_queue_draw(win->canvas);
 
-		if (cancelbtn1r) {
-			cancelbtn1r = false;
-			return true;
-		}
+		if (cancelbtn1r) return true;
 		break;
 	case 2:
 	{
@@ -3771,7 +3767,6 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		double deltax = e->x - win->lastx;
 		double deltay = e->y - win->lasty;
 		win->lastx = win->lasty = 0;
-		cancelmdlr = false;
 
 		if (cancel) return true;
 
@@ -3806,10 +3801,7 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		return true;
 	}
 	case 3:
-		if (cancelbtn3r) {
-			cancelbtn3r = false;
-			return true;
-		}
+		if (cancelbtn3r) return true;
 		win->lastx = win->lasty = 0;
 	}
 
@@ -4395,11 +4387,6 @@ static gboolean contextcb(WebKitWebView *k,
 		WebKitHitTestResult *htr,
 		Win                 *win)
 {
-	if (win->cancelcontext)
-	{
-		win->cancelcontext = false;
-		return true;
-	}
 	setresult(win, htr);
 	makemenu(menu);
 	ignoretargetcb = true;
