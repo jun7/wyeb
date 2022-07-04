@@ -617,7 +617,7 @@ static bool ipcsend(char *name, char *str) {
 		(g_file_test(path, G_FILE_TEST_EXISTS)) &&
 		(cpipe = open(path, O_WRONLY | O_NONBLOCK)))
 	{
-		//D(send start %s %s, name, str)
+		D(ipcsend start %s %s, name, str)
 		char *esc = g_strescape(str, "");
 		char *send = g_strconcat(esc, "\n", NULL);
 		int len = strlen(send);
@@ -628,7 +628,7 @@ static bool ipcsend(char *name, char *str) {
 		g_free(esc);
 		close(cpipe);
 
-		//D(send -end- %s %s, name, str)
+		D(ipcsend -end- %s %s %b, name, str, ret)
 	}
 	return ret;
 }

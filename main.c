@@ -263,7 +263,15 @@ static Win *winbyid(const char *pageid)
 	for (int i = 0; i < wins->len; i++)
 		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid))
 			return wins->pdata[i];
-	return NULL;
+
+	//workaround page id is changed on some pages
+	for (int i = 0; i < wins->len; i++)
+		if (atol(pageid) == webkit_web_view_get_page_id(
+					((Win *)wins->pdata[i])->kit))
+			return wins->pdata[i];
+
+	//workaround: _pageinit are sent to unknown when page is recreated
+	return LASTWIN;
 }
 static void quitif()
 {
@@ -483,7 +491,8 @@ static void showmsg(Win *win, const char *msg)
 //com
 static void send(Win *win, Coms type, const char *args)
 {
-	char *arg = sfree(g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: ""));
+	char *arg = sfree(g_strdup_printf("%"G_GUINT64_FORMAT":%c:%s",
+				webkit_web_view_get_page_id(win->kit), type, args ?: ""));
 
 	static bool alerted;
 
@@ -4082,7 +4091,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	win->crashed = false;
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
-		//D(WEBKIT_LOAD_STARTED %s, URI(win))
+		D(WEBKIT_LOAD_STARTED %s, URI(win))
 		histperiod(win);
 		if (tlwin == win) tlwin = NULL;
 		win->scheme = false;
@@ -4111,13 +4120,13 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		send(win, Cstart, NULL);
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
-		//D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
+		D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
 		resetconf(win, NULL, 0);
 		send(win, Cstart, NULL);
 
 		break;
 	case WEBKIT_LOAD_COMMITTED:
-		//D(WEBKIT_LOAD_COMMITED %s, URI(win))
+		D(WEBKIT_LOAD_COMMITED %s, URI(win))
 		if (!win->scheme && g_str_has_prefix(URI(win), APP":"))
 		{
 			webkit_web_view_reload(win->kit);
@@ -4132,7 +4141,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		setspawn(win, "onloadmenu");
 		break;
 	case WEBKIT_LOAD_FINISHED:
-		//D(WEBKIT_LOAD_FINISHED %s, URI(win))
+		D(WEBKIT_LOAD_FINISHED %s, URI(win))
 
 		if (g_strcmp0(win->lastreset, URI(win)))
 		{ //for load-failed before commit e.g. download
@@ -4148,7 +4157,9 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 		win->progd = 1;
 		drawprogif(win, true);
-		g_source_remove(win->drawprogcb);
+		//start is skipped when hist forward on seme pages
+		if (win->drawprogcb)
+			g_source_remove(win->drawprogcb);
 		win->drawprogcb = 0;
 		break;
 	}

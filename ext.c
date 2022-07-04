@@ -1946,16 +1946,16 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 
 	loadconf();
 	send(page, "_pageinit", ipcid);
-
-	GMainContext *ctx = g_main_context_new();
-	page->sync = g_main_loop_new(ctx, true);
-	GSource *watch = _ipcwatch(ipcid, ctx);
-
-	g_main_loop_run(page->sync);
-
-	g_source_unref(watch);
-	g_main_context_unref(ctx);
-	g_main_loop_unref(page->sync);
+//workaround this timing the view can not send callback because page id is unknown when page is recreated happening on some pages
+//	GMainContext *ctx = g_main_context_new();
+//	page->sync = g_main_loop_new(ctx, true);
+//	GSource *watch = _ipcwatch(ipcid, ctx);
+//
+//	g_main_loop_run(page->sync);
+//
+//	g_source_unref(watch);
+//	g_main_context_unref(ctx);
+//	g_main_loop_unref(page->sync);
 	page->sync = NULL;
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
