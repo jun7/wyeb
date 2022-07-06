@@ -72,6 +72,7 @@ typedef struct _WP {
 	};
 	GtkWidget *canvas;
 	char   *pageid;
+	char   *winid;
 	GSList *ipcids;
 	WebKitFindController *findct;
 
@@ -261,13 +262,8 @@ static bool isin(GPtrArray *ary, void *v)
 static Win *winbyid(const char *pageid)
 {
 	for (int i = 0; i < wins->len; i++)
-		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid))
-			return wins->pdata[i];
-
-	//workaround page id is changed on some pages
-	for (int i = 0; i < wins->len; i++)
-		if (atol(pageid) == webkit_web_view_get_page_id(
-					((Win *)wins->pdata[i])->kit))
+		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid)
+				|| !strcmp(pageid, ((Win *)wins->pdata[i])->winid))
 			return wins->pdata[i];
 
 	//workaround: _pageinit are sent to unknown when page is recreated
@@ -491,8 +487,7 @@ static void showmsg(Win *win, const char *msg)
 //com
 static void send(Win *win, Coms type, const char *args)
 {
-	char *arg = sfree(g_strdup_printf("%"G_GUINT64_FORMAT":%c:%s",
-				webkit_web_view_get_page_id(win->kit), type, args ?: ""));
+	char *arg = sfree(g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: ""));
 
 	static bool alerted;
 
@@ -1401,7 +1396,7 @@ static void envspawn(Spawn *p,
 	snprintf(buf, 9, "%d", wins->len);
 	envp = g_environ_setenv(envp, "WINSLEN", buf, true);
 	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);
-	envp = g_environ_setenv(envp, "WINID"  , win->pageid, true);
+	envp = g_environ_setenv(envp, "WINID"  , win->winid, true);
 	envp = g_environ_setenv(envp, "CURRENTSET", win->overset ?: "", true);
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
 	envp = g_environ_setenv(envp, "LINK_OR_URI", URI(win), true);
@@ -2253,8 +2248,8 @@ static Keybind dkeys[]= {
 #endif
 
 //todo pagelist
-//	{"windowimage"   , 0, 0}, //pageid
-//	{"windowlist"    , 0, 0}, //=>pageid uri title
+//	{"windowimage"   , 0, 0}, //winid
+//	{"windowlist"    , 0, 0}, //=>winid uri title
 };
 static char *ke2name(Win *win, GdkEventKey *ke)
 {
@@ -2319,7 +2314,11 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 
 	//internal
 	Z("_pageinit"  ,
-			win->ipcids = g_slist_prepend(win->ipcids, g_strdup(arg));
+			agv = g_strsplit(arg, ":", 2);
+			win->ipcids = g_slist_prepend(win->ipcids, g_strdup(agv[0]));
+			//when page proc crashed, webkit_web_view_get_page_id delays
+			//D(pageid new %s old %lu,agv[1], webkit_web_view_get_page_id(win->kit))
+			GFA(win->pageid, g_strdup(agv[1]))
 			send(win, Coverset, win->overset))
 	Z("_textlinkon", textlinkon(win))
 	Z("_blocked"   ,
@@ -3440,6 +3439,7 @@ static void destroycb(Win *win)
 	quitif();
 
 	g_free(win->pageid);
+	g_free(win->winid);
 	g_slist_free_full(win->ipcids, g_free);
 	g_free(win->lasturiconf);
 	g_free(win->lastreset);
@@ -4033,11 +4033,10 @@ static gboolean policycb(
 
 	bool dl = false;
 	char *msr = getset(win, "dlmimetypes");
-	//for checking whether is sub frame or not.
-	//this time webkit_web_resource_get_response is null yet except on sub frames
-	//unfortunately on nav it returns prev page though
+	//unfortunately on nav get_main_resource returns prev page
 	WebKitWebResource *mresrc = webkit_web_view_get_main_resource(win->kit);
-	bool mainframe = !webkit_web_resource_get_response(mresrc);
+	bool mainframe = !g_strcmp0(webkit_web_resource_get_uri(mresrc),
+			webkit_uri_response_get_uri(res));
 	if (msr && *msr && mainframe)
 	{
 		char **ms = g_strsplit(msr, ";", -1);
@@ -4104,7 +4103,6 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		if (win->userreq) {
 			win->userreq = false; //currently not used
 		}
-		resetconf(win, NULL, 0);
 		setspawn(win, "onstartmenu");
 
 		//there is progcb before this event but sometimes it is
@@ -4133,6 +4131,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			break;
 		}
 
+		resetconf(win, NULL, 0);
 		send(win, Con, "c");
 
 		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
@@ -4764,6 +4763,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 
 	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
+	win->winid = g_strdup(win->pageid);
 
 	g_ptr_array_add(wins, win);
 	if (back == 2)

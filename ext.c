@@ -337,10 +337,10 @@ static void recttovals(let rect, double *x, double *y, double *w, double *h)
 
 
 //@misc
-static void send(Page *page, char *action, const char *arg)
+static bool send(Page *page, char *action, const char *arg)
 {
 	//D(send to main %s, ss)
-	ipcsend("main", sfree(g_strdup_printf(
+	return ipcsend("main", sfree(g_strdup_printf(
 		"%"G_GUINT64_FORMAT":%s:%s",
 		webkit_web_page_get_id(page->kit), action, arg ?: "")));
 }
@@ -1945,17 +1945,20 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	}
 
 	loadconf();
-	send(page, "_pageinit", ipcid);
-//workaround this timing the view can not send callback because page id is unknown when page is recreated happening on some pages
-//	GMainContext *ctx = g_main_context_new();
-//	page->sync = g_main_loop_new(ctx, true);
-//	GSource *watch = _ipcwatch(ipcid, ctx);
-//
-//	g_main_loop_run(page->sync);
-//
-//	g_source_unref(watch);
-//	g_main_context_unref(ctx);
-//	g_main_loop_unref(page->sync);
+	//workaround this timing the view can not get page id when page is recreated happening on some pages. thus we send it
+	if (send(page, "_pageinit", sfree(g_strdup_printf("%s:%lu",
+						ipcid, webkit_web_page_get_id(kp)))))
+	{
+		GMainContext *ctx = g_main_context_new();
+		page->sync = g_main_loop_new(ctx, true);
+		GSource *watch = _ipcwatch(ipcid, ctx);
+
+		g_main_loop_run(page->sync);
+
+		g_source_unref(watch);
+		g_main_context_unref(ctx);
+		g_main_loop_unref(page->sync);
+	}
 	page->sync = NULL;
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
