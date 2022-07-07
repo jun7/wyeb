@@ -1920,7 +1920,11 @@ static void uricb(Page* page)
 //	D(option %s --- %s, option, description);
 //	return false;
 //}
-
+static gboolean inittimeoutcb(gpointer roop)
+{
+	g_main_loop_quit(roop);
+	return false;
+}
 static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 {
 //	jsc_options_foreach(printopt, NULL);
@@ -1952,6 +1956,11 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 		GMainContext *ctx = g_main_context_new();
 		page->sync = g_main_loop_new(ctx, true);
 		GSource *watch = _ipcwatch(ipcid, ctx);
+
+		GSource *src = g_timeout_source_new_seconds(3);
+		g_source_set_callback(src, inittimeoutcb, page->sync, NULL);
+		g_source_attach(src, ctx);
+		g_source_unref(src);
 
 		g_main_loop_run(page->sync);
 
