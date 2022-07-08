@@ -410,12 +410,10 @@ static bool seturiprops(WP *wp, const char *uri, char *group)
 
 static void _resetconf(WP *wp, const char *uri, bool force)
 {
-	if (wp->lasturiconf || force)
-	{
-		GFA(wp->lasturiconf, NULL)
-		//clearing. don't worry about reg and handler they are not set
+	//clearing. don't worry about reg and handler they are not set
+	if (force || (wp->lasturiconf && g_strcmp0(wp->lasturiconf, uri)))
 		setprops(wp, conf, DSET);
-	}
+	GFA(wp->lasturiconf, NULL)
 
 	GFA(wp->lastreset, g_strdup(uri))
 	if (uri && eachuriconf(wp, uri, false, seturiprops))
