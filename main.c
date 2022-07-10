@@ -71,7 +71,6 @@ typedef struct _WP {
 		GObject   *ento;
 	};
 	GtkWidget *canvas;
-	char   *pageid;
 	char   *winid;
 	GSList *ipcids;
 	WebKitFindController *findct;
@@ -143,6 +142,7 @@ typedef struct _WP {
 	GTlsCertificateFlags tlserr;
 	char   *fordl;
 	guint   msgfunc;
+	bool    maychanged;
 } Win;
 
 struct _Spawn {
@@ -261,13 +261,21 @@ static bool isin(GPtrArray *ary, void *v)
 }
 static Win *winbyid(const char *pageid)
 {
+	guint64 intid = atol(pageid);
+	Win *maychanged = NULL;
 	for (int i = 0; i < wins->len; i++)
-		if (!strcmp(pageid, ((Win *)wins->pdata[i])->pageid)
-				|| !strcmp(pageid, ((Win *)wins->pdata[i])->winid))
-			return wins->pdata[i];
+	{
+		Win *win = wins->pdata[i];
+		if (intid == webkit_web_view_get_page_id(win->kit)
+				|| !strcmp(pageid, win->winid))
+			return win;
+
+		if (win->maychanged)
+			maychanged = win;
+	}
 
 	//workaround: _pageinit are sent to unknown when page is recreated
-	return LASTWIN;
+	return maychanged;
 }
 static void quitif()
 {
@@ -485,9 +493,11 @@ static void showmsg(Win *win, const char *msg)
 { _showmsg(win, g_strdup(msg)); }
 
 //com
-static void send(Win *win, Coms type, const char *args)
+static void _send(Win *win, Coms type, const char *args, guint64 pageid)
 {
-	char *arg = sfree(g_strdup_printf("%s:%c:%s", win->pageid, type, args ?: ""));
+	char *arg = sfree(g_strdup_printf("%"G_GUINT64_FORMAT":%c:%s",
+				pageid ?: webkit_web_view_get_page_id(win->kit),
+				type, args ?: ""));
 
 	static bool alerted;
 
@@ -504,6 +514,10 @@ static void send(Win *win, Coms type, const char *args)
 						"Make sure ext.so is in "EXTENSION_DIR".");
 			}
 		}
+}
+static void send(Win *win, Coms type, const char *args)
+{
+	_send(win, type, args, 0);
 }
 static void sendeach(Coms type, char *args)
 {
@@ -2316,10 +2330,8 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	Z("_pageinit"  ,
 			agv = g_strsplit(arg, ":", 2);
 			win->ipcids = g_slist_prepend(win->ipcids, g_strdup(agv[0]));
-			//when page proc crashed, webkit_web_view_get_page_id delays
-			//D(pageid new %s old %lu,agv[1], webkit_web_view_get_page_id(win->kit))
-			GFA(win->pageid, g_strdup(agv[1]))
-			send(win, Coverset, win->overset))
+			//when page proc recreated on some pages, webkit_web_view_get_page_id delays
+			_send(win, Coverset, win->overset, atol(g_strdup(agv[1]))))
 	Z("_textlinkon", textlinkon(win))
 	Z("_blocked"   ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg));
@@ -3438,7 +3450,6 @@ static void destroycb(Win *win)
 
 	quitif();
 
-	g_free(win->pageid);
 	g_free(win->winid);
 	g_slist_free_full(win->ipcids, g_free);
 	g_free(win->lasturiconf);
@@ -4116,6 +4127,9 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 
 		//loadcb is multi thread!? and send may block others by alert
 		send(win, Cstart, NULL);
+
+		//workaround
+		win->maychanged = true;
 		break;
 	case WEBKIT_LOAD_REDIRECTED:
 		D(WEBKIT_LOAD_REDIRECTED %s, URI(win))
@@ -4125,6 +4139,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_COMMITTED:
 		D(WEBKIT_LOAD_COMMITED %s, URI(win))
+		win->maychanged = false;
 		if (!win->scheme && g_str_has_prefix(URI(win), APP":"))
 		{
 			webkit_web_view_reload(win->kit);
@@ -4141,6 +4156,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 		break;
 	case WEBKIT_LOAD_FINISHED:
 		D(WEBKIT_LOAD_FINISHED %s, URI(win))
+		win->maychanged = false;
 
 		if (g_strcmp0(win->lastreset, URI(win)))
 		{ //for load-failed before commit e.g. download
@@ -4761,9 +4777,8 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 
 	gtk_container_add(GTK_CONTAINER(win->win), box);
 
-	win->pageid = g_strdup_printf("%"G_GUINT64_FORMAT,
+	win->winid = g_strdup_printf("%"G_GUINT64_FORMAT,
 			webkit_web_view_get_page_id(win->kit));
-	win->winid = g_strdup(win->pageid);
 
 	g_ptr_array_add(wins, win);
 	if (back == 2)

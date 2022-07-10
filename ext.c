@@ -1957,7 +1957,7 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 		page->sync = g_main_loop_new(ctx, true);
 		GSource *watch = _ipcwatch(ipcid, ctx);
 
-		GSource *src = g_timeout_source_new_seconds(3);
+		GSource *src = g_timeout_source_new_seconds(1);
 		g_source_set_callback(src, inittimeoutcb, page->sync, NULL);
 		g_source_attach(src, ctx);
 		g_source_unref(src);
