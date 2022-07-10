@@ -496,8 +496,7 @@ static void showmsg(Win *win, const char *msg)
 static void _send(Win *win, Coms type, const char *args, guint64 pageid)
 {
 	char *arg = sfree(g_strdup_printf("%"G_GUINT64_FORMAT":%c:%s",
-				pageid ?: webkit_web_view_get_page_id(win->kit),
-				type, args ?: ""));
+				pageid, type, args ?: ""));
 
 	static bool alerted;
 
@@ -517,7 +516,7 @@ static void _send(Win *win, Coms type, const char *args, guint64 pageid)
 }
 static void send(Win *win, Coms type, const char *args)
 {
-	_send(win, type, args, 0);
+	_send(win, type, args, webkit_web_view_get_page_id(win->kit));
 }
 static void sendeach(Coms type, char *args)
 {
