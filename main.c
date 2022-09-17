@@ -2394,7 +2394,11 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 		)
 		Z("download", webkit_web_view_download_uri(win->kit, arg))
 		Z("dlwithheaders",
-			if (!strcmp(arg, "about:blank")) goto out;
+			if (!strcmp(arg, "about:blank"))
+			{
+				if (win) showmsg(win, arg);
+				goto out;
+			}
 			Win *dlw = newwin(NULL, win, win, 2);
 			dlw->fordl = g_strdup(exarg ?: "");
 
