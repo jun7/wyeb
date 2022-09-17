@@ -1,5 +1,7 @@
 PREFIX ?= /usr
-EXTENSION_DIR ?= $(PREFIX)/lib/wyebrowser
+WEBKIT ?= webkit2gtk-4.0
+APPDIR ?= wyebrowser
+EXTENSION_DIR ?= $(PREFIX)/lib/$(APPDIR)
 DISTROURI ?= https:/archlinux.org/
 DISTRONAME ?= "Arch Linux"
 ifeq ($(DEBUG), 1)
@@ -12,7 +14,7 @@ all: wyeb ext.so
 
 wyeb: main.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< \
-		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
+		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 $(WEBKIT)` \
 		-DEXTENSION_DIR=\"$(EXTENSION_DIR)\" \
 		-DDISTROURI=\"$(DISTROURI)\" \
 		-DDISTRONAME=\"$(DISTRONAME)\" \
@@ -20,7 +22,7 @@ wyeb: main.c general.c makefile
 
 ext.so: ext.c general.c makefile
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -shared -fPIC \
-		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 webkit2gtk-4.0` \
+		`pkg-config --cflags --libs gtk+-3.0 glib-2.0 $(WEBKIT)` \
 		-DDEBUG=${DEBUG} -DJSC=${JSC}
 
 clean:
