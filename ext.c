@@ -1945,7 +1945,7 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	if (!ipcid)
 	{
 		ipcid = g_strdup_printf("%d", getpid());
-		ipcwatch(ipcid);
+		ipcwatch(ipcid, g_main_context_default());
 	}
 
 	loadconf();
@@ -1955,7 +1955,7 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	{
 		GMainContext *ctx = g_main_context_new();
 		page->sync = g_main_loop_new(ctx, true);
-		GSource *watch = _ipcwatch(ipcid, ctx);
+		ipcwatch(ipcid, ctx);
 
 		GSource *src = g_timeout_source_new_seconds(1);
 		g_source_set_callback(src, inittimeoutcb, page->sync, NULL);
@@ -1964,7 +1964,6 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 
 		g_main_loop_run(page->sync);
 
-		g_source_unref(watch);
 		g_main_context_unref(ctx);
 		g_main_loop_unref(page->sync);
 	}
