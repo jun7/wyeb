@@ -277,13 +277,12 @@ static Win *winbyid(const char *pageid)
 	//workaround: _pageinit are sent to unknown when page is recreated
 	return maychanged;
 }
-static GIOChannel *mainipc;
 static void quitif()
 {
 	if (!wins->len && !dlwins->len && !confbool("keepproc"))
 	{
 		//workaround: gtk_main_quit doesn't shutdown io when webproc is freezed
-		g_io_channel_shutdown(mainipc, false, NULL);
+		remove(ipcpath("main"));
 		gtk_main_quit();
 	}
 }
@@ -4914,7 +4913,7 @@ int main(int argc, char **argv)
 	g_set_prgname(fullname);
 	gtk_init(0, NULL);
 	checkconf(NULL);
-	mainipc = ipcwatch("main", g_main_context_default());
+	ipcwatch("main", g_main_context_default());
 
 	close(lock);
 

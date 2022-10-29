@@ -630,7 +630,7 @@ static bool ipcsend(char *name, char *str) {
 	}
 	return ret;
 }
-static GIOChannel *ipcwatch(char *name, GMainContext *ctx) {
+static void ipcwatch(char *name, GMainContext *ctx) {
 	char *path = ipcpath(name);
 
 	if (!g_file_test(path, G_FILE_TEST_EXISTS))
@@ -642,6 +642,4 @@ static GIOChannel *ipcwatch(char *name, GMainContext *ctx) {
 	g_source_set_callback(watch, (GSourceFunc)ipcgencb, NULL, NULL);
 	g_source_attach(watch, ctx);
 	g_source_unref(watch);
-
-	return io;
 }
