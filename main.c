@@ -3131,7 +3131,7 @@ static char *helpdata()
 		"  following values are set as environment valriables.\n"
 		"   URI TITLE FOCUSURI LINK LINK_OR_URI LINKLABEL\n"
 		"   LABEL_OR_TITLE MEDIA IMAGE MEDIA_IMAGE_LINK\n"
-		"   PRIMARY/SELECTION SECONDARY CLIPBORAD\n"
+		"   PRIMARY/SELECTION SECONDARY CLIPBOARD\n"
 		"   ISCALLBACK SUFFIX CURRENTSET DLDIR CONFDIR WINID WINSLEN\n"
 		"   WINX WINY WIDTH HEIGHT CANBACK CANFORWARD\n"
 		"  Of course it supports directories and '.'.\n"
