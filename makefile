@@ -2,7 +2,7 @@ PREFIX ?= /usr
 WEBKIT ?= webkit2gtk-4.0
 APPDIR ?= wyebrowser
 EXTENSION_DIR ?= $(PREFIX)/lib/$(APPDIR)
-DISTROURI ?= https:/archlinux.org/
+DISTROURI ?= https://archlinux.org/
 DISTRONAME ?= "Arch Linux"
 ifeq ($(DEBUG), 1)
 	CFLAGS += -Wall -Wno-deprecated-declarations
