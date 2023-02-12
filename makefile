@@ -1,5 +1,5 @@
 PREFIX ?= /usr
-WEBKITVER ?= 4.0
+WEBKITVER ?= 4.1
 WEBKIT ?= webkit2gtk-$(WEBKITVER)
 APPDIR ?= wyebrowser
 EXTENSION_DIR ?= $(PREFIX)/lib/$(APPDIR)
