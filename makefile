@@ -1,8 +1,7 @@
 PREFIX ?= /usr
 WEBKITVER ?= 4.1
 WEBKIT ?= webkit2gtk-$(WEBKITVER)
-APPDIR ?= wyebrowser
-EXTENSION_DIR ?= $(PREFIX)/lib/$(APPDIR)
+EXTENSION_DIR ?= $(PREFIX)/lib/wyebrowser
 DISTROURI ?= https://archlinux.org/
 DISTRONAME ?= "Arch Linux"
 
