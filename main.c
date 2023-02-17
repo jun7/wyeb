@@ -206,7 +206,6 @@ static char *mainmdstr =
 "<!-- this is text/markdown -->\n"
 "<meta charset=utf8>\n"
 "<style>\n"
-"body{overflow-y:scroll} /*workaround for the delaying of the context-menu*/\n"
 "a{background:linear-gradient(to right top, #ddf, white, white, white);\n"
 " color:#109; margin:1px; padding:2px; text-decoration:none; display:inline-block}\n"
 "a:hover{text-decoration:underline}\n"
