@@ -57,27 +57,6 @@ along with wyeb.  If not, see <http://www.gnu.org/licenses/>.
 # define DENUM(v, e) ;
 #endif
 
-// this app depends on WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 16
-
-#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 22
-# define V24 1
-#else
-# define V24 0
-#endif
-
-#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 20
-# define V22 1
-#else
-# define V22 0
-#endif
-
-#ifdef MAINC
-#if ! v22
-#include <JavaScriptCore/JSStringRef.h>
-#endif
-#endif
-
-
 #define SIG(o, n, c, u) \
 	g_signal_connect(o, n, G_CALLBACK(c), u)
 #define SIGA(o, n, c, u) \

@@ -185,11 +185,7 @@ static long plugto;
 static void _kitprops(bool set, GObject *obj, GKeyFile *kf, char *group);
 #define MAINC
 #include "general.c"
-#if V24
 #define FORDISP(s) sfree(webkit_uri_for_display(s))
-#else
-#define FORDISP(s) s
-#endif
 
 static char *usage =
 	"usage: "APP" [[[suffix] action|\"\"] uri|arg|\"\"]\n"
@@ -1067,10 +1063,8 @@ static void checkconf(const char *mp)
 				confbool("ignoretlserr") ?
 				WEBKIT_TLS_ERRORS_POLICY_IGNORE :
 				WEBKIT_TLS_ERRORS_POLICY_FAIL);
-#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 28
 		webkit_website_data_manager_set_itp_enabled(
 			webkit_web_context_get_website_data_manager(ctx), confbool("itp"));
-#endif
 	}
 
 	if (!wins) return;
@@ -2040,25 +2034,8 @@ static void jscb(GObject *po, GAsyncResult *pres, gpointer p)
 	char *resstr = NULL;
 	if (res)
 	{
-#if V22
 		resstr = jsc_value_to_string(
 				webkit_javascript_result_get_js_value(res));
-#else
-		JSValueRef jv = webkit_javascript_result_get_value(res);
-		JSGlobalContextRef jctx =
-			webkit_javascript_result_get_global_context(res);
-
-		if (JSValueIsString(jctx, jv))
-		{
-			JSStringRef jstr = JSValueToStringCopy(jctx, jv, NULL);
-			gsize len = JSStringGetMaximumUTF8CStringSize(jstr);
-			resstr = g_malloc(len);
-			JSStringGetUTF8CString(jstr, resstr, len);
-			JSStringRelease(jstr);
-		}
-		else
-			resstr = g_strdup("unsupported return value");
-#endif
 		webkit_javascript_result_unref(res);
 	}
 	else
@@ -2079,7 +2056,6 @@ static void resourcecb(GObject *srco, GAsyncResult *res, gpointer p)
 	envspawn(p, true, NULL, (char *)data, len);
 	g_free(data);
 }
-#if WEBKIT_CHECK_VERSION(2, 20, 0)
 static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 {
 	char *header = NULL;
@@ -2094,7 +2070,6 @@ static void cookiescb(GObject *cm, GAsyncResult *res, gpointer p)
 	envspawn(p, true, header ?: "", NULL, 0);
 	g_free(header);
 }
-#endif
 
 //textlink
 static char *tlpath;
@@ -2257,12 +2232,10 @@ static Keybind dkeys[]= {
 	{"shhint"        , 0, 0, "sh with envs selected by a hint"},
 	{"shrange"       , 0, 0, "sh with envs selected by ranged hints"},
 	{"shsrc"         , 0, 0, "sh with src of current page via pipe"},
-#if WEBKIT_CHECK_VERSION(2, 20, 0)
 	{"shcookie"      , 0, 0,
 		"` "APP" // shcookie $URI 'echo $RESULT' ` prints cookies."
 			"\n  Make sure, the callbacks of "APP" are async."
 			"\n  The stdout is not caller's but first process's stdout."},
-#endif
 
 //todo pagelist
 //	{"windowimage"   , 0, 0}, //winid
@@ -2439,13 +2412,11 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 			webkit_web_resource_get_data(res, NULL, resourcecb
 				, spawnp(win, action, arg, cdir, true));
 			)
-#if WEBKIT_CHECK_VERSION(2, 20, 0)
 		ZZ("shcookie", "cookies"/*backward*/,
 			WebKitCookieManager *cm =
 				webkit_web_context_get_cookie_manager(ctx);
 			webkit_cookie_manager_get_cookies(cm, arg, NULL, cookiescb
 				, spawnp(win, action, exarg, cdir, true)))
-#endif
 	}
 
 	Z("tonormal"    , win->mode = Mnormal)
@@ -4686,11 +4657,9 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 			webkit_web_context_set_tls_errors_policy(ctx,
 					WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 
-#if WEBKIT_MAJOR_VERSION > 2 || WEBKIT_MINOR_VERSION > 28
 		if (confbool("itp"))
 			webkit_website_data_manager_set_itp_enabled(
 					webkit_web_context_get_website_data_manager(ctx), true);
-#endif
 	}
 	WebKitUserContentManager *cmgr = webkit_user_content_manager_new();
 	win->kito = cbwin ?
