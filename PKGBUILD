@@ -25,14 +25,10 @@ prepare() {
 
 build() {
 	cd "$srcdir/wyeb"
-	DEBUG=0
-	make
+	DEBUG=0 make
 }
 
 package() {
 	cd "$srcdir/wyeb"
-	install -Dm755 wyeb   "$pkgdir/usr/bin/wyeb"
-	install -Dm755 ext.so   "$pkgdir/usr/lib/wyebrowser/4.1/ext.so"
-	install -Dm644 wyeb.png   "$pkgdir/usr/share/pixmaps/wyeb.png"
-	install -Dm644 wyeb.desktop "$pkgdir/usr/share/applications/wyeb.desktop"
+	PREFIX="$pkgdir/usr" make install
 }
