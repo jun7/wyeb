@@ -477,6 +477,10 @@ static void initconf(GKeyFile *kf)
 			"preferential order of groups: lower > upper > '"DSET"'"
 			, NULL);
 
+	g_key_file_set_string(conf, sample, "sets", "image;script");
+	g_key_file_set_comment(conf, sample, "sets",
+			"Include sets. This works even in set:*" , NULL);
+
 	sample = "uri:^foo|a-zA-Z0-9|*";
 
 	g_key_file_set_string(conf, sample, "reg", "^foo[^a-zA-Z0-9]*$");
@@ -486,14 +490,11 @@ static void initconf(GKeyFile *kf)
 	g_key_file_set_string(conf, sample, "handler", "chromium %s");
 	g_key_file_set_comment(conf, sample, "handler",
 			"handler cancels request before sent and\n"
-			"spawns the command with a URI matched the 'uri:'"
+			"spawns the command with a URI matched the reg\n"
+			"This works only in uri:*"
 			, NULL);
 	g_key_file_set_string(conf, sample, "handlerunesc", "false");
 	g_key_file_set_string(conf, sample, "handlerescchrs", "");
-
-	g_key_file_set_string(conf, sample, "sets", "image;script");
-	g_key_file_set_comment(conf, sample, "sets",
-			"include sets" , NULL);
 #endif
 }
 
