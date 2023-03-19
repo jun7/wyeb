@@ -503,12 +503,15 @@ static void _send(Win *win, Coms type, const char *args, guint64 pageid)
 				pageid, type, args ?: ""));
 
 	static bool alerted;
+	GSList *nextnext;
 
-	for (GSList *next = win->ipcids; next; next = next->next)
+	for (GSList *next = win->ipcids; next; next = next ? next->next : nextnext)
 		if (!ipcsend(next->data, arg))
 		{
 			g_free(next->data);
+			nextnext = next->next;
 			win->ipcids = g_slist_delete_link(win->ipcids, next);
+			next = NULL;
 
 			if (!win->ipcids && !win->crashed && !alerted && type == Cstart)
 			{
