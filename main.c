@@ -1728,7 +1728,7 @@ static bool quitnext(Win *win, bool next)
 {
 	if (inwins(win, NULL, true) < 1)
 	{
-		if (!strcmp(APP":main", URI(win)))
+		if (win->crashed || !strcmp(APP":main", URI(win)))
 			return run(win, "quit", NULL);
 
 		run(win, "showmainpage", NULL);
