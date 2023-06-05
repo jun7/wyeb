@@ -2934,11 +2934,10 @@ static void downloadcb(WebKitWebContext *ctx, WebKitDownload *pdl)
 	SIGW(o, "finished"           , dlfincb   , win);
 	SIGW(o, "received-data"      , dldatacb  , win);
 
-	if (LASTWIN)
+	Win *reqwin = !mainwin ? LASTWIN :
+		mainwin->fordl ? g_object_get_data(G_OBJECT(kit), "caller") : mainwin;
+	if (reqwin)
 	{
-		Win *reqwin = !mainwin ? LASTWIN :
-			mainwin->fordl ? g_object_get_data(G_OBJECT(kit), "caller") : mainwin;
-
 		int gy;
 		gdk_window_get_geometry(gdkw(reqwin->winw), NULL, &gy, NULL, NULL);
 		int x, y;
