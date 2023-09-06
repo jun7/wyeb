@@ -166,7 +166,7 @@ static Conf dconf[] = {
 	{"set:v"     , "hackedhint4js"        , "false"},
 	{"set:script", "enable-javascript"    , "true"},
 	{"set:image" , "auto-load-images"     , "true"},
-	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s](%s)"},
+	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s ](%s)"},
 	{"set:image" , "linkdata"     , "tu"},
 
 	//core
