@@ -204,7 +204,7 @@ static Conf dconf[] = {
 	{DSET    , "rmnoscripttag"    , "false"},
 
 	//bookmark
-	{DSET    , "linkformat"       , "[%.40s](%s)", "\nbookmark\n"},
+	{DSET    , "linkformat"       , "[%.40s ](%s)", "\nbookmark\n"},
 	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
 
 	//hint
