@@ -145,7 +145,7 @@ static Conf dconf[] = {
 	{"set:v"     , "hackedhint4js"        , "false"},
 	{"set:script", "enable-javascript"    , "true"},
 	{"set:image" , "auto-load-images"     , "true"},
-	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s](%s)"},
+	{"set:image" , "linkformat"   , "[![]("APP":F) %.40s ](%s)"},
 	{"set:image" , "linkdata"     , "tu"},
 
 	//core
@@ -183,7 +183,7 @@ static Conf dconf[] = {
 	{DSET    , "rmnoscripttag"    , "false"},
 
 	//bookmark
-	{DSET    , "linkformat"       , "[%.40s](%s)", "\nbookmark\n"},
+	{DSET    , "linkformat"       , "[%.40s ](%s)", "\nbookmark\n"},
 	{DSET    , "linkdata"         , "tu", "t: title, u: uri, f: favicon"},
 
 	//hint
