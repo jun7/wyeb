@@ -348,7 +348,7 @@ static void makeuriregs() {
 		void **reg = g_new(void*, 2);
 		*reg = g_new(regex_t, 1);
 //		if (regcomp(*reg, g, REG_EXTENDED | REG_NOSUB))
-		if (regcomp(*reg, g, REG_EXTENDED))
+		if (!g || regcomp(*reg, g, REG_EXTENDED))
 		{ //failed
 			g_free(*reg);
 			g_free(reg);
