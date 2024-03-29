@@ -340,7 +340,7 @@ static void makeuriregs() {
 		char *tofree = NULL;
 		if (g_key_file_has_key(conf, g, "reg", NULL))
 		{
-			g = tofree = g_key_file_get_string(conf, g, "reg", NULL);
+			g = tofree = g_key_file_get_value(conf, g, "reg", NULL);
 		} else {
 			g += 4;
 		}
