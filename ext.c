@@ -1315,9 +1315,9 @@ static bool makehint(Page *page, Coms type, char *hintkeys, char *ipkeys)
 		{
 			bool has = g_str_has_prefix(key, ipkeys ?: "");
 			ret |= has;
-			if (has || rangein)
+			if (has)
 				g_string_append(hintstr, sfree(makehintelm(page,
-						elm, has ? key : NULL, iplen, pagex, pagey)));
+						elm, key, iplen, pagex, pagey)));
 		}
 
 		g_free(key);
