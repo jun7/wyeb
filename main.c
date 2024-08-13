@@ -267,7 +267,7 @@ static Win *winbyid(const char *pageid)
 	{
 		Win *win = wins->pdata[i];
 		if (intid == webkit_web_view_get_page_id(win->kit)
-				|| !strcmp(pageid, win->winid))
+				|| !g_strcmp0(pageid, win->winid))
 			return win;
 
 		if (win->maychanged)
@@ -1416,6 +1416,9 @@ static void envspawn(Spawn *p,
 	snprintf(buf, 9, "%d", wins->len);
 	envp = g_environ_setenv(envp, "WINSLEN", buf, true);
 	envp = g_environ_setenv(envp, "SUFFIX" , *suffix ? suffix : "/", true);
+	if (!win->winid)
+		win->winid = g_strdup_printf("%"G_GUINT64_FORMAT,
+				webkit_web_view_get_page_id(win->kit));
 	envp = g_environ_setenv(envp, "WINID"  , win->winid, true);
 	envp = g_environ_setenv(envp, "CURRENTSET", win->overset ?: "", true);
 	envp = g_environ_setenv(envp, "URI"    , URI(win), true);
@@ -4785,9 +4788,6 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	gtk_box_pack_end(  GTK_BOX(box), ol       , true , true, 0);
 
 	gtk_container_add(GTK_CONTAINER(win->win), box);
-
-	win->winid = g_strdup_printf("%"G_GUINT64_FORMAT,
-			webkit_web_view_get_page_id(win->kit));
 
 	g_ptr_array_add(wins, win);
 	if (back == 2)
