@@ -433,13 +433,6 @@ static void initconf(GKeyFile *kf)
 	}
 
 #ifdef MAINC
-	if (!kf)
-	{
-		g_key_file_set_value(  conf, DSET, "dummy", "endof"APP);
-		g_key_file_set_comment(conf, DSET, "dummy", "\nWebkit's settings\n", NULL);
-		g_key_file_remove_key( conf, DSET, "dummy", NULL);
-	}
-
 	//fill vals not set
 	if (LASTWIN)
 		_kitprops(false, LASTWIN->seto, conf, DSET);
@@ -457,15 +450,17 @@ static void initconf(GKeyFile *kf)
 			" Also true is only 'true' not 'True'"
 			"\n\n'all' overwrites the 'set's", NULL);
 	g_key_file_set_comment(conf, "template", NULL,
-			"Unlike the search group, the arg is not escaped\n"
+			"\nUnlike the search group, the arg is not escaped\n"
 			"but can be called the same as the search", NULL);
 	g_key_file_set_comment(conf, "set:v", NULL,
-			"Settings set. You can add set:*\n"
+			"\nSettings set. You can add set:*\n"
 			"It is enabled by actions(set/set2/setstack) or included by others"
 			, NULL);
 	g_key_file_set_comment(conf, DSET, NULL,
 			"\n\nDefaults of 'set's\n"
-			"You can use set;'s keys in set:* and uri:*\n\n", NULL);
+			"You can use set;'s keys in set:* and uri:*\n", NULL);
+	//enable-javascript is first value
+	g_key_file_set_comment(conf, DSET, "enable-javascript", "\nWebkit's settings\n", NULL);
 	g_key_file_set_comment(conf, DSET, "hardware-acceleration-policy",
 			"ON_DEMAND | ALWAYS | NEVER", NULL);
 
@@ -473,7 +468,7 @@ static void initconf(GKeyFile *kf)
 
 	g_key_file_set_boolean(conf, sample, "enable-javascript", true);
 	g_key_file_set_comment(conf, sample, NULL,
-			"After 'uri:' is regular expressions for the setting set.\n"
+			"\nAfter 'uri:' is regular expressions for the setting set.\n"
 			"preferential order of groups: lower > upper > '"DSET"'"
 			, NULL);
 
