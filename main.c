@@ -72,7 +72,6 @@ typedef struct _WP {
 	};
 	GtkWidget *canvas;
 	char   *winid;
-	GSList *ipcids;
 	WebKitFindController *findct;
 
 	//mode
@@ -492,44 +491,16 @@ static void showmsg(Win *win, const char *msg)
 { _showmsg(win, g_strdup(msg)); }
 
 //com
-static void _send(Win *win, Coms type, const char *args, guint64 pageid)
-{
-	char *arg = sfree(g_strdup_printf("%"G_GUINT64_FORMAT":%c:%s",
-				pageid, type, args ?: ""));
-
-	static bool alerted;
-	GSList *nextnext;
-
-	for (GSList *next = win->ipcids; next; next = next ? next->next : nextnext)
-		if (!ipcsend(next->data, arg))
-		{
-			g_free(next->data);
-			nextnext = next->next;
-			win->ipcids = g_slist_delete_link(win->ipcids, next);
-			next = NULL;
-
-			if (!win->ipcids && !win->crashed && !alerted && type == Cstart)
-			{
-				alerted = true;
-				alert("Failed to communicate with the Web Extension.\n"
-						"Make sure ext.so is in "EXTENSION_DIR".");
-			}
-		}
-}
 static void send(Win *win, Coms type, const char *args)
 {
-	_send(win, type, args, webkit_web_view_get_page_id(win->kit));
+	WebKitUserMessage* msg = webkit_user_message_new(
+		sfree(g_strdup_printf("0:%c:%s", type, args ?: "")) , NULL);
+	webkit_web_view_send_message_to_page(win->kit, msg, NULL, NULL, NULL);
 }
 static void sendeach(Coms type, char *args)
 {
-	char *sent = NULL;
 	for (int i = 0; i < wins->len; i++)
-	{
-		Win *lw = wins->pdata[i];
-		if (!lw->ipcids || (sent && !strcmp(sent, lw->ipcids->data))) continue;
-		sent = lw->ipcids->data;
-		send(lw, type, args);
-	}
+		send((Win *)wins->pdata[i], type, args);
 }
 typedef struct {
 	Win  *win;
@@ -2305,11 +2276,6 @@ static bool _run(Win *win, const char* action, const char *arg, char *cdir, char
 	if (win == NULL && (!arg || strcmp(action, "dlwithheaders"))) return false;
 
 	//internal
-	Z("_pageinit"  ,
-			agv = g_strsplit(arg, ":", 2);
-			win->ipcids = g_slist_prepend(win->ipcids, g_strdup(agv[0]));
-			//when page proc recreated on some pages, webkit_web_view_get_page_id delays
-			_send(win, Coverset, win->overset, atol(g_strdup(agv[1]))))
 	Z("_textlinkon", textlinkon(win))
 	Z("_blocked"   ,
 			_showmsg(win, g_strdup_printf("Blocked %s", arg));
@@ -3430,7 +3396,6 @@ static void destroycb(Win *win)
 	quitif();
 
 	g_free(win->winid);
-	g_slist_free_full(win->ipcids, g_free);
 	g_free(win->lasturiconf);
 	g_free(win->lastreset);
 	g_free(win->overset);
@@ -4081,6 +4046,7 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 	switch (event) {
 	case WEBKIT_LOAD_STARTED:
 		D(WEBKIT_LOAD_STARTED %s, URI(win))
+
 		histperiod(win);
 		if (tlwin == win) tlwin = NULL;
 		win->scheme = false;
@@ -4125,7 +4091,8 @@ static void loadcb(WebKitWebView *k, WebKitLoadEvent event, Win *win)
 			break;
 		}
 
-		resetconf(win, NULL, 0);
+		send(win, Coverset, win->overset);
+		resetconf(win, NULL, 1);
 		send(win, Con, "c");
 
 		if (webkit_web_view_get_tls_info(win->kit, NULL, &win->tlserr))
@@ -4185,6 +4152,12 @@ static gboolean failcb(WebKitWebView *k, WebKitLoadEvent event,
 	return false;
 }
 
+static gboolean msgcb(WebKitWebView *k, WebKitUserMessage *msg, Win *win)
+{
+	char **args = g_strsplit(webkit_user_message_get_name(msg), ":", 3);
+	run(win, args[1], !*args[2] ? NULL : args[2]);
+	return true;
+}
 //@contextmenu
 typedef struct {
 	GClosure *gc; //when dir gc and path are NULL
@@ -4715,6 +4688,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 	SIGW(o, "script-dialog"        , sdialogcb , win);
 	SIG( o, "load-changed"         , loadcb    , win);
 	SIG( o, "load-failed"          , failcb    , win);
+	SIG( o, "user-message-received", msgcb     , win);
 
 	SIG( o, "context-menu"         , contextcb , win);
 	SIG( o, "context-menu-dismissed", contextclosecb , win);
@@ -4791,18 +4765,10 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 static void runline(const char *line, char *cdir, char *exarg)
 {
 	char **args = g_strsplit(line, ":", 3);
+	Win *win = !strcmp(args[0], "0") ? LASTWIN : winbyid(args[0]);
 
-	char *arg = args[2];
-	if (!*arg) arg = NULL;
-
-	if (!strcmp(args[0], "0"))
-		_run(LASTWIN, args[1], arg, cdir, exarg);
-	else
-	{
-		Win *win = winbyid(args[0]);
-		if (win)
-			_run(win, args[1], arg, cdir, exarg);
-	}
+	if (win)
+		_run(win, args[1], !*args[2] ? NULL : args[2], cdir, exarg);
 
 	g_strfreev(args);
 }

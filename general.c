@@ -495,6 +495,7 @@ static void initconf(GKeyFile *kf)
 
 
 //@misc
+#ifdef MAINC
 static bool _mkdirif(char *path, bool isfile)
 {
 	bool ret = false;
@@ -513,6 +514,7 @@ static void mkdirif(char *path)
 {
 	_mkdirif(path, true);
 }
+#endif
 
 static char *_escape(const char *str, char *esc)
 {
@@ -551,6 +553,7 @@ static char *regesc(const char *str)
 }
 
 
+#ifdef MAINC
 //@ipc
 static char *ipcpath(char *name)
 {
@@ -618,3 +621,4 @@ static void ipcwatch(char *name, GMainContext *ctx) {
 	g_source_attach(watch, ctx);
 	g_source_unref(watch);
 }
+#endif

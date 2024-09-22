@@ -62,7 +62,6 @@ typedef struct _WP {
 	char          *overset;
 	bool           setagent;
 	bool           setagentprev;
-	GMainLoop     *sync;
 } Page;
 
 #include "general.c"
@@ -337,12 +336,12 @@ static void recttovals(let rect, double *x, double *y, double *w, double *h)
 
 
 //@misc
-static bool send(Page *page, char *action, const char *arg)
+static void send(Page *page, char *action, const char *arg)
 {
-	//D(send to main %s, ss)
-	return ipcsend("main", sfree(g_strdup_printf(
-		"%"G_GUINT64_FORMAT":%s:%s",
-		webkit_web_page_get_id(page->kit), action, arg ?: "")));
+	D(send to main %s %s, action, arg)
+	WebKitUserMessage* msg = webkit_user_message_new(
+		sfree(g_strdup_printf("0:%s:%s", action, arg ?: "")) , NULL);
+	webkit_web_page_send_message_to_view(page->kit, msg, NULL, NULL, NULL);
 }
 static bool isins(const char **ary, char *val)
 {
@@ -1638,30 +1637,9 @@ static void halfscroll(Page *page, bool d)
 }
 
 //@ipccb
-void ipccb(const char *line)
+static gboolean msgcb(WebKitWebPage *kp, WebKitUserMessage *msg, Page *page)
 {
-	char **args = g_strsplit(line, ":", 3);
-
-	Page *page = NULL;
-	long lid = atol(args[0]);
-	for (int i = 0; i < pages->len; i++)
-		if (webkit_web_page_get_id(((Page *)pages->pdata[i])->kit) == lid)
-		{
-			page = pages->pdata[i];
-
-			//workaround
-			//we can't detect suspended webprocess
-			let win = defaultview(sdoc(page));
-			if (win)
-			{
-				g_object_unref(win);
-				break;
-			}
-			else
-				page = NULL;
-		}
-
-	if (!page) return;
+	char **args = g_strsplit(webkit_user_message_get_name(msg), ":", 3);
 
 	Coms type = *args[1];
 	char *arg = args[2];
@@ -1773,9 +1751,7 @@ void ipccb(const char *line)
 	}
 
 	g_strfreev(args);
-
-	if (page && page->sync)
-		g_main_loop_quit(page->sync);
+	return true;
 }
 
 
@@ -1792,11 +1768,13 @@ static gboolean reqcb(
 {
 	page->pagereq++;
 	const char *reqstr = webkit_uri_request_get_uri(req);
+	D(reqcb %s, reqstr)
 	if (g_str_has_prefix(reqstr, APP":"))
 		return false;
 
 	const char *pagestr = webkit_web_page_get_uri(page->kit);
 	SoupMessageHeaders *head = webkit_uri_request_get_http_headers(req);
+
 
 	bool ret = false;
 	int check = checkwb(reqstr);
@@ -1920,15 +1898,9 @@ static void uricb(Page* page)
 //	D(option %s --- %s, option, description);
 //	return false;
 //}
-static gboolean inittimeoutcb(gpointer roop)
-{
-	g_main_loop_quit(roop);
-	return false;
-}
 static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 {
 //	jsc_options_foreach(printopt, NULL);
-
 	Page *page = g_new0(Page, 1);
 	g_object_weak_ref(G_OBJECT(kp), (GWeakNotify)freepage, page);
 	page->kit = kp;
@@ -1941,36 +1913,11 @@ static void initpage(WebKitWebExtension *ex, WebKitWebPage *kp)
 	wbpath = path2conf("whiteblack.conf");
 	setwblist(false);
 
-	static char *ipcid;
-	if (!ipcid)
-	{
-		ipcid = g_strdup_printf("%d", getpid());
-		ipcwatch(ipcid, g_main_context_default());
-	}
-
 	loadconf();
-	//workaround this timing the view can not get page id when page is recreated happening on some pages. thus we send it
-	if (send(page, "_pageinit", sfree(g_strdup_printf("%s:%lu",
-						ipcid, webkit_web_page_get_id(kp)))))
-	{
-		GMainContext *ctx = g_main_context_new();
-		page->sync = g_main_loop_new(ctx, true);
-		ipcwatch(ipcid, ctx);
-
-		GSource *src = g_timeout_source_new_seconds(1);
-		g_source_set_callback(src, inittimeoutcb, page->sync, NULL);
-		g_source_attach(src, ctx);
-		g_source_unref(src);
-
-		g_main_loop_run(page->sync);
-
-		g_main_context_unref(ctx);
-		g_main_loop_unref(page->sync);
-	}
-	page->sync = NULL;
 
 //	SIG( page->kit, "context-menu"            , contextcb, NULL);
 	SIG( page->kit, "send-request"            , reqcb    , page);
+	SIG( page->kit, "user-message-received"   , msgcb    , page);
 //	SIG( page->kit, "document-loaded"         , loadcb   , page);
 	SIGW(page->kit, "notify::uri"             , uricb    , page);
 //	SIG( page->kit, "form-controls-associated", formcb   , NULL);
