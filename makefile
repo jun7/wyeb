@@ -1,5 +1,5 @@
 PREFIX ?= /usr
-WEBKITVER ?= 4.1
+WEBKITVER ?= 4.0
 WEBKIT ?= webkit2gtk-$(WEBKITVER)
 EXTENSION_DIR ?= $(PREFIX)/lib/wyebrowser
 DISTROURI ?= https://archlinux.org/

@@ -6,9 +6,9 @@ pkgdesc="A vim-like webkit2gtk browser"
 arch=('x86_64')
 url="http://wyeb.org/"
 license=('GPL3')
-depends=('webkit2gtk-4.1' 'discount' 'perl-file-mimeinfo')
+depends=('webkit2gtk' 'discount' 'perl-file-mimeinfo')
 makedepends=('git')
-_branch=4.1
+_branch=master
 source=("git+https://github.com/jun7/wyeb.git#branch=$_branch")
 md5sums=('SKIP')
 
@@ -25,10 +25,14 @@ prepare() {
 
 build() {
 	cd "$srcdir/wyeb"
-	DEBUG=0 make
+	DEBUG=0
+	make
 }
 
 package() {
 	cd "$srcdir/wyeb"
-	PREFIX="$pkgdir/usr" make install
+	install -Dm755 wyeb   "$pkgdir/usr/bin/wyeb"
+	install -Dm755 ext.so   "$pkgdir/usr/lib/wyebrowser/ext.so"
+	install -Dm644 wyeb.png   "$pkgdir/usr/share/pixmaps/wyeb.png"
+	install -Dm644 wyeb.desktop "$pkgdir/usr/share/applications/wyeb.desktop"
 }
