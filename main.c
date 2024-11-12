@@ -3618,7 +3618,6 @@ static void targetcb(
 	setresult(win, htr);
 	update(win);
 }
-static GdkEvent *pendingmiddlee;
 static bool cancelbtn1r;
 static bool cancelbtn3r;
 static bool cancelmdlr;
@@ -3668,20 +3667,7 @@ static gboolean btncb(GtkWidget *w, GdkEventButton *e, Win *win)
 		win->lastx = e->x;
 		win->lasty = e->y;
 		gtk_widget_queue_draw(win->canvas);
-
-	if (e->button == 1) break;
-	{
-		if (e->send_event)
-		{
-			win->lastx = win->lasty = 0;
-			break;
-		}
-
-		if (pendingmiddlee)
-			gdk_event_free(pendingmiddlee);
-		pendingmiddlee = gdk_event_copy((GdkEvent *)e);
-		return true;
-	}
+		break;
 	case 3:
 		if (!(e->state & GDK_BUTTON1_MASK))
 			return win->crashed ?
@@ -3739,10 +3725,8 @@ static gboolean btnrcb(GtkWidget *w, GdkEventButton *e, Win *win)
 		{ //default
 			if (win->oneditable)
 			{
-				((GdkEventButton *)pendingmiddlee)->send_event = true;
-				gtk_widget_event(win->kitw, pendingmiddlee);
-				gdk_event_free(pendingmiddlee);
-				pendingmiddlee = NULL;
+				gtk_widget_queue_draw(win->canvas);
+				return false;
 			}
 			else if (win->link)
 				setact(win, "mdlbtnlinkaction", win->link);
