@@ -4002,13 +4002,13 @@ static gboolean policycb(
 static GtkWidget *createcb(Win *win)
 {
 	char *handle = getset(win, "newwinhandle");
-	Win *new = NULL;
 
-	if      (!g_strcmp0(handle, "notnew")) return win->kitw;
-	else if (!g_strcmp0(handle, "ignore")) return NULL;
-	else if (!g_strcmp0(handle, "back"  )) new = newwin(NULL, win, win, 1);
-	else                       /*normal*/  new = newwin(NULL, win, win, 0);
-	return new->kitw;
+	if      (!g_strcmp0(handle, "notnew")) showmsg(win, "notnew no longer works");
+	else if (!g_strcmp0(handle, "ignore")) showmsg(win, "Create window is ignored") ;
+	else if (!g_strcmp0(handle, "back"  )) return newwin(NULL, win, win, 1)->kitw;
+	else                       /*normal*/  return newwin(NULL, win, win, 0)->kitw;
+
+	return NULL;
 }
 static gboolean sdialogcb(Win *win)
 {
