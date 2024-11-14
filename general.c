@@ -167,7 +167,7 @@ static Conf dconf[] = {
 	{DSET    , "msgcolor"         , "#c07"},
 	{DSET    , "msgmsec"          , "600"},
 	{DSET    , "keepfavicondb"    , "false"},
-	{DSET    , "newwinhandle"     , "normal", "ignore | back | normal"},
+	{DSET    , "newwinhandle"     , "normal", "notnew | ignore | back | normal"},
 	{DSET    , "scriptdialog"     , "true"},
 
 	//loading
