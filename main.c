@@ -4003,7 +4003,18 @@ static GtkWidget *createcb(Win *win)
 {
 	char *handle = getset(win, "newwinhandle");
 
-	if      (!g_strcmp0(handle, "notnew")) showmsg(win, "notnew no longer works");
+	if (!g_strcmp0(handle, "notnew"))
+		if (win->link)
+		{
+			showmsg(win, "Create window is canceled");
+			openuri(win, win->link);
+		}
+		else
+		{
+			Win *new = newwin(NULL, win, win, 0);
+			showmsg(new, "Link URL was not set");
+			return new->kitw;
+		}
 	else if (!g_strcmp0(handle, "ignore")) showmsg(win, "Create window is ignored") ;
 	else if (!g_strcmp0(handle, "back"  )) return newwin(NULL, win, win, 1)->kitw;
 	else                       /*normal*/  return newwin(NULL, win, win, 0)->kitw;
