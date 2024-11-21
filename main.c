@@ -4762,8 +4762,7 @@ static void runline(const char *line, char *cdir, char *exarg)
 	char **args = g_strsplit(line, ":", 3);
 	Win *win = !strcmp(args[0], "0") ? LASTWIN : winbyid(args[0]);
 
-	if (win)
-		_run(win, args[1], !*args[2] ? NULL : args[2], cdir, exarg);
+	_run(win, args[1], !*args[2] ? NULL : args[2], cdir, exarg);
 
 	g_strfreev(args);
 }
