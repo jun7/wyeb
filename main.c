@@ -4553,6 +4553,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 
 	if (back != 2)
 		gtk_widget_show(win->winw);
+	gdk_flush();
 
 	SIGW(win->wino, plugto ? "configure-event":"focus-in-event", focuscb, win);
 
