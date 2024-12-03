@@ -4004,7 +4004,7 @@ static GtkWidget *createcb(Win *win)
 	char *handle = getset(win, "newwinhandle");
 
 	if (!g_strcmp0(handle, "notnew"))
-		if (win->link)
+		if (win->link && !g_str_has_prefix(win->link, "javascript:"))
 		{
 			showmsg(win, "Create window is canceled");
 			openuri(win, win->link);
@@ -4553,6 +4553,7 @@ Win *newwin(const char *uri, Win *cbwin, Win *caller, int back)
 
 	if (back != 2)
 		gtk_widget_show(win->winw);
+	gdk_flush();
 
 	SIGW(win->wino, plugto ? "configure-event":"focus-in-event", focuscb, win);
 
