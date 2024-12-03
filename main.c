@@ -4004,7 +4004,7 @@ static GtkWidget *createcb(Win *win)
 	char *handle = getset(win, "newwinhandle");
 
 	if (!g_strcmp0(handle, "notnew"))
-		if (win->link)
+		if (win->link && !g_str_has_prefix(win->link, "javascript:"))
 		{
 			showmsg(win, "Create window is canceled");
 			openuri(win, win->link);
