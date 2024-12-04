@@ -4004,12 +4004,24 @@ static GtkWidget *createcb(WebKitWebView* k,
 {
 	char *handle = getset(win, "newwinhandle");
 
-	if (!g_strcmp0(handle, "notnew"))
+	if (!g_strcmp0(handle, "notnewall"))
 	{
 		openuri(win, webkit_uri_request_get_uri(
 					webkit_navigation_action_get_request(na)));
 		showmsg(win, "Create window is canceled");
 	}
+	else if (!g_strcmp0(handle, "notnew"))
+		if (win->link && !g_str_has_prefix(win->link, "javascript:"))
+		{
+			showmsg(win, "Create window is canceled");
+			openuri(win, win->link);
+		}
+		else
+		{
+			Win *new = newwin(NULL, win, win, 0);
+			showmsg(new, "Link URL was not set");
+			return new->kitw;
+		}
 	else if (!g_strcmp0(handle, "ignore")) showmsg(win, "Create window is ignored");
 	else if (!g_strcmp0(handle, "back"  )) return newwin(NULL, win, win, 1)->kitw;
 	else                       /*normal*/  return newwin(NULL, win, win, 0)->kitw;
