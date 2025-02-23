@@ -1842,14 +1842,6 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		double tr = tx + tw;
 		double tb = ty + th;
 
-		if (win->scrlf)
-		{
-			scale = 1;
-			tx = ty = 2;
-			tr = w - 2;
-			tb = h - 2;
-		}
-
 		bool pin = win->cursorx + win->cursory == 0 ?
 			px > tx && px < tr && py > ty && py < tb :
 			xi + 1 == win->cursorx && yi + 1 == win->cursory;
@@ -1884,6 +1876,14 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 		if (!cr) goto out;
 
 		cairo_reset_clip(cr);
+		if (win->scrlf)
+		{
+			scale = 1;
+			tx = MAX(3, (w - lww) / 2);
+			ty = MAX(3, (h - lwh) / 2);
+			tr = MIN(w - 3, tx + lww);
+			tb = MIN(h - 3, ty + lwh);
+		}
 		arcrect(cr, 4 + th / 66.0, tx, ty, tr, tb);
 		if (pin)
 		{
@@ -1897,11 +1897,6 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 				&& gtk_widget_get_visible(lw->kitw)
 				&& gtk_widget_is_drawable(lw->kitw)
 		) {
-			if (win->scrlf)
-			{
-				tx = MAX(tx, (w - lww) / 2);
-				ty = MAX(ty, (h - lwh) / 2);
-			}
 			cairo_scale(cr, scale, scale);
 			GdkPixbuf *pix =
 				gdk_pixbuf_get_from_window(gdkw(lw->kitw), 0, 0, lww, lwh);
