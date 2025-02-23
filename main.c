@@ -1902,11 +1902,13 @@ bool winlist(Win *win, guint type, cairo_t *cr)
 				tx = MAX(tx, (w - lww) / 2);
 				ty = MAX(ty, (h - lwh) / 2);
 			}
-			cairo_translate(cr, tx, ty);
 			cairo_scale(cr, scale, scale);
-			gtk_widget_draw(lw->kitw, cr);
+			GdkPixbuf *pix =
+				gdk_pixbuf_get_from_window(gdkw(lw->kitw), 0, 0, lww, lwh);
+			gdk_cairo_set_source_pixbuf(cr, pix, tx / scale, ty / scale);
+			cairo_paint(cr);
+			g_object_unref(pix);
 			cairo_scale(cr, 1 / scale, 1 / scale);
-			cairo_translate(cr, -tx, -ty);
 		}
 		else
 		{
