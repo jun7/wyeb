@@ -1253,6 +1253,7 @@ static void _openuri(Win *win, const char *str, Win *caller)
 		g_str_has_prefix(str, "file:") ||
 		g_str_has_prefix(str, "data:") ||
 		g_str_has_prefix(str, "blob:") ||
+		g_str_has_prefix(str, "webkit:") ||
 		g_str_has_prefix(str, "about:")
 	) {
 		webkit_web_view_load_uri(win->kit, str);
