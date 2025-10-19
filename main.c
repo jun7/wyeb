@@ -362,7 +362,7 @@ static void pushimg(Win *win, bool swap)
 
 	gdk_pixbuf_save_to_buffer(scaled,
 			&img->buf, &img->size,
-			"jpeg", NULL, "quality", "77", NULL);
+			"webp", NULL, "quality", "77", NULL);
 
 	g_object_unref(scaled);
 
@@ -3149,7 +3149,7 @@ static void schemecb(WebKitURISchemeRequest *req, gpointer p)
 				Img *img = next->data;
 				if (!img || img->id != id) continue;
 
-				type = "image/jpeg";
+				type = "image/webp";
 				data = g_memdup(img->buf, len = img->size);
 				break;
 			}
